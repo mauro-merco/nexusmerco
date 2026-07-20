@@ -1,0 +1,114 @@
+# ----------------------------------------
+# Adquisición de tráfico: Fuente/medio de la sesión
+# Cuenta: Multipoint
+# Propiedad: Multipoint 4
+# ----------------------------------------
+# 
+# Todos los usuarios
+# Fecha de inicio: 20260401
+# Fecha de finalización: 20260430
+Fuente/medio de la sesión,Sesiones,Sesiones con interacción,Porcentaje de interacciones,Tiempo de interacción medio por sesión,Eventos por sesión,Número de eventos,Eventos clave,Tasa de evento clave de sesión,Total de ingresos
+rrss / pauta,57970,57939,0.9994652406417113,4.15121614628256,7.2965326893220634,211,0,0.0029843022252889428,0
+google / cpc,16340,15894,0.9727050183598531,39.475520195838435,13.028151774785801,700,34,0.029253365973072216,30176471.997406
+tiktok / paid,13577,13563,0.9989688443691537,0.8890771157103926,4.736024158503351,0,0,0,0
+google / organic,3778,3624,0.9592376919004765,45.5068819481207,18.821334039174165,176,6,0.030439385918475385,2934819.000815
+(direct) / (none),3319,3237,0.9752937631816813,36.013859596263934,16.31033443808376,155,5,0.030430852666465804,4636010.999243
+Connectif / email,939,904,0.9627263045793397,57.61341853035144,21.949946751863685,122,1,0.04472843450479233,152998.999403
+(not set),850,599,0.7047058823529412,16.90823529411765,9.828235294117647,12,1,0.010588235294117647,1259998.999471
+gocuotas / (not set),546,546,1,54.38827838827839,25.243589743589745,38,0,0.054945054945054944,0
+blue / cpc,532,509,0.956766917293233,28.396616541353385,15.838345864661655,8,1,0.011278195488721804,108793.000578
+m.facebook.com / referral,302,301,0.9966887417218543,11.003311258278146,10.407284768211921,1,0,0.0033112582781456954,0
+t-sml.mtrbio.com / referral,255,252,0.9882352941176471,77.00392156862745,21.733333333333334,5,0,0.0196078431372549,0
+facebook.com / referral,248,248,1,4.729838709677419,10.366935483870968,0,0,0,0
+(data not available),235,235,1,37.625531914893614,13.357446808510637,8,1,0.02553191489361702,764999.000259
+bing / organic,128,119,0.9296875,56.890625,24,1,0,0.0078125,0
+statics.teams.cdn.office.net / referral,126,114,0.9047619047619048,68.53174603174604,54.801587301587304,158,0,0.15873015873015872,0
+metricool / social,124,121,0.9758064516129032,70.12096774193549,21.330645161290324,7,0,0.04032258064516129,0
+facebook / paid,121,121,1,1.1735537190082646,6.4958677685950414,0,0,0,0
+gocuotas / referral,116,116,1,65.62068965517241,27.28448275862069,16,0,0.10344827586206896,0
+tiktok / pauta,74,74,1,0.7162162162162162,5.878378378378378,0,0,0,0
+fb / paid,60,60,1,42.25,14.833333333333334,2,0,0.03333333333333333,0
+app.clickup.com / referral,54,43,0.7962962962962963,42.092592592592595,18.962962962962962,4,0,0.05555555555555555,0
+chatgpt.com / (not set),52,51,0.9807692307692307,20.53846153846154,13.692307692307692,1,0,0.019230769230769232,0
+claude.ai / referral,30,23,0.7666666666666667,22.433333333333334,24.766666666666666,0,0,0,0
+365.clarin.com / referral,29,28,0.9655172413793104,142.6551724137931,78.13793103448276,23,2,0.3103448275862069,364391.999778
+ar.search.yahoo.com / referral,27,25,0.9259259259259259,134.7037037037037,24.962962962962962,3,1,0.07407407407407407,2199999.000235
+adsmanager.facebook.com / referral,23,20,0.8695652173913043,21.608695652173914,27.47826086956522,0,0,0,0
+l.facebook.com / referral,23,22,0.9565217391304348,69.82608695652173,46.17391304347826,1,0,0.043478260869565216,0
+l.wl.co / referral,22,18,0.8181818181818182,45.27272727272727,18.40909090909091,1,0,0.045454545454545456,0
+chatgpt.com / referral,18,17,0.9444444444444444,41.833333333333336,15.444444444444445,2,0,0.1111111111111111,0
+rrss-FeaturedOfferings / pauta,17,17,1,13.529411764705882,11.294117647058824,0,0,0,0
+aqara.com / referral,15,15,1,47,20,0,0,0,0
+qr1.me-qr.com / referral,14,14,1,6.928571428571429,7.428571428571429,0,0,0,0
+cace / landing,10,9,0.9,64.7,29.9,0,0,0,0
+cace / megaofertas,10,9,0.9,51.9,9,0,0,0,0
+gemini.google.com / referral,10,9,0.9,23.1,20.9,0,0,0,0
+lm.facebook.com / referral,10,10,1,22.1,13.1,0,0,0,0
+instagram.com / referral,9,9,1,23.555555555555557,8.222222222222221,0,0,0,0
+105.104.15.246 / referral,8,8,1,39.25,46,0,0,0,0
+l.instagram.com / referral,8,8,1,36.625,12.125,1,0,0.125,0
+mascerca.com.ar / referral,8,7,0.875,82.375,45,3,0,0.25,0
+refferal / smegusta,8,8,1,172.25,41.125,0,0,0,0
+duckduckgo / organic,7,7,1,121.28571428571429,40.42857142857143,2,0,0.14285714285714285,0
+soporte.multiradio.com.ar / referral,7,7,1,170,36.285714285714285,0,0,0,0
+blue / home,6,6,1,74.66666666666667,16,0,0,0,0
+cace / platinum,6,6,1,25.5,13.5,0,0,0,0
+cse.google.com / referral,6,5,0.8333333333333334,38.833333333333336,9,0,0,0,0
+search.google.com / referral,5,5,1,4.8,7.8,0,0,0,0
+app.seranktracker.com / referral,4,4,1,28.5,16,0,0,0,0
+cybermonday.com.ar / referral,4,4,1,217,33.5,0,0,0,0
+ig / paid,4,4,1,36,15,0,0,0,0
+tigre.gob.ar / referral,4,4,1,8.75,10.25,0,0,0,0
+wibond.cl / referral,4,4,1,38.5,21.5,0,0,0,0
+bbva.com.ar / referral,3,3,1,41,18.333333333333332,0,0,0,0
+club.lanacion.com.ar / referral,3,2,0.6666666666666666,53.666666666666664,36,1,0,0.3333333333333333,0
+metaads / pauta,3,3,1,92.66666666666667,28.333333333333332,0,0,0,0
+rrss-perfil-IG / organico,3,3,1,39,9.666666666666666,0,0,0,0
+whatsapp / mensaje,3,3,1,459.3333333333333,108.33333333333333,2,0,0.6666666666666666,0
+app.ventrycrm.com / referral,2,2,1,6.5,11.5,0,0,0,0
+cupones.com.ar / referral,2,2,1,189,96.5,2,1,0.5,41598.99989
+ecosia.org / organic,2,2,1,25.5,27,0,0,0,0
+eventsmanager.facebook.com / referral,2,2,1,25,30.5,1,0,0.5,0
+gocuotas / (none),2,2,1,31.5,26,0,0,0,0
+googleads / pauta,2,2,1,0,4,0,0,0,0
+grupomulti.com.ar / referral,2,2,1,46.5,24.5,0,0,0,0
+m.facebook.com / paid,2,2,1,27,12.5,0,0,0,0
+multiradio.com.ar / referral,2,2,1,109.5,28,0,0,0,0
+org62.lightning.force.com / referral,2,2,1,4.5,11.5,0,0,0,0
+stellantisclub.gointegro.com / referral,2,2,1,252,103,1,0,0.5,0
+teleperformancear.gointegro.com / referral,2,2,1,35,21.5,0,0,0,0
+wcentrix.net / referral,2,1,0.5,1,5,0,0,0,0
+yahoo / organic,2,2,1,30.5,14.5,0,0,0,0
+0f8221b7be6b59b2bdb118f90c61f3d0.safeframe.googlesyndication.com / referral,1,1,1,3,7,0,0,0,0
+2881.com / referral,1,1,1,10,24,0,0,0,0
+admanager.google.com / referral,1,1,1,7,9,0,0,0,0
+avalian.gointegro.com / referral,1,1,1,127,36,0,0,0,0
+brk.beygoo.me / referral,1,1,1,0,5,0,0,0,0
+cace / marketplace,1,1,1,27,30,0,0,0,0
+cace.org.ar / referral,1,1,1,8,14,0,0,0,0
+club.qualiaseguros.com.ar / referral,1,1,1,21,11,0,0,0,0
+clubsancorsalud.com.ar / referral,1,1,1,224,88,0,0,0,0
+co.search.yahoo.com / referral,1,1,1,71,11,0,0,0,0
+convos.gointegro.com / referral,1,1,1,45,15,0,0,0,0
+dashboard.lusha.com / referral,1,1,1,0,8,0,0,0,0
+es.search.yahoo.com / referral,1,1,1,1,7,0,0,0,0
+giapeto.com / referral,1,1,1,15,23,0,0,0,0
+googleads.g.doubleclick.net / referral,1,1,1,0,11,0,0,0,0
+kabired.gointegro.com / referral,1,1,1,19,11,0,0,0,0
+l.facebook.com / paid,1,1,1,0,6,0,0,0,0
+linksutiles / redes,1,1,1,0,8,0,0,0,0
+lookallweb.com / referral,1,1,1,9,21,0,0,0,0
+macroglossa.com / referral,1,1,1,8,26,0,0,0,0
+monstercrawler.com / referral,1,1,1,5,22,0,0,0,0
+prune.gointegro.com / referral,1,1,1,49,41,0,0,0,0
+redhogarnet.com.ar / referral,1,1,1,18,12,0,0,0,0
+searchgby.com / referral,1,1,1,0,7,0,0,0,0
+sency.com / referral,1,1,1,27,27,0,0,0,0
+similarsites.com / referral,1,1,1,46,22,0,0,0,0
+slider.com / referral,1,1,1,2,23,0,0,0,0
+snappyfingers.com / referral,1,1,1,0,8,0,0,0,0
+somosha.vismaunite.com / referral,1,1,1,15,33,0,0,0,0
+titanpush.com / referral,1,1,1,0,7,0,0,0,0
+uniteaguidi.vismaunite.com / referral,1,1,1,156,42,1,0,1,0
+wrike.com / referral,1,1,1,0,6,0,0,0,0
+youtube.com / referral,1,1,1,27,7,0,0,0,0

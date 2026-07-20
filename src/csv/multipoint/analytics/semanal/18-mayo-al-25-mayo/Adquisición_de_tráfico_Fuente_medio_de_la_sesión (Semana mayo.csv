@@ -1,0 +1,83 @@
+# ----------------------------------------
+# Adquisición de tráfico: Fuente/medio de la sesión
+# Cuenta: Multipoint
+# Propiedad: Multipoint 4
+# ----------------------------------------
+# 
+# Todos los usuarios
+# Fecha de inicio: 20260518
+# Fecha de finalización: 20260525
+Fuente/medio de la sesión,Sesiones,Sesiones con interacción,Porcentaje de interacciones,Tiempo de interacción medio por sesión,Eventos por sesión,Número de eventos,Eventos clave,Tasa de evento clave de sesión,Total de ingresos
+rrss / pauta,10434,10432,0.9998083189572551,2.8049645390070923,9.593827870423615,30,1,0.0023001725129384704,2699998.999602
+google / cpc,4923,4799,0.9748121064391632,40.26325411334552,16.496242128783262,221,4,0.021937842778793418,6914995.000645
+(direct) / (none),1104,1079,0.9773550724637681,22.155797101449274,15.58876811594203,26,2,0.014492753623188406,2585948.001105
+google / organic,974,934,0.9589322381930184,53.46201232032854,23.630390143737166,45,5,0.033880903490759756,2769371.999623
+Connectif / email,463,449,0.9697624190064795,40.388768898488124,18.682505399568033,16,2,0.03023758099352052,1596904.001121
+metaads / pauta,433,431,0.9953810623556582,5.766743648960739,10.547344110854503,1,0,0.0023094688221709007,0
+(not set),196,165,0.8418367346938775,15.341836734693878,14.066326530612244,3,0,0.01020408163265306,0
+m.facebook.com / referral,137,137,1,5.518248175182482,10.291970802919709,0,0,0,0
+web / home,93,79,0.8494623655913979,53.344086021505376,38.43010752688172,18,0,0.043010752688172046,0
+(data not available),81,81,1,32.24691358024691,17.012345679012345,0,0,0,0
+facebook.com / referral,73,73,1,4.109589041095891,11.698630136986301,0,0,0,0
+t-sml.mtrbio.com / referral,58,56,0.9655172413793104,65.89655172413794,30.25862068965517,2,0,0.034482758620689655,0
+tiktok / paid,51,51,1,0.09803921568627451,6.0588235294117645,0,0,0,0
+bing / organic,41,37,0.9024390243902439,38.73170731707317,20.78048780487805,0,0,0,0
+cace / Oferta,32,28,0.875,25.28125,17.90625,1,0,0.03125,0
+qr1.me-qr.com / referral,26,25,0.9615384615384616,12.076923076923077,9.115384615384615,0,0,0,0
+chatgpt.com / (not set),22,22,1,27.181818181818183,18.09090909090909,1,0,0.045454545454545456,0
+flyer / cupon,20,14,0.7,21.1,16.95,0,0,0,0
+tiktok / pauta,19,19,1,0.21052631578947367,9.473684210526315,0,0,0,0
+tiktokads / pauta,19,19,1,3.0526315789473686,7.947368421052632,0,0,0,0
+gocuotas / (not set),18,18,1,56.27777777777778,28.166666666666668,2,0,0.1111111111111111,0
+cace / megaofertas,16,15,0.9375,20.125,11.375,0,0,0,0
+lm.facebook.com / referral,14,14,1,3.7857142857142856,11.285714285714286,0,0,0,0
+blue / cpc,13,12,0.9230769230769231,7,15.076923076923077,0,0,0,0
+googleads / pauta,12,11,0.9166666666666666,27.833333333333332,12.416666666666666,0,0,0,0
+l.wl.co / referral,12,12,1,24.166666666666668,20.833333333333332,0,0,0,0
+chatgpt.com / referral,11,10,0.9090909090909091,71.72727272727273,25.09090909090909,2,0,0.18181818181818182,0
+metricool / social,11,11,1,61.63636363636363,19.545454545454547,0,0,0,0
+statics.teams.cdn.office.net / referral,10,8,0.8,199.8,144.4,0,0,0,0
+rrss-FeaturedOfferings / pauta,9,9,1,0,9.88888888888889,0,0,0,0
+365.clarin.com / referral,7,5,0.7142857142857143,143.28571428571428,68.71428571428571,3,0,0.2857142857142857,0
+aqara.com / referral,7,6,0.8571428571428571,31.714285714285715,25.571428571428573,0,0,0,0
+gocuotas / referral,6,6,1,18.666666666666668,20.333333333333332,0,0,0,0
+grupomulti.com.ar / referral,6,6,1,98.33333333333333,34.5,0,0,0,0
+l.instagram.com / referral,6,6,1,77.5,42.166666666666664,1,0,0.16666666666666666,0
+admedia / display,5,4,0.8,0,6.2,0,0,0,0
+popup / popup,5,4,0.8,6.2,9.8,0,0,0,0
+ar.search.yahoo.com / referral,4,4,1,82.5,36,1,0,0.25,0
+beneficios.galicia.ar / referral,4,3,0.75,4.5,12,0,0,0,0
+foros.3dgames.com.ar / referral,4,4,1,39.25,45.5,1,0,0.25,0
+gemini.google.com / referral,4,4,1,378,44.75,1,0,0.25,0
+l.facebook.com / referral,4,4,1,143,30.5,1,0,0.25,0
+claude.ai / referral,3,3,1,39.666666666666664,20.666666666666668,0,0,0,0
+fb / paid,3,3,1,211.66666666666666,33,0,0,0,0
+metricool / linksutiles,3,3,1,69,35.333333333333336,0,0,0,0
+solme / cupon,3,2,0.6666666666666666,0,6,0,0,0,0
+youtube.com / referral,3,3,1,0,6,0,0,0,0
+clubzurich / cupon,2,1,0.5,0.5,5,0,0,0,0
+cybermonday.com.ar / referral,2,1,0.5,0,7.5,0,0,0,0
+mascerca.com.ar / referral,2,2,1,60.5,12,0,0,0,0
+search.google.com / referral,2,2,1,1.5,27,0,0,0,0
+semananacion.com.ar / referral,2,2,1,5.5,13.5,0,0,0,0
+(not set) / organic_social,1,1,1,0,5,0,0,0,0
+2022_Multi_Nuevo_Registro_01 / email,1,1,1,31,33,0,0,0,0
+admanager.google.com / referral,1,1,1,22,10,0,0,0,0
+am1.connectif.cloud / referral,1,1,1,17,46,0,0,0,0
+askboth.com / referral,1,1,1,33,37,0,0,0,0
+cace / landing,1,1,1,5,17,0,0,0,0
+cace / platinum,1,1,1,0,9,0,0,0,0
+canva.com / referral,1,1,1,0,16,0,0,0,0
+casttv.com / referral,1,1,1,9,27,0,0,0,0
+duckduckgo / organic,1,1,1,8,10,0,0,0,0
+es.search.yahoo.com / referral,1,1,1,91,28,0,0,0,0
+gocuotas.com / referral,1,0,0,0,4,0,0,0,0
+instagram.com / referral,1,1,1,0,11,0,0,0,0
+metaads / referral,1,1,1,21,17,0,0,0,0
+paradigma.gointegro.com / referral,1,1,1,11,18,0,0,0,0
+peekyou.com / referral,1,1,1,4,27,0,0,0,0
+saas.upkuajing.com / referral,1,1,1,3,12,0,0,0,0
+tgs.gointegro.com / referral,1,1,1,305,65,0,0,0,0
+tigre.gob.ar / referral,1,1,1,31,34,0,0,0,0
+vivo / organic_social,1,1,1,0,6,0,0,0,0
+web.telegram.org / referral,1,1,1,1,11,0,0,0,0
