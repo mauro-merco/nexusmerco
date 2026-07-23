@@ -51,7 +51,7 @@ export interface Optimization {
   created_at: string;
 }
 
-export interface Task {
+export interface LegacyTask {
   id: string;
   client_id: string;
   client_name: string;
@@ -150,5 +150,57 @@ export interface SocialAnnotation {
   x: number;
   y: number;
   label: string;
+  created_at: string;
+}
+
+export type TaskStatus = 'en_espera' | 'en_revision' | 'aprobado' | 'problemas';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface Task {
+  id: string;
+  client_id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  assignee_id: string | null;
+  author_id: string | null;
+  priority: TaskPriority;
+  due_date: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+  assignee?: User | null;
+  author?: User | null;
+  client?: Client | null;
+  comment_count?: number;
+  attachment_count?: number;
+}
+
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  user?: User;
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  url: string;
+  name: string;
+  type: string;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  task_id: string | null;
+  read: boolean;
   created_at: string;
 }

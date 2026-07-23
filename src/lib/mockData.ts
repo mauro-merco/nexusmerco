@@ -1,4 +1,4 @@
-import type { Client, User, WeeklyInput, Optimization, Task, Integration, CampaignMetric } from './types';
+import type { Client, User, WeeklyInput, Optimization, LegacyTask, Integration, CampaignMetric } from './types';
 
 export const mockUsers: User[] = [
   {
@@ -295,7 +295,7 @@ export const mockOptimizations: Optimization[] = [
   { id: 'opt-10', weekly_input_id: 'wi-6', client_name: 'Fullbai B2C', platform: 'google', action_taken: 'Escalar Performance Max - Cosmética Coreana (única campaña con conversiones)', expected_impact: 'Aumentar conversiones en 3-5x esta semana', created_at: '2026-05-25T11:00:00Z' },
 ];
 
-export const mockTasks: Task[] = [
+export const mockTasks: LegacyTask[] = [
   { id: 'task-1', client_id: 'client-1', client_name: 'BrightSoul Yoga', title: 'Review summer campaign creative', description: 'Sign off on 3 new ad variants for the summer sale push', status: 'in-progress', due_date: '2026-06-02', assignee: 'Marcus Johnson' },
   { id: 'task-2', client_id: 'client-1', client_name: 'BrightSoul Yoga', title: 'Set up TikTok pixel events', description: 'Configure standard and custom events in the TikTok Events Manager', status: 'todo', due_date: '2026-06-05', assignee: 'Marcus Johnson' },
   { id: 'task-3', client_id: 'client-2', client_name: 'Peak Performance Gear', title: 'Prepare monthly performance report', description: 'Compile May metrics for client presentation', status: 'in-progress', due_date: '2026-06-03', assignee: 'Sarah Chen' },
@@ -336,7 +336,7 @@ export function getOptimizationsByClient(clientId: string): Optimization[] {
   return mockOptimizations.filter((o) => wiIds.includes(o.weekly_input_id));
 }
 
-export function getTasksByStatus(status: Task['status']): Task[] {
+export function getTasksByStatus(status: LegacyTask['status']): LegacyTask[] {
   return mockTasks.filter((t) => t.status === status);
 }
 

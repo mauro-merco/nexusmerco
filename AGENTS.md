@@ -27,6 +27,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Social hooks**: useSocialIdeas, useSocialAttachments, useSocialComments, useSocialAnnotations
 - **Dependencies added**: @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities
 - **Social Calendar: Unique post type colors + status system**: Reel=pink, Historia=cyan, Carrusel=orange; statuses: Borrador, En Revisión, Necesita Modificaciones, Aprobado, Listo para postear, Publicado; quick status dropdown on pills/cards (no edit needed); published ideas blur green with check icon
+- **Kanban Tasks system**: 4 columns (En espera, En revisión, Aprobado, Problemas), drag & drop between columns, task creation with client/title/description/priority/assignee/due date, inline status pills in modal, comments system, link attachments, user assignment
+- **Notifications system**: Bell icon in top bar, unread count badge, mark as read, "Te asignaron una tarea" notifications on assignment, auto-refresh every 30s
+- **Profile menu**: Avatar with initials fallback, click-to-upload photo, inline name editing, settings link, logout
+- **Top bar**: Added to dashboard layout with notification bell + profile menu
+- **Migration 00017**: tasks, task_comments, task_attachments, notifications tables + RLS
+- **API routes**: tasks CRUD, task-comments, task-attachments, notifications (read/unread), users list
 
 ### In Progress
 - (none)
