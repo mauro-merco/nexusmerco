@@ -37,7 +37,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, logo_url, description, industry, campaign_types, plan, status, public_enabled, public_description } = body;
+    const { name, logo_url, description, industry, campaign_types, plan, status, public_enabled, public_description, social_calendar_enabled, analysis_enabled } = body;
 
     if (name !== undefined && !name.trim()) {
       return NextResponse.json({ error: 'El nombre no puede estar vacío' }, { status: 400 });
@@ -54,8 +54,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (status !== undefined) updates.status = status;
     if (public_enabled !== undefined) updates.public_enabled = public_enabled;
     if (public_description !== undefined) updates.public_description = public_description;
+    if (social_calendar_enabled !== undefined) updates.social_calendar_enabled = social_calendar_enabled;
+    if (analysis_enabled !== undefined) updates.analysis_enabled = analysis_enabled;
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('clients')
       .update(updates)
       .eq('id', id)
@@ -63,10 +65,33 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
+      if (error.code === '42703' || error.message?.includes('column')) {
+        const fallbackUpdates: Record<string, unknown> = {};
+        if (name !== undefined) fallbackUpdates.name = name.trim();
+        if (logo_url !== undefined) fallbackUpdates.logo_url = logo_url;
+        if (description !== undefined) fallbackUpdates.description = description;
+        if (industry !== undefined) fallbackUpdates.industry = industry;
+        if (campaign_types !== undefined) fallbackUpdates.campaign_types = campaign_types;
+        if (plan !== undefined) fallbackUpdates.plan = plan;
+        if (status !== undefined) fallbackUpdates.status = status;
+        if (public_enabled !== undefined) fallbackUpdates.public_enabled = public_enabled;
+        if (public_description !== undefined) fallbackUpdates.public_description = public_description;
+        const retry = await supabase
+          .from('clients')
+          .update(fallbackUpdates)
+          .eq('id', id)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
       }
-      throw error;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
+        }
+        console.error('PUT /api/clients/[id] Supabase error:', JSON.stringify(error));
+        throw error;
+      }
     }
     return NextResponse.json({ data });
   } catch (err) {

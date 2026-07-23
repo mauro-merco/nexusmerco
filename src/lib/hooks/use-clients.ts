@@ -13,6 +13,8 @@ export interface ClientRecord {
   status: 'active' | 'paused' | 'onboarding';
   public_enabled: boolean;
   public_description: string;
+  social_calendar_enabled: boolean;
+  analysis_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +29,8 @@ interface ClientFormData {
   status?: string;
   public_enabled?: boolean;
   public_description?: string;
+  social_calendar_enabled?: boolean;
+  analysis_enabled?: boolean;
 }
 
 export function useClients() {

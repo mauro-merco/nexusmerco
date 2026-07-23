@@ -1,28 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useClients } from '@/lib/hooks/use-clients';
+import { useClients, deleteClient } from '@/lib/hooks/use-clients';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { Search, Building2, BarChart3, Plus, Loader2, Sparkles } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Search, Building2, BarChart3, Plus, Loader2, Sparkles, Pencil, Trash2, AlertTriangle,
+} from 'lucide-react';
 
 export default function ClientsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const _ = useT();
-  const { clients, loading, error } = useClients();
+  const { clients, loading, error, refetch } = useClients();
   const [search, setSearch] = useState('');
   const [initMultipoint, setInitMultipoint] = useState(false);
   const [initMsg, setInitMsg] = useState<string | null>(null);
 
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const isAdminOrTeam = user?.role === 'admin' || user?.role === 'team';
+
+  const confirmEnabled = confirmText === 'ELIMINAR';
+
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget || !confirmEnabled) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteClient(deleteTarget.id);
+      setDeleteTarget(null);
+      setConfirmText('');
+      refetch();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Error al eliminar');
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteTarget, confirmEnabled, refetch]);
 
   async function handleInitMultipoint() {
     setInitMultipoint(true);
@@ -39,6 +68,7 @@ export default function ClientsPage() {
       setInitMultipoint(false);
     }
   }
+
   const filteredClients = clients.filter(
     (c) => c.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -149,9 +179,27 @@ export default function ClientsPage() {
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Plan: <span className="font-medium capitalize">{client.plan}</span></span>
                 </div>
-                <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={(e) => { e.stopPropagation(); router.push(`/clients/${client.id}`); }}>
-                  <BarChart3 className="h-3 w-3" /> Ver Análisis
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1 gap-2 text-xs" onClick={(e) => { e.stopPropagation(); router.push(`/clients/${client.id}`); }}>
+                    <BarChart3 className="h-3 w-3" /> Ver Análisis
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={(e) => { e.stopPropagation(); router.push(`/clients/${client.id}/edit`); }}>
+                    <Pencil className="h-3 w-3" /> Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget({ id: client.id, name: client.name });
+                      setConfirmText('');
+                      setDeleteError(null);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -169,6 +217,56 @@ export default function ClientsPage() {
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setConfirmText(''); setDeleteError(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Eliminar cliente
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción eliminará permanentemente <strong>{deleteTarget?.name}</strong> y todos sus datos asociados. Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Escribí <strong className="text-foreground">ELIMINAR</strong> para confirmar:
+            </p>
+            <Input
+              placeholder="ELIMINAR"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              autoFocus
+              className={cn(confirmText && !confirmEnabled && 'border-destructive/50')}
+            />
+            {deleteError && (
+              <p className="text-xs text-destructive">{deleteError}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setDeleteTarget(null); setConfirmText(''); setDeleteError(null); }}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!confirmEnabled || deleting}
+              onClick={handleDelete}
+              className="gap-2"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

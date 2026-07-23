@@ -20,6 +20,7 @@ import {
   LogOut,
   Menu,
   ChevronLeft,
+  Settings,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { NavItem, UserRole } from '@/lib/types';
@@ -40,6 +41,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   BarChart3,
   Cable,
   BrainCircuit,
+  Settings,
 };
 
 function SidebarContent({ collapsed }: { collapsed: boolean }) {
@@ -96,6 +98,16 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
         )}
         <LangToggle collapsed={collapsed} />
         <ThemeToggle collapsed={collapsed} />
+        <Link href="/settings">
+          <Button
+            variant="ghost"
+            size={collapsed ? 'icon' : 'sm'}
+            className={cn('w-full justify-start gap-3', pathname === '/settings' && 'bg-accent font-medium', collapsed && 'justify-center px-0')}
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Mi perfil</span>}
+          </Button>
+        </Link>
         <Button
           variant="ghost"
           size={collapsed ? 'icon' : 'sm'}

@@ -21,6 +21,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **All 37 multipoint CSV files seed successfully** — Google Ads (60 campaigns, 500 keywords, 42 asset groups), Meta Ads (9 campaigns, 9 ad sets, 9 ads), Analytics (4 sources) — verified via API with correct spend
 - **Character encoding confirmed**: CSV files are UTF-8, API returns valid UTF-8 JSON (`Tecnología`, `Generación` stored correctly). Previous garbled display was PowerShell terminal limitation.
 
+- **Social Calendar feature**: Click client → intermediate menu (Centro de Análisis / Calendario de Redes). Calendar with monthly grid, draggable idea pills (@dnd-kit), drag & drop between dates, "Nueva Idea" dialog, idea detail modal (large, blur backdrop, 3 tabs: Detalle/Adjuntos/Comentarios), comment system, point & click annotation on images
+- **Migration 00013**: social_ideas, social_attachments, social_comments, social_annotations tables + RLS
+- **Social API routes**: social-ideas, social-comments, social-attachments, social-annotations (CRUD)
+- **Social hooks**: useSocialIdeas, useSocialAttachments, useSocialComments, useSocialAnnotations
+- **Dependencies added**: @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities
+- **Social Calendar: Unique post type colors + status system**: Reel=pink, Historia=cyan, Carrusel=orange; statuses: Borrador, En Revisión, Necesita Modificaciones, Aprobado, Listo para postear, Publicado; quick status dropdown on pills/cards (no edit needed); published ideas blur green with check icon
+
 ### In Progress
 - (none)
 
@@ -28,6 +35,17 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `--` summary rows now filtered from campaign data via `name.trim().startsWith('--')`
 
 ## Key Files
+- `src/components/social-calendar.tsx` — Monthly calendar with drag & drop ideas
+- `src/components/social-new-idea-dialog.tsx` — Dialog to create new ideas
+- `src/components/social-idea-card.tsx` — Idea summary cards below calendar
+- `src/components/social-idea-modal.tsx` — Large modal with blur, tabs, annotations
+- `src/components/social-comment.tsx` — Comment system component
+- `src/components/social-annotation.tsx` — Point & click annotation on images
+- `src/lib/hooks/use-social-ideas.ts` — Hooks for social calendar CRUD
+- `src/app/api/social-ideas/route.ts` — Social ideas API
+- `src/app/api/social-comments/route.ts` — Social comments API
+- `src/app/api/social-attachments/route.ts` — Social attachments API
+- `src/app/api/social-annotations/route.ts` — Social annotations API
 - `src/lib/parse-google-ads.ts` — Google Ads parser with 2-line skip + dedup
 - `src/lib/parse-meta-ads.ts` — Meta Ads parser with fixed detection order
 - `src/lib/csv-parser.ts` — old parser with column name + detection fixes
@@ -39,3 +57,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `scripts/seed-multipoint-data.ts` — seed script for all 37 files
 - `supabase/migrations/00010_add_week_start.sql` — week_start + indexes
 - `supabase/migrations/00011_fix_unique_constraints.sql` — meta fixes
+- `supabase/migrations/00013_social_calendar.sql` — social calendar tables

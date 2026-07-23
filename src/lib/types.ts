@@ -102,3 +102,53 @@ export interface NavItem {
   icon: string;
   roles: UserRole[];
 }
+
+export type PostType = 'historia' | 'reel' | 'carrusel';
+export type IdeaStatus = 'borrador' | 'en_revision' | 'necesita_modificaciones' | 'aprobada' | 'listo_para_postear' | 'posteado';
+export type Responsable = 'nico' | 'mau';
+
+export interface SocialIdea {
+  id: string;
+  client_id: string;
+  title: string;
+  description: string;
+  brief: string;
+  eje_contenido: string;
+  responsable: Responsable;
+  post_type: PostType;
+  status: IdeaStatus;
+  publish_date: string;
+  author_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SocialAttachment {
+  id: string;
+  idea_id: string;
+  type: 'image' | 'video' | 'link';
+  url: string;
+  preview_url: string;
+  name: string;
+  created_at: string;
+}
+
+export interface SocialComment {
+  id: string;
+  idea_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  user?: User;
+  annotations?: SocialAnnotation[];
+}
+
+export interface SocialAnnotation {
+  id: string;
+  comment_id: string;
+  attachment_id: string;
+  x: number;
+  y: number;
+  label: string;
+  created_at: string;
+}
