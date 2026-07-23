@@ -71,6 +71,10 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
     return json.data as SocialIdea;
   }, []);
 
+  const patchIdea = useCallback((updated: SocialIdea) => {
+    setIdeas(prev => prev.map(i => i.id === updated.id ? updated : i));
+  }, []);
+
   const deleteIdea = useCallback(async (id: string) => {
     const res = await fetch(`/api/social-ideas/${id}`, { method: 'DELETE' });
     const json = await res.json();
@@ -78,7 +82,7 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
     setIdeas(prev => prev.filter(i => i.id !== id));
   }, []);
 
-  return { ideas, loading, error, refetch: fetchIdeas, createIdea, updateIdea, deleteIdea };
+  return { ideas, loading, error, refetch: fetchIdeas, createIdea, updateIdea, deleteIdea, patchIdea };
 }
 
 export function useSocialAttachments(ideaId: string | null) {

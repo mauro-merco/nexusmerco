@@ -184,12 +184,17 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
 
-  const { ideas, loading, createIdea, updateIdea, deleteIdea } = useSocialIdeas(clientId, monthStr);
+  const { ideas, loading, createIdea, updateIdea, deleteIdea, patchIdea } = useSocialIdeas(clientId, monthStr);
   const [showNewIdea, setShowNewIdea] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
   const [attachmentsByIdea, setAttachmentsByIdea] = useState<Record<string, { url: string }[]>>({});
+
+  const syncIdea = useCallback((updated: SocialIdea) => {
+    setSelectedIdea(updated);
+    patchIdea(updated);
+  }, [patchIdea]);
 
   useEffect(() => {
     if (ideas.length === 0) { setAttachmentsByIdea({}); return; }
@@ -412,7 +417,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
           open={!!selectedIdea}
           onOpenChange={(open) => { if (!open) setSelectedIdea(null); }}
           onIdeaUpdated={(updated) => {
-            setSelectedIdea(updated);
+            syncIdea(updated);
           }}
           onIdeaDeleted={() => {
             deleteIdea(selectedIdea!.id);
