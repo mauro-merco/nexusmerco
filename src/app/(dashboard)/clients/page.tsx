@@ -33,7 +33,7 @@ export default function ClientsPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const isAdminOrTeam = user?.role === 'admin' || user?.role === 'team';
+  const isAdminOrTeam = user?.role === 'admin' || user?.role === 'operador';
 
   const confirmEnabled = confirmText === 'ELIMINAR';
 

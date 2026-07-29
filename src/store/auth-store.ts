@@ -8,7 +8,10 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   hydrated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  pending2FA: boolean;
+  pendingUserId: string | null;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; needs2FA?: boolean }>;
+  verify2FA: (code: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   restoreSession: () => Promise<void>;
 }
@@ -19,6 +22,8 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isLoading: true,
       hydrated: false,
+      pending2FA: false,
+      pendingUserId: null,
 
       login: async (email: string, password: string) => {
         set({ isLoading: true });
@@ -46,12 +51,20 @@ export const useAuthStore = create<AuthState>()(
             if (res.ok) {
               const json = await res.json();
               if (json.data) {
+                if (json.data.totp_enabled) {
+                  // 2FA required — sign out from session, prompt for code
+                  await supabase.auth.signOut();
+                  set({ pending2FA: true, pendingUserId: authData.user.id, isLoading: false });
+                  return { success: true, needs2FA: true };
+                }
                 const user: User = {
                   id: json.data.id,
                   email: json.data.email,
                   full_name: json.data.full_name || json.data.email,
                   avatar_url: json.data.avatar_url || '',
                   role: json.data.role as UserRole,
+                  visible_modules: json.data.visible_modules || [],
+                  totp_enabled: json.data.totp_enabled || false,
                 };
                 set({ user, isLoading: false });
                 return { success: true };
@@ -61,20 +74,60 @@ export const useAuthStore = create<AuthState>()(
             // fall through
           }
 
-          const role = (authData.user.user_metadata?.role as string) || 'client';
-          const fullName = (authData.user.user_metadata?.full_name as string) || authData.user.email || '';
+        const role = (authData.user.user_metadata?.role as string) || 'client';
+        const fullName = (authData.user.user_metadata?.full_name as string) || authData.user.email || '';
           const user: User = {
             id: authData.user.id,
             email: authData.user.email || '',
             full_name: fullName,
             avatar_url: (authData.user.user_metadata?.avatar_url as string) || '',
             role: role as UserRole,
+            visible_modules: [],
+            totp_enabled: false,
           };
-          set({ user, isLoading: false });
+        set({ user, isLoading: false });
           return { success: true };
         } catch {
           set({ isLoading: false });
           return { success: false, error: 'Error al conectar con el servidor' };
+        }
+      },
+
+      verify2FA: async (code: string) => {
+        const { pendingUserId } = get();
+        if (!pendingUserId) return { success: false, error: 'No hay sesión pendiente' };
+        set({ isLoading: true });
+        try {
+          const res = await fetch('/api/auth/2fa/challenge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: pendingUserId, code }),
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Código inválido');
+          // Fetch full profile and set user
+          const profileRes = await fetch(`/api/auth/profile?userId=${pendingUserId}`);
+          if (profileRes.ok) {
+            const profileJson = await profileRes.json();
+            if (profileJson.data) {
+              const user: User = {
+                id: profileJson.data.id,
+                email: profileJson.data.email,
+                full_name: profileJson.data.full_name || profileJson.data.email,
+                avatar_url: profileJson.data.avatar_url || '',
+                role: profileJson.data.role as UserRole,
+                visible_modules: profileJson.data.visible_modules || [],
+                totp_enabled: true,
+              };
+              set({ user, pending2FA: false, pendingUserId: null, isLoading: false });
+              return { success: true };
+            }
+          }
+          set({ isLoading: false });
+          return { success: false, error: 'Error al cargar perfil' };
+        } catch (err) {
+          set({ isLoading: false });
+          return { success: false, error: err instanceof Error ? err.message : 'Error' };
         }
       },
 
@@ -107,6 +160,8 @@ export const useAuthStore = create<AuthState>()(
                       full_name: json.data.full_name || json.data.email,
                       avatar_url: json.data.avatar_url || '',
                       role: json.data.role as UserRole,
+                      visible_modules: json.data.visible_modules || [],
+                      totp_enabled: json.data.totp_enabled || false,
                     },
                     isLoading: false,
                   });
@@ -123,6 +178,8 @@ export const useAuthStore = create<AuthState>()(
                 full_name: (au.user_metadata?.full_name as string) || au.email || '',
                 avatar_url: (au.user_metadata?.avatar_url as string) || '',
                 role: (au.user_metadata?.role as UserRole) || 'client',
+                visible_modules: [],
+                totp_enabled: false,
               },
               isLoading: false,
             });
@@ -147,6 +204,8 @@ export const useAuthStore = create<AuthState>()(
         return (state) => {
           if (state) {
             state.hydrated = true;
+            state.pending2FA = false;
+            state.pendingUserId = null;
             state.restoreSession();
           }
         };

@@ -18,7 +18,7 @@ export default function AnalysisPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { clients } = useClients();
-  const isAdminOrTeam = user?.role === 'admin' || user?.role === 'team';
+  const isAdminOrTeam = user?.role === 'admin' || user?.role === 'operador';
 
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 

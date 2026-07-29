@@ -2,7 +2,7 @@ export const en = {
   nav: {
     dashboard: 'Dashboard',
     wizard: 'Weekly Wizard',
-    operations: 'Operations',
+    operations: 'Tasks',
     clients: 'Client Hub',
     analysis: 'Analysis',
     integrations: 'Integrations',
@@ -18,7 +18,7 @@ export const en = {
     subtitle: 'Internal Agency Platform',
     devMode: 'Development Mode — Select a role to log in instantly',
     loginAdmin: 'Login as Admin',
-    loginTeam: 'Login as Team Member',
+    loginTeam: 'Login as Operator',
     loginClient: 'Login as Client',
     devNote: 'Dev mode — no real authentication required',
     analytics: 'Analytics',

@@ -1,4 +1,13 @@
-export type UserRole = 'admin' | 'team' | 'client';
+export type UserRole = 'admin' | 'operador' | 'client';
+
+export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights'] as const;
+export type ModuleId = typeof ALL_MODULES[number];
+
+export const DEFAULT_MODULES: Record<UserRole, ModuleId[]> = {
+  admin: ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights'],
+  operador: ['dashboard', 'wizard', 'tareas', 'analysis', 'insights'],
+  client: ['dashboard', 'analysis', 'insights'],
+};
 
 export interface User {
   id: string;
@@ -6,6 +15,8 @@ export interface User {
   full_name: string;
   avatar_url: string;
   email: string;
+  visible_modules: ModuleId[];
+  totp_enabled?: boolean;
 }
 
 export interface Client {
@@ -100,6 +111,7 @@ export interface NavItem {
   label: string;
   href: string;
   icon: string;
+  moduleId: ModuleId;
   roles: UserRole[];
 }
 
@@ -138,8 +150,10 @@ export interface SocialComment {
   idea_id: string;
   user_id: string;
   content: string;
+  parent_id: string | null;
   created_at: string;
   user?: User;
+  replies?: SocialComment[];
   annotations?: SocialAnnotation[];
 }
 
@@ -181,8 +195,10 @@ export interface TaskComment {
   task_id: string;
   user_id: string;
   content: string;
+  parent_id: string | null;
   created_at: string;
   user?: User;
+  replies?: TaskComment[];
 }
 
 export interface TaskAttachment {

@@ -45,8 +45,8 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
   const router = useRouter();
   const { clients, loading, refetch } = useClients();
-  const isAdminOrTeam = user?.role === 'admin' || user?.role === 'team';
-  const canView = user?.role === 'admin' || user?.role === 'team' || user?.role === 'client';
+  const isAdminOrTeam = user?.role === 'admin' || user?.role === 'operador';
+  const canView = user?.role === 'admin' || user?.role === 'operador' || user?.role === 'client';
 
   const activeClients = clients.filter(c => c.status === 'active' || c.status === 'onboarding');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);

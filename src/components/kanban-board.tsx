@@ -52,12 +52,24 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
 
       <div className="flex items-center justify-between ml-5">
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          {task.due_date && (
-            <span className="flex items-center gap-0.5">
-              <Calendar className="h-3 w-3" />
-              {new Date(task.due_date + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-            </span>
-          )}
+          {task.due_date && (() => {
+            const due = new Date(task.due_date + 'T12:00:00');
+            const now = new Date();
+            const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            const isOverdue = diffDays < 0;
+            const isSoon = diffDays >= 0 && diffDays <= 3;
+            return (
+              <span className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                isOverdue && 'bg-red-500/15 text-red-500',
+                isSoon && !isOverdue && 'bg-amber-500/15 text-amber-500',
+                !isOverdue && !isSoon && 'bg-blue-500/15 text-blue-500',
+              )}>
+                <Calendar className="h-3 w-3" />
+                {isOverdue ? 'VENCIDA' : 'LÍMITE'} {due.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+              </span>
+            );
+          })()}
           {task.assignee && (
             <span className="flex items-center gap-0.5">
               <User className="h-3 w-3" />

@@ -23,15 +23,15 @@ import {
   Settings,
 } from 'lucide-react';
 import { useState } from 'react';
-import type { NavItem, UserRole } from '@/lib/types';
+import type { NavItem, UserRole, ModuleId } from '@/lib/types';
 
 const navItems: NavItem[] = [
-  { label: 'dashboard', href: '/dashboard', icon: 'LayoutDashboard', roles: ['admin', 'team', 'client'] },
-  { label: 'wizard', href: '/wizard', icon: 'Wand2', roles: ['admin', 'team'] },
-  { label: 'operations', href: '/operations', icon: 'KanbanSquare', roles: ['admin', 'team'] },
-  { label: 'analysis', href: '/analysis', icon: 'BarChart3', roles: ['admin', 'team', 'client'] },
-  { label: 'integrations', href: '/integrations', icon: 'Cable', roles: ['admin', 'team'] },
-  { label: 'insights', href: '/insights', icon: 'BrainCircuit', roles: ['admin', 'team', 'client'] },
+  { label: 'dashboard', href: '/dashboard', icon: 'LayoutDashboard', moduleId: 'dashboard', roles: ['admin', 'operador', 'client'] },
+  { label: 'wizard', href: '/wizard', icon: 'Wand2', moduleId: 'wizard', roles: ['admin', 'operador'] },
+  { label: 'operations', href: '/operations', icon: 'KanbanSquare', moduleId: 'tareas', roles: ['admin', 'operador'] },
+  { label: 'analysis', href: '/analysis', icon: 'BarChart3', moduleId: 'analysis', roles: ['admin', 'operador', 'client'] },
+  { label: 'integrations', href: '/integrations', icon: 'Cable', moduleId: 'integrations', roles: ['admin', 'operador'] },
+  { label: 'insights', href: '/insights', icon: 'BrainCircuit', moduleId: 'insights', roles: ['admin', 'operador', 'client'] },
 ];
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -50,7 +50,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
   const _ = useT();
 
   const visibleItems = navItems.filter(
-    (item) => user && item.roles.includes(user.role)
+    (item) => user && user.visible_modules.includes(item.moduleId)
   );
 
   return (
@@ -105,7 +105,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
             className={cn('w-full justify-start gap-3', pathname === '/settings' && 'bg-accent font-medium', collapsed && 'justify-center px-0')}
           >
             <Settings className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Mi perfil</span>}
+            {!collapsed && <span>Configuración</span>}
           </Button>
         </Link>
         <Button

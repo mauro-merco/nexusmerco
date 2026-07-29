@@ -94,25 +94,50 @@ export function useTaskComments(taskId: string | null) {
 
   useEffect(() => { fetchComments(); }, [fetchComments]);
 
-  const addComment = useCallback(async (user_id: string, content: string) => {
+  const addComment = useCallback(async (user_id: string, content: string, parentId?: string) => {
     if (!taskId) return;
     const res = await fetch('/api/task-comments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_id: taskId, user_id, content }),
+      body: JSON.stringify({ task_id: taskId, user_id, content, parent_id: parentId || null }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error);
-    setComments(prev => [...prev, json.data]);
+    setComments(prev => {
+      if (parentId) {
+        return prev.map(c => c.id === parentId ? { ...c, replies: [...(c.replies || []), json.data] } : c);
+      }
+      return [...prev, json.data];
+    });
     return json.data as TaskComment;
   }, [taskId]);
 
   const deleteComment = useCallback(async (id: string) => {
     const res = await fetch(`/api/task-comments/${id}`, { method: 'DELETE' });
-    if (res.ok) setComments(prev => prev.filter(c => c.id !== id));
+    if (res.ok) setComments(prev => prev.filter(c => c.id !== id).map(c => ({
+      ...c,
+      replies: (c.replies || []).filter(r => r.id !== id),
+    })));
   }, []);
 
-  return { comments, loading, refetch: fetchComments, addComment, deleteComment };
+  const updateComment = useCallback(async (id: string, content: string) => {
+    const res = await fetch(`/api/task-comments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error);
+    const updated = json.data as TaskComment;
+    setComments(prev => prev.map(c => {
+      if (c.id === id) return { ...c, ...updated };
+      if (c.replies) return { ...c, replies: c.replies.map(r => r.id === id ? { ...r, ...updated } : r) };
+      return c;
+    }));
+    return updated;
+  }, []);
+
+  return { comments, loading, refetch: fetchComments, addComment, deleteComment, updateComment };
 }
 
 export function useTaskAttachments(taskId: string | null) {

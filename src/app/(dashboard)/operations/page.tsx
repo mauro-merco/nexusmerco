@@ -20,7 +20,7 @@ export default function OperationsPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [users, setUsers] = useState<{ id: string; full_name: string; email: string; avatar_url: string; }[]>([]);
 
-  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask } = useTasks(selectedClientId);
+  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask, patchTask } = useTasks(selectedClientId);
 
   useEffect(() => {
     if (clients.length > 0 && !selectedClientId) {
@@ -45,7 +45,8 @@ export default function OperationsPage() {
 
   const handleTaskUpdated = useCallback((updated: Task) => {
     setSelectedTask(updated);
-  }, []);
+    patchTask(updated);
+  }, [patchTask]);
 
   if (clientsLoading) {
     return (
@@ -58,7 +59,7 @@ export default function OperationsPage() {
   if (clients.length === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Operaciones</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tareas</h1>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-4">
             <KanbanSquare className="h-16 w-16 opacity-20" />
@@ -77,7 +78,7 @@ export default function OperationsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Operaciones</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tareas</h1>
           <p className="text-muted-foreground mt-1 text-sm">Tablero Kanban de tareas</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">

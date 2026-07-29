@@ -11,11 +11,12 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useTaskComments, useTaskAttachments } from '@/lib/hooks/use-tasks';
 import { useAuthStore } from '@/store/auth-store';
-import type { Task, TaskStatus, TaskPriority } from '@/lib/types';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import type { Task, TaskStatus, TaskPriority, TaskComment } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES } from '@/lib/task-config';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
-  Edit3, Calendar, User, Send, MessageSquare,
+  Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X,
 } from 'lucide-react';
 
 interface TaskDetailModalProps {
@@ -29,7 +30,7 @@ interface TaskDetailModalProps {
 
 export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTaskDeleted, users }: TaskDetailModalProps) {
   const { user } = useAuthStore();
-  const { comments, addComment, deleteComment } = useTaskComments(task.id);
+  const { comments, addComment, deleteComment, updateComment } = useTaskComments(task.id);
   const { attachments, addAttachment, removeAttachment } = useTaskAttachments(task.id);
 
   const [editing, setEditing] = useState(false);
@@ -45,6 +46,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
   const [newComment, setNewComment] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentContent, setEditCommentContent] = useState('');
+  const [savingCommentEdit, setSavingCommentEdit] = useState(false);
   const [newAttachUrl, setNewAttachUrl] = useState('');
   const [addingAttach, setAddingAttach] = useState(false);
 
@@ -104,12 +109,13 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     if (!newComment.trim() || !user?.id) return;
     setSendingComment(true);
     try {
-      await addComment(user.id, newComment.trim());
+      await addComment(user.id, newComment.trim(), replyTo || undefined);
       setNewComment('');
+      setReplyTo(null);
     } catch { /* */ } finally {
       setSendingComment(false);
     }
-  }, [newComment, user?.id, addComment]);
+  }, [newComment, user?.id, addComment, replyTo]);
 
   const handleAddAttachment = useCallback(async () => {
     if (!newAttachUrl.trim()) return;
@@ -145,12 +151,24 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             )}
             <DialogDescription className="flex items-center gap-2 mt-1 flex-wrap text-xs">
               {task.client && <span className="text-muted-foreground">{task.client.name}</span>}
-              {task.due_date && (
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {new Date(task.due_date + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </span>
-              )}
+              {task.due_date && (() => {
+                const due = new Date(task.due_date + 'T12:00:00');
+                const now = new Date();
+                const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                const isOverdue = diffDays < 0;
+                const isSoon = diffDays >= 0 && diffDays <= 3;
+                return (
+                  <span className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                    isOverdue && 'bg-red-500/15 text-red-500',
+                    isSoon && !isOverdue && 'bg-amber-500/15 text-amber-500',
+                    !isOverdue && !isSoon && 'bg-blue-500/15 text-blue-500',
+                  )}>
+                    <Calendar className="h-3.5 w-3.5" />
+                    FECHA LÍMITE: {due.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                );
+              })()}
               {task.assignee && (
                 <span className="flex items-center gap-1">
                   <User className="h-3 w-3" /> {task.assignee.full_name}
@@ -252,11 +270,29 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   ) : (
                     <p className="text-sm text-muted-foreground italic">Sin descripción</p>
                   )}
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                     <span className={cn('flex items-center gap-1 font-medium', TASK_PRIORITY_CONFIG[task.priority].colorClass)}>
                       <span className={cn('w-2 h-2 rounded-full', TASK_PRIORITY_CONFIG[task.priority].dotColor)} />
                       Prioridad {TASK_PRIORITY_CONFIG[task.priority].label}
                     </span>
+                    {task.due_date && (() => {
+                      const due = new Date(task.due_date + 'T12:00:00');
+                      const now = new Date();
+                      const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                      const isOverdue = diffDays < 0;
+                      const isSoon = diffDays >= 0 && diffDays <= 3;
+                      return (
+                        <span className={cn(
+                          'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                          isOverdue && 'bg-red-500/15 text-red-500',
+                          isSoon && !isOverdue && 'bg-amber-500/15 text-amber-500',
+                          !isOverdue && !isSoon && 'bg-blue-500/15 text-blue-500',
+                        )}>
+                          <Calendar className="h-3 w-3" />
+                          {isOverdue ? 'VENCIDA' : 'FECHA LÍMITE'} {due.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -295,40 +331,64 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             </div>
 
             {/* RIGHT — Comments */}
-            <div className="md:col-span-2 flex flex-col min-h-0 rounded-xl bg-muted/30 border border-border/40 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1 mb-2 shrink-0">
-                <MessageSquare className="h-3 w-3" /> Comentarios ({comments.length})
+            <div className="md:col-span-2 flex flex-col min-h-0 rounded-xl bg-muted/30 border border-border/40 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1.5 mb-3 shrink-0">
+                <MessageSquare className="h-3.5 w-3.5" /> Comentarios ({comments.length})
               </p>
-              <div className="flex-1 overflow-y-auto min-h-0 space-y-3 mb-3">
+              <div className="flex-1 overflow-y-auto min-h-0 space-y-4 mb-3">
                 {comments.length === 0 && (
-                  <p className="text-xs text-muted-foreground/50 italic text-center py-4">Sin comentarios</p>
+                  <p className="text-sm text-muted-foreground/50 italic text-center py-6">Sin comentarios</p>
                 )}
                 {comments.map(c => (
-                  <div key={c.id} className="group">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[10px] font-semibold">{c.user?.full_name || 'Usuario'}</span>
-                      <span className="text-[9px] text-muted-foreground">
-                        {new Date(c.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      {c.user_id === user?.id && (
-                        <button onClick={() => deleteComment(c.id)}
-                          className="ml-auto opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity">
-                          <Trash2 className="h-2.5 w-2.5" />
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">{c.content}</p>
-                  </div>
+                  <TaskCommentItem
+                    key={c.id}
+                    comment={c}
+                    currentUserId={user?.id}
+                    onReply={setReplyTo}
+                    onDelete={deleteComment}
+                    editingCommentId={editingCommentId}
+                    setEditingCommentId={setEditingCommentId}
+                    editCommentContent={editCommentContent}
+                    setEditCommentContent={setEditCommentContent}
+                    saveCommentEdit={async (id) => {
+                      if (!editCommentContent.trim()) return;
+                      setSavingCommentEdit(true);
+                      try { await updateComment(id, editCommentContent.trim()); setEditingCommentId(null); } catch { /* */ } finally { setSavingCommentEdit(false); }
+                    }}
+                    cancelCommentEdit={() => { setEditingCommentId(null); setEditCommentContent(''); }}
+                    savingCommentEdit={savingCommentEdit}
+                  />
                 ))}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Input placeholder="Escribí un comentario..." value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
-                  className="h-8 text-xs" />
-                <Button size="sm" onClick={handleAddComment} disabled={sendingComment || !newComment.trim()} className="h-8 w-8 p-0 shrink-0">
-                  <Send className="h-3 w-3" />
-                </Button>
+              <div className="space-y-2 shrink-0 border-t border-border/30 pt-3">
+                {replyTo && (() => {
+                  const findReplyTarget = (list: typeof comments): typeof comments[0] | undefined => {
+                    for (const c of list) {
+                      if (c.id === replyTo) return c;
+                      if (c.replies) { const found = findReplyTarget(c.replies); if (found) return found; }
+                    }
+                    return undefined;
+                  };
+                  const target = findReplyTarget(comments);
+                  return target ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-1.5">
+                      <Reply className="h-3 w-3" />
+                      <span>Respondiendo a <strong>{target.user?.full_name || 'Usuario'}</strong></span>
+                      <button onClick={() => setReplyTo(null)} className="ml-auto hover:text-foreground">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : null;
+                })()}
+                <div className="flex items-center gap-2">
+                  <Input placeholder={replyTo ? 'Escribí tu respuesta...' : 'Escribí un comentario...'} value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
+                    className="flex-1 h-9 text-sm" disabled={sendingComment} />
+                  <Button size="sm" onClick={handleAddComment} disabled={sendingComment || !newComment.trim()} className="h-9 w-9 p-0 shrink-0">
+                    {sendingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -356,4 +416,134 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
       </DialogContent>
     </Dialog>
   );
+}
+
+function TaskCommentItem({
+  comment,
+  currentUserId,
+  onReply,
+  onDelete,
+  editingCommentId,
+  setEditingCommentId,
+  editCommentContent,
+  setEditCommentContent,
+  saveCommentEdit,
+  cancelCommentEdit,
+  savingCommentEdit,
+  isReply,
+}: {
+  comment: TaskComment;
+  currentUserId?: string;
+  onReply: (parentId: string) => void;
+  onDelete: (id: string) => void;
+  editingCommentId: string | null;
+  setEditingCommentId: (id: string | null) => void;
+  editCommentContent: string;
+  setEditCommentContent: (v: string) => void;
+  saveCommentEdit: (id: string) => void;
+  cancelCommentEdit: () => void;
+  savingCommentEdit: boolean;
+  isReply?: boolean;
+}) {
+  const isOwn = currentUserId === comment.user_id;
+  const isEditing = editingCommentId === comment.id;
+  const timeAgo = getTimeAgo(comment.created_at);
+
+  return (
+    <div className="group">
+      <div className="flex items-start gap-3">
+        <Avatar className={cn('shrink-0 mt-0.5', isReply ? 'h-7 w-7' : 'h-9 w-9')}>
+          <AvatarImage src={comment.user?.avatar_url} />
+          <AvatarFallback className={cn('font-semibold', isReply ? 'text-[10px]' : 'text-xs')}>
+            {comment.user?.full_name?.charAt(0) || '?'}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={cn('font-semibold', isReply ? 'text-xs' : 'text-sm')}>{comment.user?.full_name || 'Usuario'}</span>
+            <span className="text-[11px] text-muted-foreground">{timeAgo}</span>
+          </div>
+          {isEditing ? (
+            <div className="mt-1.5 space-y-1.5">
+              <Input
+                value={editCommentContent}
+                onChange={(e) => setEditCommentContent(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveCommentEdit(comment.id); } if (e.key === 'Escape') cancelCommentEdit(); }}
+                className="h-9 text-sm"
+                autoFocus
+              />
+              <div className="flex gap-1.5">
+                <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs" onClick={() => saveCommentEdit(comment.id)} disabled={savingCommentEdit || !editCommentContent.trim()}>
+                  {savingCommentEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs" onClick={cancelCommentEdit}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className={cn('text-foreground/80 mt-1 whitespace-pre-wrap leading-relaxed', isReply ? 'text-sm' : 'text-sm')}>{comment.content}</p>
+          )}
+
+          {!isEditing && (
+            <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              {!isReply && (
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+                  onClick={() => onReply(comment.id)}>
+                  <Reply className="h-3 w-3" /> Responder
+                </Button>
+              )}
+              {isOwn && (
+                <>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+                    onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(comment.content); }}>
+                    <Edit3 className="h-3 w-3" /> Editar
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-red-400 hover:text-red-600 gap-1"
+                    onClick={() => onDelete(comment.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="ml-12 mt-2 space-y-3 border-l-2 border-border/30 pl-4">
+          {comment.replies.map(reply => (
+            <TaskCommentItem
+              key={reply.id}
+              comment={reply}
+              currentUserId={currentUserId}
+              isReply
+              onReply={onReply}
+              onDelete={onDelete}
+              editingCommentId={editingCommentId}
+              setEditingCommentId={setEditingCommentId}
+              editCommentContent={editCommentContent}
+              setEditCommentContent={setEditCommentContent}
+              saveCommentEdit={saveCommentEdit}
+              cancelCommentEdit={cancelCommentEdit}
+              savingCommentEdit={savingCommentEdit}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getTimeAgo(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'ahora';
+  if (diffMin < 60) return `hace ${diffMin}m`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `hace ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  return `hace ${diffD}d`;
 }

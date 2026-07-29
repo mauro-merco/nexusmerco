@@ -26,10 +26,23 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: true });
     if (error) throw error;
 
-    const userIds = [...new Set((data || []).map(c => c.user_id).filter(Boolean))];
+    const comments = data || [];
+    const userIds = [...new Set(comments.map(c => c.user_id).filter(Boolean))];
     const usersMap = await fetchUsers(userIds);
 
-    return NextResponse.json({ data: (data || []).map(c => ({ ...c, user: usersMap[c.user_id] || null })) });
+    const commentsWithUser = comments.map(c => ({
+      ...c,
+      user: usersMap[c.user_id] || null,
+    }));
+
+    const topLevel = commentsWithUser.filter(c => !c.parent_id);
+    const replies = commentsWithUser.filter(c => c.parent_id);
+    const nested = topLevel.map(c => ({
+      ...c,
+      replies: replies.filter(r => r.parent_id === c.id),
+    }));
+
+    return NextResponse.json({ data: nested });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }
@@ -38,14 +51,17 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { task_id, user_id, content } = body;
+    const { task_id, user_id, content, parent_id } = body;
     if (!task_id || !user_id || !content) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const payload: Record<string, unknown> = { task_id, user_id, content };
+    if (parent_id) payload.parent_id = parent_id;
+
     const { data, error } = await supabase
       .from('task_comments')
-      .insert({ task_id, user_id, content })
+      .insert(payload)
       .select()
       .single();
     if (error) throw error;

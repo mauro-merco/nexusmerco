@@ -7,13 +7,15 @@ export const mockUsers: User[] = [
     full_name: 'Sarah Chen',
     avatar_url: '/avatars/sarah.png',
     email: 'sarah@nexusagency.io',
+    visible_modules: ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights'],
   },
   {
     id: 'user-2',
-    role: 'team',
+    role: 'operador',
     full_name: 'Marcus Johnson',
     avatar_url: '/avatars/marcus.png',
     email: 'marcus@nexusagency.io',
+    visible_modules: ['dashboard', 'wizard', 'tareas', 'analysis', 'insights'],
   },
   {
     id: 'user-3',
@@ -21,6 +23,7 @@ export const mockUsers: User[] = [
     full_name: 'Alex Rivera',
     avatar_url: '/avatars/alex.png',
     email: 'alex@brightsoul.com',
+    visible_modules: ['dashboard', 'analysis', 'insights'],
   },
   {
     id: 'user-4',
@@ -28,6 +31,7 @@ export const mockUsers: User[] = [
     full_name: 'Jordan Kim',
     avatar_url: '/avatars/jordan.png',
     email: 'jordan@peakperformance.com',
+    visible_modules: ['dashboard', 'analysis', 'insights'],
   },
 ];
 
