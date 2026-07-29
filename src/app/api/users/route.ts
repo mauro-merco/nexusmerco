@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { jwtVerify } from 'jose';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,17 +14,17 @@ async function getCurrentUserRole(request: Request): Promise<string | null> {
   const token = authHeader.replace('Bearer ', '');
   if (!token) return null;
 
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } }
-  );
+  try {
+    const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const { payload } = await jwtVerify(token, secret);
+    const userId = payload.sub;
+    if (!userId) return null;
 
-  const { data: { user: authUser }, error } = await client.auth.getUser(token);
-  if (error || !authUser) return null;
-
-  const { data: user } = await supabase.from('users').select('role').eq('id', authUser.id).single();
-  return user?.role || null;
+    const { data: user } = await supabase.from('users').select('role').eq('id', userId).single();
+    return user?.role || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function GET(request: Request) {
