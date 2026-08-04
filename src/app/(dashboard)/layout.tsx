@@ -52,7 +52,7 @@ export default function DashboardLayout({
           <ProfileMenu />
         </header>
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto bg-background p-4">
+        <main className="flex-1 overflow-y-auto bg-background p-4 pb-20 md:pb-4">
           {children}
         </main>
       </div>

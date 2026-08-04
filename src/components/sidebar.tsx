@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
 import { DEFAULT_MODULES } from '@/lib/types';
@@ -21,10 +19,10 @@ import {
   Calendar,
   FileText,
   LogOut,
-  Menu,
   Settings,
   ChevronDown,
   ChevronUp,
+  LayoutGrid,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -288,8 +286,144 @@ function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: stri
   );
 }
 
+function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: string) => void }) {
+  const pathname = usePathname();
+  const { user, logout } = useAuthStore();
+  const _ = useT();
+  const [open, setOpen] = useState(false);
+
+  const visibleItems = navItems.filter(
+    (item) =>
+      user &&
+      (user.visible_modules?.includes(item.moduleId) ||
+        DEFAULT_MODULES[user.role]?.includes(item.moduleId))
+  );
+
+  const handleAppClick = (href: string, label: string) => {
+    setOpen(false);
+    onNavigate(href, label);
+  };
+
+  return (
+    <>
+      <div className="md:hidden fixed inset-x-0 bottom-0 z-50 h-14 border-t bg-background/80 backdrop-blur-xl">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex h-full w-full items-center gap-3 px-4 transition-all active:scale-[0.97]"
+        >
+          <span className="bg-gradient-tech glow-tech flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+            <LayoutGrid className="h-4 w-4 text-white" />
+          </span>
+          <span className="text-gradient-tech text-sm font-semibold">Aplicaciones</span>
+        </button>
+      </div>
+
+      {open && (
+        <div
+          className="md:hidden fixed inset-0 z-[80] flex flex-col"
+          style={{ animation: 'transition-fade 0.2s ease-out' }}
+        >
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="relative mt-auto max-h-[80vh] overflow-y-auto rounded-t-3xl border-t bg-background/95 backdrop-blur-xl shadow-2xl"
+            style={{ animation: 'transition-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both' }}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+            </div>
+
+            <div className="flex items-center gap-3 px-5 py-3 border-b">
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover border-2 border-border" />
+              ) : (
+                <div className="bg-gradient-tech flex h-10 w-10 shrink-0 items-center justify-center rounded-full p-[2px]">
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-background text-sm font-bold text-foreground">
+                    {(user?.full_name || user?.email || '?').charAt(0).toUpperCase()}
+                  </div>
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{user?.full_name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 p-4">
+              {visibleItems.map((item) => {
+                const Icon = iconMap[item.icon];
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => handleAppClick(item.href, _(`nav.${item.label}`))}
+                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95"
+                  >
+                    <span
+                      className={cn(
+                        'flex h-12 w-12 items-center justify-center rounded-2xl transition-all',
+                        isActive ? 'bg-gradient-tech glow-tech text-white' : 'bg-muted/50 text-muted-foreground'
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[10px] font-medium leading-tight text-center line-clamp-2',
+                        isActive ? 'text-gradient-tech' : 'text-muted-foreground'
+                      )}
+                    >
+                      {_(`nav.${item.label}`)}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => handleAppClick('/settings', _('nav.settings'))}
+                className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95"
+              >
+                <span
+                  className={cn(
+                    'flex h-12 w-12 items-center justify-center rounded-2xl transition-all',
+                    pathname === '/settings' ? 'bg-gradient-tech glow-tech text-white' : 'bg-muted/50 text-muted-foreground'
+                  )}
+                >
+                  <Settings className="h-5 w-5" />
+                </span>
+                <span
+                  className={cn(
+                    'text-[10px] font-medium leading-tight text-center',
+                    pathname === '/settings' ? 'text-gradient-tech' : 'text-muted-foreground'
+                  )}
+                >
+                  {_('nav.settings')}
+                </span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between border-t px-5 py-3 pb-5">
+              <div className="flex items-center gap-2">
+                <LangToggle collapsed />
+                <ThemeToggle collapsed />
+              </div>
+              <button
+                onClick={() => { setOpen(false); logout(); }}
+                className="flex items-center gap-2 text-xs text-red-500 hover:text-red-400 transition-colors active:scale-95"
+              >
+                <LogOut className="h-4 w-4" /> Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [transition, setTransition] = useState<{ href: string; label: string } | null>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -306,7 +440,6 @@ export function Sidebar() {
 
   const handleNavigate = (href: string, label: string) => {
     if (pathname === href) return;
-    setMobileOpen(false);
     setTransition({ href, label });
   };
 
@@ -318,18 +451,7 @@ export function Sidebar() {
         </div>
       </aside>
 
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetTrigger
-          render={
-            <Button variant="ghost" size="icon" className="md:hidden fixed top-3 left-3 z-50" />
-          }
-        >
-          <Menu className="h-5 w-5" />
-        </SheetTrigger>
-        <SheetContent side="left" className="w-28 p-0">
-          <SidebarContent onNavigate={handleNavigate} />
-        </SheetContent>
-      </Sheet>
+      <MobileBottomNav onNavigate={handleNavigate} />
 
       {transition && <TransitionOverlay label={transition.label} />}
     </>

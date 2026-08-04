@@ -96,7 +96,7 @@ export function AIWidget() {
       {!open && (
         <Button
           onClick={() => setOpen(true)}
-          className="bg-gradient-tech glow-tech fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 hover:opacity-90"
+          className="bg-gradient-tech glow-tech fixed bottom-20 md:bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 hover:opacity-90"
           size="icon"
         >
           <Bot className="h-6 w-6 text-white" />
@@ -104,7 +104,7 @@ export function AIWidget() {
       )}
 
       {open && (
-        <Card className="fixed bottom-6 right-6 z-50 flex w-80 flex-col shadow-2xl sm:w-96">
+        <Card className="fixed bottom-20 md:bottom-6 right-6 z-50 flex w-80 flex-col shadow-2xl sm:w-96">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 border-b p-3">
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
