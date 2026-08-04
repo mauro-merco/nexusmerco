@@ -28,14 +28,17 @@ export function ProfileMenu() {
       formData.append('userId', user.id);
       const res = await fetch('/api/auth/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, avatar_url: URL.createObjectURL(file) }),
+        body: formData,
       });
       const json = await res.json();
       if (res.ok && json.data) {
         useAuthStore.setState({ user: { ...user, avatar_url: json.data.avatar_url || user.avatar_url } });
+      } else {
+        console.error('Avatar upload failed:', json.error);
       }
-    } catch { /* */ } finally {
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+    } finally {
       setUploading(false);
     }
   };

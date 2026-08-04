@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const supabase = getAdmin();
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, role, visible_modules, totp_enabled')
+      .select('id, email, full_name, avatar_url, role, visible_modules, totp_enabled, client_id')
       .eq('id', userId)
       .single();
 
@@ -42,19 +42,53 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const body = await request.json();
-    const { userId, full_name, email, avatar_url } = body;
+    const contentType = request.headers.get('content-type') || '';
+    const isMultipart = contentType.includes('multipart/form-data');
+
+    let userId: string;
+    let fullName: string | undefined;
+    let email: string | undefined;
+    let file: File | null = null;
+
+    if (isMultipart) {
+      const formData = await request.formData();
+      userId = formData.get('userId') as string;
+      fullName = (formData.get('full_name') as string) || undefined;
+      email = (formData.get('email') as string) || undefined;
+      file = formData.get('file') as File | null;
+    } else {
+      const body = await request.json();
+      userId = body.userId;
+      fullName = body.full_name;
+      email = body.email;
+    }
 
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
     const supabase = getAdmin();
-
     const updates: Record<string, unknown> = {};
-    if (full_name !== undefined) updates.full_name = full_name;
+
+    if (fullName !== undefined) updates.full_name = fullName;
     if (email !== undefined) updates.email = email;
-    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+
+    if (file) {
+      const ext = file.name.split('.').pop() || 'png';
+      const fileName = `${userId}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { contentType: file.type, upsert: true });
+
+      if (uploadError) throw new Error(`Error al subir avatar: ${uploadError.message}`);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      updates.avatar_url = publicUrl;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

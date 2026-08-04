@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { SocialComment as SocialCommentType } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { MentionedText } from '@/components/mention';
 import { Send, Trash2, Loader2, Pencil, Check, X, Reply } from 'lucide-react';
 
 interface SocialCommentProps {
@@ -81,7 +82,7 @@ function CommentItem({
               </div>
             </div>
           ) : (
-            <p className={cn('text-foreground/80 mt-1 whitespace-pre-wrap leading-relaxed', isReply ? 'text-sm' : 'text-sm')}>{comment.content}</p>
+            <MentionedText text={comment.content} className={cn('text-foreground/80 mt-1 leading-relaxed', isReply ? 'text-sm' : 'text-sm')} />
           )}
 
           {!isEditing && (

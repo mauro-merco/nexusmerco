@@ -2,7 +2,8 @@ export type Lang = 'es' | 'en';
 
 export type TranslationKey =
   | 'nav.dashboard' | 'nav.wizard' | 'nav.operations' | 'nav.clients'
-  | 'nav.analysis' | 'nav.integrations' | 'nav.insights' | 'nav.logout'
+  | 'nav.analysis' | 'nav.integrations' | 'nav.insights' | 'nav.calendar'
+  | 'nav.documents' | 'nav.settings' | 'nav.logout'
   | 'nav.lightMode' | 'nav.darkMode' | 'nav.english' | 'nav.spanish'
   | 'login.welcome' | 'login.subtitle' | 'login.devMode'
   | 'login.loginAdmin' | 'login.loginTeam' | 'login.loginClient'
@@ -43,5 +44,6 @@ export type TranslationKey =
   | 'insights.topOptimizations' | 'insights.compare'
   | 'insights.askPlaceholder' | 'insights.welcome'
   | 'aiWidget.title' | 'aiWidget.placeholder'
+  | 'aiWidget.welcome'
   | 'aiWidget.whyRoas' | 'aiWidget.bestCpa'
   | 'aiWidget.summarizeWeek' | 'aiWidget.whatOptimizations';

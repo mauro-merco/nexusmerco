@@ -112,6 +112,7 @@ export async function POST(request: Request) {
         title: 'Te asignaron una tarea',
         message: `${authorName} te asignó: ${title}`,
         task_id: data.id,
+        link: '/operations',
       });
     }
 

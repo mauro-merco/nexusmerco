@@ -40,14 +40,9 @@ export default function RealLoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-          <span className="text-xl font-bold text-primary-foreground">N</span>
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nexus Marketing OS</h1>
-          <p className="text-sm text-muted-foreground">Plataforma de gestión de marketing</p>
-        </div>
+      <div className="mb-8">
+        <img src="/merco-light-mode.svg" alt="Merco" className="h-6 mx-auto dark:hidden" />
+        <img src="/merco-dark-mode.svg" alt="Merco" className="h-6 mx-auto hidden dark:block" />
       </div>
 
       <Card className="w-full max-w-md">

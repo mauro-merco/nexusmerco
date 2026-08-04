@@ -6,6 +6,7 @@ import type { User, UserRole } from '@/lib/types';
 
 interface AuthState {
   user: User | null;
+  token: string;
   isLoading: boolean;
   hydrated: boolean;
   pending2FA: boolean;
@@ -20,6 +21,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      token: '',
       isLoading: true,
       hydrated: false,
       pending2FA: false,
@@ -46,6 +48,8 @@ export const useAuthStore = create<AuthState>()(
             return { success: false, error: 'No se pudo autenticar el usuario' };
           }
 
+          const accessToken = authData.session?.access_token || '';
+
           try {
             const res = await fetch(`/api/auth/profile?userId=${authData.user.id}`);
             if (res.ok) {
@@ -54,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
                 if (json.data.totp_enabled) {
                   // 2FA required — sign out from session, prompt for code
                   await supabase.auth.signOut();
-                  set({ pending2FA: true, pendingUserId: authData.user.id, isLoading: false });
+                  set({ pending2FA: true, pendingUserId: authData.user.id, token: accessToken, isLoading: false });
                   return { success: true, needs2FA: true };
                 }
                 const user: User = {
@@ -64,9 +68,10 @@ export const useAuthStore = create<AuthState>()(
                   avatar_url: json.data.avatar_url || '',
                   role: json.data.role as UserRole,
                   visible_modules: json.data.visible_modules || [],
+                  client_id: json.data.client_id || null,
                   totp_enabled: json.data.totp_enabled || false,
                 };
-                set({ user, isLoading: false });
+                set({ user, token: accessToken, isLoading: false });
                 return { success: true };
               }
             }
@@ -83,9 +88,10 @@ export const useAuthStore = create<AuthState>()(
             avatar_url: (authData.user.user_metadata?.avatar_url as string) || '',
             role: role as UserRole,
             visible_modules: [],
+            client_id: (authData.user.user_metadata?.client_id as string) || null,
             totp_enabled: false,
           };
-        set({ user, isLoading: false });
+        set({ user, token: accessToken, isLoading: false });
           return { success: true };
         } catch {
           set({ isLoading: false });
@@ -117,6 +123,7 @@ export const useAuthStore = create<AuthState>()(
                 avatar_url: profileJson.data.avatar_url || '',
                 role: profileJson.data.role as UserRole,
                 visible_modules: profileJson.data.visible_modules || [],
+                client_id: profileJson.data.client_id || null,
                 totp_enabled: true,
               };
               set({ user, pending2FA: false, pendingUserId: null, isLoading: false });
@@ -148,6 +155,7 @@ export const useAuthStore = create<AuthState>()(
           const { data } = await supabase.auth.getSession();
           if (data?.session?.user) {
             const au = data.session.user;
+            const accessToken = data.session.access_token || '';
             try {
               const res = await fetch(`/api/auth/profile?userId=${au.id}`);
               if (res.ok) {
@@ -161,8 +169,10 @@ export const useAuthStore = create<AuthState>()(
                       avatar_url: json.data.avatar_url || '',
                       role: json.data.role as UserRole,
                       visible_modules: json.data.visible_modules || [],
+                      client_id: json.data.client_id || null,
                       totp_enabled: json.data.totp_enabled || false,
                     },
+                    token: accessToken,
                     isLoading: false,
                   });
                   return;
@@ -179,8 +189,10 @@ export const useAuthStore = create<AuthState>()(
                 avatar_url: (au.user_metadata?.avatar_url as string) || '',
                 role: (au.user_metadata?.role as UserRole) || 'client',
                 visible_modules: [],
+                client_id: (au.user_metadata?.client_id as string) || null,
                 totp_enabled: false,
               },
+              token: accessToken,
               isLoading: false,
             });
           } else {
@@ -199,7 +211,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'nexus-auth',
-      partialize: (state) => ({ user: state.user }),
+      partialize: (state) => ({ user: state.user, token: state.token }),
       onRehydrateStorage: () => {
         return (state) => {
           if (state) {

@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { decodeJwt } from 'jose';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-function getAdmin() {
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { persistSession: false },
-  });
-}
-
-async function ensureMigration(supabase: ReturnType<typeof getAdmin>) {
+async function ensureMigration() {
   try {
     const { error } = await supabase
       .from('clients')
@@ -39,19 +39,62 @@ async function ensureMigration(supabase: ReturnType<typeof getAdmin>) {
 
 let migrationChecked = false;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = getAdmin();
-
     if (!migrationChecked) {
       migrationChecked = true;
-      await ensureMigration(supabase);
+      await ensureMigration();
     }
 
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Check user role from JWT for client-scoped filtering
+    const authHeader = request.headers.get('authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    let userRole: string | undefined;
+    let userClientId: string | undefined;
+
+    if (token) {
+      try {
+        const payload = decodeJwt(token);
+        userRole = (payload.user_metadata as Record<string, unknown>)?.role as string;
+        // Also try to get client_id from app_metadata or user_metadata
+        const appMeta = payload.app_metadata as Record<string, unknown> | undefined;
+        const userMeta = payload.user_metadata as Record<string, unknown> | undefined;
+        userClientId = (appMeta?.client_id || userMeta?.client_id) as string;
+      } catch {
+        // ignore, fall through to all clients
+      }
+    }
+
+    let query = supabase.from('clients').select('*');
+
+    // If user is a client, only return their own client
+    if (userRole === 'client') {
+      if (userClientId) {
+        query = query.eq('id', userClientId);
+      } else {
+        // If we can't determine the client_id from JWT, look it up
+        try {
+          const payload = decodeJwt(token);
+          const userId = payload.sub;
+          if (userId) {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('client_id')
+              .eq('id', userId)
+              .single();
+            if (userData?.client_id) {
+              query = query.eq('id', userData.client_id);
+            } else {
+              query = query.eq('id', '__none__');
+            }
+          }
+        } catch {
+          query = query.eq('id', '__none__');
+        }
+      }
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
     return NextResponse.json({ data });
@@ -70,7 +113,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'El nombre del cliente es obligatorio' }, { status: 400 });
     }
 
-    const supabase = getAdmin();
     const insertData: Record<string, unknown> = {
       name: name.trim(),
       logo_url: logo_url || '',

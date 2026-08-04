@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useTaskComments, useTaskAttachments } from '@/lib/hooks/use-tasks';
 import { useAuthStore } from '@/store/auth-store';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { MentionedText, MentionInput } from '@/components/mention';
 import type { Task, TaskStatus, TaskPriority, TaskComment } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES } from '@/lib/task-config';
 import {
@@ -381,10 +382,14 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   ) : null;
                 })()}
                 <div className="flex items-center gap-2">
-                  <Input placeholder={replyTo ? 'Escribí tu respuesta...' : 'Escribí un comentario...'} value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
-                    className="flex-1 h-9 text-sm" disabled={sendingComment} />
+                  <MentionInput
+                    value={newComment}
+                    onChange={setNewComment}
+                    users={users}
+                    placeholder={replyTo ? 'Escribí tu respuesta...' : 'Escribí un comentario... (usá @ para mencionar)'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
+                    disabled={sendingComment}
+                  />
                   <Button size="sm" onClick={handleAddComment} disabled={sendingComment || !newComment.trim()} className="h-9 w-9 p-0 shrink-0">
                     {sendingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
@@ -482,7 +487,7 @@ function TaskCommentItem({
               </div>
             </div>
           ) : (
-            <p className={cn('text-foreground/80 mt-1 whitespace-pre-wrap leading-relaxed', isReply ? 'text-sm' : 'text-sm')}>{comment.content}</p>
+            <MentionedText text={comment.content} className={cn('text-foreground/80 mt-1 leading-relaxed', isReply ? 'text-sm' : 'text-sm')} />
           )}
 
           {!isEditing && (

@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
+import { DEFAULT_MODULES } from '@/lib/types';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LangToggle } from '@/components/lang-toggle';
 import {
@@ -17,13 +19,13 @@ import {
   Cable,
   BrainCircuit,
   BarChart3,
+  Calendar,
+  FileText,
   LogOut,
   Menu,
-  ChevronLeft,
   Settings,
 } from 'lucide-react';
-import { useState } from 'react';
-import type { NavItem, UserRole, ModuleId } from '@/lib/types';
+import type { NavItem } from '@/lib/types';
 
 const navItems: NavItem[] = [
   { label: 'dashboard', href: '/dashboard', icon: 'LayoutDashboard', moduleId: 'dashboard', roles: ['admin', 'operador', 'client'] },
@@ -32,6 +34,8 @@ const navItems: NavItem[] = [
   { label: 'analysis', href: '/analysis', icon: 'BarChart3', moduleId: 'analysis', roles: ['admin', 'operador', 'client'] },
   { label: 'integrations', href: '/integrations', icon: 'Cable', moduleId: 'integrations', roles: ['admin', 'operador'] },
   { label: 'insights', href: '/insights', icon: 'BrainCircuit', moduleId: 'insights', roles: ['admin', 'operador', 'client'] },
+  { label: 'calendar', href: '/calendarios', icon: 'Calendar', moduleId: 'calendarios', roles: ['admin', 'operador', 'client'] },
+  { label: 'documents', href: '/documentos', icon: 'FileText', moduleId: 'documentos', roles: ['admin', 'operador', 'client'] },
 ];
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -41,112 +45,228 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   BarChart3,
   Cable,
   BrainCircuit,
+  Calendar,
+  FileText,
   Settings,
 };
 
-function SidebarContent({ collapsed }: { collapsed: boolean }) {
+function RailItem({
+  Icon,
+  label,
+  href,
+  isActive,
+  onNavigate,
+  onAction,
+}: {
+  Icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  href?: string;
+  isActive?: boolean;
+  onNavigate?: (href: string, label: string) => void;
+  onAction?: () => void;
+}) {
+  const inner = (
+    <span
+      className={cn(
+        'group relative flex w-full flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition-all duration-300',
+        isActive ? 'bg-gradient-tech-soft' : 'hover:bg-white/[0.03]'
+      )}
+    >
+      {isActive && (
+        <span className="bg-gradient-tech absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full" />
+      )}
+
+      <span
+        className={cn(
+          'relative flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300',
+          isActive
+            ? 'bg-gradient-tech glow-tech scale-105 text-white'
+            : 'bg-muted/40 text-muted-foreground group-hover:scale-110 group-hover:-rotate-6 group-hover:text-primary group-hover:shadow-[0_0_18px_rgba(34,211,238,0.3)]'
+        )}
+      >
+        <span className="bg-gradient-tech pointer-events-none absolute -inset-1 rounded-xl opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-40" />
+        <Icon className="relative h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+      </span>
+
+      <span
+        className={cn(
+          'line-clamp-2 w-full text-center text-[10px] font-medium leading-tight transition-colors duration-300',
+          isActive ? 'text-gradient-tech font-bold' : 'text-muted-foreground group-hover:text-foreground'
+        )}
+      >
+        {label}
+      </span>
+    </span>
+  );
+
+  if (href && onNavigate) {
+    return (
+      <Link
+        href={href}
+        onClick={(e) => {
+          e.preventDefault();
+          onNavigate(href, label);
+        }}
+        className="block w-full"
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onAction} className="w-full cursor-pointer">
+      {inner}
+    </button>
+  );
+}
+
+function TransitionOverlay({ label }: { label: string }) {
+  return (
+    <div
+      role="status"
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-8 bg-background/85 backdrop-blur-md animate-[transition-fade_0.4s_ease-out_both]"
+    >
+      <div className="bg-gradient-tech pointer-events-none absolute left-1/4 top-1/4 h-72 w-72 animate-pulse rounded-full opacity-30 blur-[90px]" />
+      <div
+        className="pointer-events-none absolute bottom-1/4 right-1/4 h-72 w-72 animate-pulse rounded-full opacity-30 blur-[90px]"
+        style={{ backgroundImage: 'radial-gradient(circle, rgba(34,211,238,0.5), transparent 70%)' }}
+      />
+
+      <div className="relative flex h-36 w-36 items-center justify-center">
+        <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_both] rounded-full border border-cyan-400/50" />
+        <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_0.35s_both] rounded-full border border-violet-500/50" />
+        <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_0.7s_both] rounded-full border border-fuchsia-500/50" />
+
+        <svg
+          viewBox="0 0 80 80"
+          className="h-24 w-24 animate-[transition-pop_0.5s_cubic-bezier(0.22,1,0.36,1)_both]"
+        >
+          <defs>
+            <linearGradient id="transition-loader-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#22d3ee" />
+              <stop offset="50%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#a855f7" />
+            </linearGradient>
+          </defs>
+          <circle
+            cx="40"
+            cy="40"
+            r="34"
+            fill="none"
+            stroke="url(#transition-loader-grad)"
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeDasharray="214"
+            strokeDashoffset="214"
+            style={{ animation: 'draw 1.4s ease-in-out infinite' }}
+          />
+        </svg>
+
+        <div className="bg-gradient-tech pointer-events-none absolute h-10 w-10 animate-pulse rounded-full opacity-30 blur-2xl" />
+      </div>
+
+      <div className="space-y-1 text-center">
+        <p className="text-xs text-muted-foreground">Cargando</p>
+        <p className="text-gradient-tech text-2xl font-bold">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: string) => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const _ = useT();
 
   const visibleItems = navItems.filter(
-    (item) => user && user.visible_modules.includes(item.moduleId)
+    (item) =>
+      user &&
+      (user.visible_modules?.includes(item.moduleId) ||
+        DEFAULT_MODULES[user.role]?.includes(item.moduleId))
   );
 
   return (
     <div className="flex h-full flex-col gap-2">
-      <div className={cn('flex h-14 items-center gap-2 border-b px-4', collapsed && 'justify-center px-2')}>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <span className="text-sm font-bold text-primary-foreground">N</span>
+      <div className="flex h-14 shrink-0 items-center justify-center border-b">
+        <div className="bg-gradient-tech glow-tech flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-300 hover:rotate-6 hover:scale-110">
+          <span className="text-sm font-bold text-primary-foreground">M</span>
         </div>
-        {!collapsed && (
-          <span className="font-semibold tracking-tight">Nexus OS</span>
-        )}
       </div>
 
-      <ScrollArea className="flex-1 px-2">
-        <nav className="flex flex-col gap-1 py-2">
+      <ScrollArea className="flex-1 px-1.5">
+        <nav className="flex flex-col gap-0.5 py-2">
           {visibleItems.map((item) => {
             const Icon = iconMap[item.icon];
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  variant={isActive ? 'secondary' : 'ghost'}
-                  size={collapsed ? 'icon' : 'sm'}
-                  className={cn(
-                    'w-full justify-start gap-3',
-                    isActive && 'bg-accent font-medium',
-                    collapsed && 'justify-center px-0'
-                  )}
-                >
-                  {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                  {!collapsed && <span>{_(`nav.${item.label}`)}</span>}
-                </Button>
-              </Link>
+              <RailItem
+                key={item.href}
+                Icon={Icon}
+                label={_(`nav.${item.label}`)}
+                href={item.href}
+                isActive={isActive}
+                onNavigate={onNavigate}
+              />
             );
           })}
         </nav>
       </ScrollArea>
 
-      <div className={cn('border-t p-2 space-y-1', collapsed && 'flex flex-col items-center')}>
-        {!collapsed && user && (
-          <div className="px-2 text-xs text-muted-foreground">
-            <div className="truncate font-medium text-foreground">{user.full_name}</div>
-            <div className="capitalize">{user.role}</div>
+      <div className="flex flex-col items-center gap-1 border-t p-2">
+        {user && (
+          <div className="bg-gradient-tech mb-1 flex h-10 w-10 rounded-full p-[2px]">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-background text-sm font-bold text-foreground">
+              {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+            </div>
           </div>
         )}
-        <LangToggle collapsed={collapsed} />
-        <ThemeToggle collapsed={collapsed} />
-        <Link href="/settings">
-          <Button
-            variant="ghost"
-            size={collapsed ? 'icon' : 'sm'}
-            className={cn('w-full justify-start gap-3', pathname === '/settings' && 'bg-accent font-medium', collapsed && 'justify-center px-0')}
-          >
-            <Settings className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Configuración</span>}
-          </Button>
-        </Link>
-        <Button
-          variant="ghost"
-          size={collapsed ? 'icon' : 'sm'}
-          className="w-full justify-start gap-3"
-          onClick={logout}
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>{_('nav.logout')}</span>}
-        </Button>
+        <LangToggle collapsed />
+        <ThemeToggle collapsed />
+        <RailItem
+          Icon={Settings}
+          label={_('nav.settings')}
+          href="/settings"
+          isActive={pathname === '/settings'}
+          onNavigate={onNavigate}
+        />
+        <RailItem Icon={LogOut} label={_('nav.logout')} onAction={logout} />
       </div>
     </div>
   );
 }
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [transition, setTransition] = useState<{ href: string; label: string } | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!transition) return;
+    const t = setTimeout(() => router.push(transition.href), 700);
+    return () => clearTimeout(t);
+  }, [transition, router]);
+
+  useEffect(() => {
+    setTransition(null);
+  }, [pathname]);
+
+  const handleNavigate = (href: string, label: string) => {
+    if (pathname === href) return;
+    setMobileOpen(false);
+    setTransition({ href, label });
+  };
 
   return (
     <>
-      <aside
-        className={cn(
-          'hidden border-r bg-sidebar transition-all duration-200 md:flex md:flex-col',
-          collapsed ? 'w-16' : 'w-60'
-        )}
-      >
+      <aside className="border-r bg-sidebar hidden w-28 md:flex md:flex-col">
         <div className="relative flex flex-1 flex-col">
-          <SidebarContent collapsed={collapsed} />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute -right-3 top-14 h-6 w-6 rounded-full border bg-background"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            <ChevronLeft className={cn('h-3 w-3 transition-transform', collapsed && 'rotate-180')} />
-          </Button>
+          <SidebarContent onNavigate={handleNavigate} />
         </div>
       </aside>
 
-      <Sheet>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger
           render={
             <Button variant="ghost" size="icon" className="md:hidden fixed top-3 left-3 z-50" />
@@ -154,10 +274,12 @@ export function Sidebar() {
         >
           <Menu className="h-5 w-5" />
         </SheetTrigger>
-        <SheetContent side="left" className="w-60 p-0">
-          <SidebarContent collapsed={false} />
+        <SheetContent side="left" className="w-28 p-0">
+          <SidebarContent onNavigate={handleNavigate} />
         </SheetContent>
       </Sheet>
+
+      {transition && <TransitionOverlay label={transition.label} />}
     </>
   );
 }

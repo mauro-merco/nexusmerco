@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import type { UserRole, ModuleId } from '@/lib/types';
 import { ALL_MODULES, DEFAULT_MODULES } from '@/lib/types';
+import { AiUsagePanel } from '@/components/ai-usage-panel';
 import {
   Loader2, Check, Plus, Trash2, Users, UserCog, Shield, Eye, EyeOff, X,
 } from 'lucide-react';
@@ -29,6 +30,8 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   analysis: 'Análisis',
   integrations: 'Integraciones',
   insights: 'Insights IA',
+  calendarios: 'Calendario de clientes',
+  documentos: 'Documentos',
 };
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -43,14 +46,8 @@ const ROLE_COLORS: Record<UserRole, string> = {
   client: 'bg-green-500/15 text-green-500',
 };
 
-async function getAuthToken(): Promise<string> {
-  const { getSupabase } = await import('@/lib/supabase');
-  const { data: { session } } = await getSupabase().auth.getSession();
-  return session?.access_token || '';
-}
-
 export default function SettingsPage() {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const isAdmin = user?.role === 'admin';
 
   return (
@@ -64,6 +61,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Mi perfil</TabsTrigger>
           {isAdmin && <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>}
+          <TabsTrigger value="ai">Uso IA</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -75,6 +73,10 @@ export default function SettingsPage() {
             <UsersTab />
           </TabsContent>
         )}
+
+        <TabsContent value="ai">
+          <AiUsagePanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -314,6 +316,7 @@ function TwoFactorAuthSection() {
 }
 
 function UsersTab() {
+  const { token } = useAuthStore();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -336,7 +339,6 @@ function UsersTab() {
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const handleUpdateUser = useCallback(async (id: string, updates: Partial<ManagedUser>) => {
-    const token = await getAuthToken();
     const res = await fetch(`/api/users/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -349,17 +351,16 @@ function UsersTab() {
       const json = await res.json();
       alert(json.error || 'Error al actualizar');
     }
-  }, []);
+  }, [token]);
 
   const handleDeleteUser = useCallback(async (id: string) => {
     if (!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.')) return;
-    const token = await getAuthToken();
     const res = await fetch(`/api/users/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` },
     });
     if (res.ok) setUsers(prev => prev.filter(u => u.id !== id));
-  }, []);
+  }, [token]);
 
   const handleCreateUser = useCallback((newUser: ManagedUser) => {
     setUsers(prev => [...prev, newUser]);
@@ -536,6 +537,7 @@ function CreateUserDialog({
   onOpenChange: (v: boolean) => void;
   onCreate: (user: ManagedUser) => void;
 }) {
+  const { token } = useAuthStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -561,10 +563,18 @@ function CreateUserDialog({
     setSaving(true);
     setError('');
     try {
-      const token = await getAuthToken();
+      let t = token;
+      if (!t) {
+        const { getSupabase } = await import('@/lib/supabase');
+        const { data: { session } } = await getSupabase().auth.getSession();
+        t = session?.access_token || '';
+      }
+      if (!t) {
+        throw new Error('No hay sesión activa. Cerrá sesión y volvé a iniciar.');
+      }
       const res = await fetch('/api/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
         body: JSON.stringify({
           full_name: name.trim(),
           email: email.trim(),
@@ -574,7 +584,10 @@ function CreateUserDialog({
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Error al crear usuario');
+      if (!res.ok) {
+        const detail = json.debug ? ` | debug: ${JSON.stringify(json.debug)}` : '';
+        throw new Error(`[${res.status}] ${json.error || 'Error al crear usuario'}${detail}`);
+      }
       onCreate(json.data);
       setName(''); setEmail(''); setPassword('');
     } catch (err) {

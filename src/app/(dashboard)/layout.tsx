@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { AIWidget } from '@/components/ai-widget';
 import { NotificationBell } from '@/components/notification-bell';
+import { RemindersBell } from '@/components/reminders-bell';
 import { ProfileMenu } from '@/components/profile-menu';
 import { useAuthStore } from '@/store/auth-store';
 import { Loader2 } from 'lucide-react';
@@ -43,8 +44,10 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-12 shrink-0 border-b bg-background flex items-center justify-end px-4 gap-2">
+        <header className="relative h-12 shrink-0 border-b bg-background flex items-center justify-end px-4 gap-2">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
           <NotificationBell />
+          <RemindersBell />
           <ProfileMenu />
         </header>
         {/* Main content */}

@@ -49,19 +49,22 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       if (body[key] !== undefined) updates[key] = body[key];
     }
 
-    const { data: oldTask } = await supabase.from('tasks').select('assignee_id, title').eq('id', id).single();
+    const { data: oldTask } = await supabase.from('tasks').select('assignee_id, title, author_id').eq('id', id).single();
 
     const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).select().single();
     if (error) throw error;
 
     if (body.assignee_id && oldTask && body.assignee_id !== oldTask.assignee_id) {
-      const { data: assignee } = await supabase.from('users').select('full_name').eq('id', body.assignee_id).single();
+      const { data: actor } = oldTask.author_id
+        ? await supabase.from('users').select('full_name, email').eq('id', oldTask.author_id).single()
+        : { data: null };
       await supabase.from('notifications').insert({
         user_id: body.assignee_id,
         type: 'task_assigned',
         title: 'Te asignaron una tarea',
-        message: `${assignee?.full_name || 'Alguien'} te asignó: ${data.title}`,
+        message: `${actor?.full_name || actor?.email || 'Alguien'} te asignó: ${data.title}`,
         task_id: id,
+        link: '/operations',
       });
     }
 

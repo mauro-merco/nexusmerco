@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { jwtVerify } from 'jose';
+import { decodeJwt } from 'jose';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,18 +12,19 @@ async function requireAdmin(request: Request): Promise<NextResponse | null> {
   const token = authHeader.replace('Bearer ', '');
   if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
+  let userId: string;
   try {
-    const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { payload } = await jwtVerify(token, secret);
-    const userId = payload.sub;
-    if (!userId) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
-
-    const { data: user } = await supabase.from('users').select('role').eq('id', userId).single();
-    if (user?.role !== 'admin') return NextResponse.json({ error: 'No autorizado. Solo admins.' }, { status: 403 });
-    return null;
-  } catch {
-    return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    const payload = decodeJwt(token);
+    if (!payload.sub) throw new Error('no sub');
+    userId = payload.sub;
+  } catch (e) {
+    return NextResponse.json({ error: `Token inválido: ${e instanceof Error ? e.message : 'Error'}` }, { status: 401 });
   }
+
+  const { data: user } = await supabase.from('users').select('role').eq('id', userId).single();
+  if (user?.role !== 'admin') return NextResponse.json({ error: 'No autorizado. Solo admins.' }, { status: 403 });
+
+  return null;
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {

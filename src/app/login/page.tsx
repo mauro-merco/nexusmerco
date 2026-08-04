@@ -59,15 +59,12 @@ export default function LoginPage() {
 
   if (pending2FA) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <span className="text-xl font-bold text-primary-foreground">N</span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Nexus Marketing OS</h1>
-            <p className="text-sm text-muted-foreground">Doble autenticación</p>
-          </div>
+      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-background to-muted p-4">
+        <div className="pointer-events-none absolute -top-32 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-gradient-tech opacity-25 blur-[100px]" />
+        <div className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full opacity-25 blur-[80px]" style={{ backgroundImage: 'radial-gradient(circle, rgba(34,211,238,0.5), transparent 70%)' }} />
+        <div className="mb-8">
+          <img src="/merco-light-mode.svg" alt="Merco" className="h-6 mx-auto dark:hidden" />
+          <img src="/merco-dark-mode.svg" alt="Merco" className="h-6 mx-auto hidden dark:block" />
         </div>
 
         <Card className="w-full max-w-md">
@@ -123,14 +120,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-          <span className="text-xl font-bold text-primary-foreground">N</span>
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nexus Marketing OS</h1>
-          <p className="text-sm text-muted-foreground">{_('login.subtitle')}</p>
-        </div>
+      <div className="mb-8">
+        <img src="/merco-light-mode.svg" alt="Merco" className="h-6 mx-auto dark:hidden" />
+        <img src="/merco-dark-mode.svg" alt="Merco" className="h-6 mx-auto hidden dark:block" />
       </div>
 
       <Card className="w-full max-w-md">

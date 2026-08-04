@@ -344,7 +344,7 @@ export default function DashboardPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Centro de Control</h1>
+          <h1 className="text-gradient-tech text-2xl md:text-3xl font-bold tracking-tight">Centro de Control</h1>
           <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Bienvenido, {user?.full_name}
           </p>

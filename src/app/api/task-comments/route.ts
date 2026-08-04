@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createMentionNotifications } from '@/lib/mentions';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,6 +66,13 @@ export async function POST(request: Request) {
       .select()
       .single();
     if (error) throw error;
+
+    await createMentionNotifications(
+      supabase,
+      content,
+      user_id,
+      { link: '/operations', entityLabel: 'un comentario de tarea' }
+    );
 
     const usersMap = await fetchUsers([user_id]);
     return NextResponse.json({ data: { ...data, user: usersMap[user_id] || null } });

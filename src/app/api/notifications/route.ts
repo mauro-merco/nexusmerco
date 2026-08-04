@@ -41,14 +41,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { user_id, type, title, message, task_id } = body;
+    const { user_id, type, title, message, task_id, link } = body;
     if (!user_id || !type || !title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const { data, error } = await supabase
       .from('notifications')
-      .insert({ user_id, type, title, message: message || '', task_id: task_id || null })
+      .insert({ user_id, type, title, message: message || '', task_id: task_id || null, link: link || null })
       .select()
       .single();
     if (error) throw error;

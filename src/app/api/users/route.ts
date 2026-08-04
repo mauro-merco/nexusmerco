@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { jwtVerify } from 'jose';
+import { decodeJwt } from 'jose';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,24 +8,6 @@ const supabase = createClient(
 );
 
 const APP_ID = 'nexus';
-
-async function getCurrentUserRole(request: Request): Promise<string | null> {
-  const authHeader = request.headers.get('authorization') || '';
-  const token = authHeader.replace('Bearer ', '');
-  if (!token) return null;
-
-  try {
-    const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { payload } = await jwtVerify(token, secret);
-    const userId = payload.sub;
-    if (!userId) return null;
-
-    const { data: user } = await supabase.from('users').select('role').eq('id', userId).single();
-    return user?.role || null;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(request: Request) {
   try {
@@ -46,9 +28,28 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const role = await getCurrentUserRole(request);
-    if (role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado. Solo admins pueden crear usuarios.' }, { status: 403 });
+    const authHeader = request.headers.get('authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) {
+      return NextResponse.json({ error: 'No hay token en el header Authorization' }, { status: 401 });
+    }
+
+    let userId: string;
+    try {
+      const payload = decodeJwt(token);
+      if (!payload.sub) throw new Error('JWT no contiene sub');
+      userId = payload.sub;
+    } catch (e) {
+      return NextResponse.json({ error: `Token inválido: ${e instanceof Error ? e.message : 'Error'}` }, { status: 401 });
+    }
+
+    const { data: dbUser, error: dbError } = await supabase.from('users').select('id, email, role').eq('id', userId).single();
+    if (dbError || !dbUser) {
+      return NextResponse.json({ error: `Usuario no encontrado en DB (id=${userId}): ${dbError?.message || 'sin datos'}` }, { status: 404 });
+    }
+
+    if (dbUser.role !== 'admin') {
+      return NextResponse.json({ error: `Rol actual: "${dbUser.role}" — se requiere admin` }, { status: 403 });
     }
 
     const body = await request.json();
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
       { auth: { persistSession: false } }
     );
 
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
@@ -75,8 +76,8 @@ export async function POST(request: Request) {
       },
     });
 
-    if (authError) throw new Error(authError.message);
-    if (!authUser.user) throw new Error('No se pudo crear el usuario');
+    if (createError) throw new Error(createError.message);
+    if (!newAuthUser.user) throw new Error('No se pudo crear el usuario');
 
     const modules = visible_modules || (
       newRole === 'admin' ? ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights'] :
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     const { error: insertError } = await supabase
       .from('users')
       .upsert({
-        id: authUser.user.id,
+        id: newAuthUser.user.id,
         email,
         full_name: fullName,
         role: newRole,
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       data: {
-        id: authUser.user.id,
+        id: newAuthUser.user.id,
         email,
         full_name: fullName,
         role: newRole,

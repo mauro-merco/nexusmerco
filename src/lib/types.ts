@@ -1,12 +1,12 @@
 export type UserRole = 'admin' | 'operador' | 'client';
 
-export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights'] as const;
+export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos'] as const;
 export type ModuleId = typeof ALL_MODULES[number];
 
 export const DEFAULT_MODULES: Record<UserRole, ModuleId[]> = {
-  admin: ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights'],
-  operador: ['dashboard', 'wizard', 'tareas', 'analysis', 'insights'],
-  client: ['dashboard', 'analysis', 'insights'],
+  admin: ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos'],
+  operador: ['dashboard', 'wizard', 'tareas', 'analysis', 'insights', 'calendarios', 'documentos'],
+  client: ['dashboard', 'analysis', 'insights', 'calendarios', 'documentos'],
 };
 
 export interface User {
@@ -16,6 +16,7 @@ export interface User {
   avatar_url: string;
   email: string;
   visible_modules: ModuleId[];
+  client_id?: string | null;
   totp_enabled?: boolean;
 }
 
@@ -217,6 +218,39 @@ export interface Notification {
   title: string;
   message: string;
   task_id: string | null;
+  link: string | null;
   read: boolean;
   created_at: string;
+}
+
+export interface Reminder {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  reminder_at: string;
+  done: boolean;
+  notified: boolean;
+  created_at: string;
+}
+
+export interface NexusDocument {
+  id: string;
+  owner_id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  owner?: User | null;
+  shared_users?: User[];
+  is_shared_with_me?: boolean;
+  can_edit?: boolean;
+}
+
+export interface DocumentShare {
+  id: string;
+  document_id: string;
+  user_id: string;
+  created_at: string;
+  user?: User | null;
 }
