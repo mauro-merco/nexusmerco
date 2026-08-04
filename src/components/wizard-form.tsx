@@ -357,7 +357,7 @@ export function WizardForm() {
           </div>
         </CardHeader>
         <CardFooter className="justify-center gap-3">
-          <Button onClick={clearAll}>Subir más archivos</Button>
+          <Button onClick={clearAll} variant="cta">Subir más archivos</Button>
           <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>Ir al dashboard</Button>
         </CardFooter>
       </Card>
@@ -717,7 +717,7 @@ export function WizardForm() {
 
             {/* Submit */}
             <CardFooter className="flex-col gap-3 px-0">
-              <Button type="submit" className="w-full gap-2" disabled={saving || !clientId || !allDatesFilled || (existingData && confirmOverwrite === null)}>
+              <Button type="submit" variant="cta" className="w-full gap-2" disabled={saving || !clientId || !allDatesFilled || (existingData && confirmOverwrite === null)}>
                 {saving ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Guardando {pendingFiles.length} archivo(s)...</>
                 ) : (

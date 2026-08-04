@@ -106,7 +106,7 @@ export default function ClientsPage() {
             </Button>
           )}
           {isAdminOrTeam && (
-            <Button onClick={() => router.push('/clients/new')} className="gap-2 shrink-0">
+            <Button onClick={() => router.push('/clients/new')} variant="cta" className="gap-2 shrink-0">
               <Plus className="h-4 w-4" />
               Nuevo Cliente
             </Button>
@@ -211,7 +211,7 @@ export default function ClientsPage() {
           <Building2 className="h-12 w-12 opacity-50" />
           <p>{_('clients.noClients')}</p>
           {isAdminOrTeam && (
-            <Button onClick={() => router.push('/clients/new')} variant="outline">
+            <Button onClick={() => router.push('/clients/new')} variant="cta">
               Crear primer cliente
             </Button>
           )}

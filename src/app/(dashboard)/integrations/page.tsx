@@ -30,7 +30,7 @@ export default function IntegrationsPage() {
             Configurá las conexiones con Google Ads, Meta Ads, Shopify y más. 
             Primero creá un cliente para empezar.
           </p>
-          <Button onClick={() => router.push('/clients/new')} className="mt-2">
+          <Button onClick={() => router.push('/clients/new')} variant="cta" className="mt-2">
             Crear Cliente
           </Button>
         </CardContent>

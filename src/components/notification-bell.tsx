@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useNotifications } from '@/lib/hooks/use-notifications';
 import { useAuthStore } from '@/store/auth-store';
 import {
-  Bell, CheckCheck, Loader2, ExternalLink, UserPlus, AtSign, FileText, AlarmClock, CheckCircle2, Info,
+  Bell, CheckCheck, Loader2, ExternalLink, UserPlus, AtSign, FileText, AlarmClock, CheckCircle2, Info, ChevronRight,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { Notification } from '@/lib/types';
@@ -122,6 +122,13 @@ export function NotificationBell() {
                 );
               })}
             </div>
+            <button
+              onClick={() => { setOpen(false); router.push('/notifications'); }}
+              className="flex w-full items-center justify-center gap-1.5 border-t px-3 py-2.5 text-xs font-semibold text-primary transition-colors hover:bg-muted/50"
+            >
+              Ver todas las notificaciones
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </>
       )}

@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       supabase,
       content,
       user_id,
-      { link: '/operations', entityLabel: 'un comentario de tarea' }
+      { link: `/operations?task=${task_id}`, entityLabel: 'un comentario de tarea' }
     );
 
     const usersMap = await fetchUsers([user_id]);

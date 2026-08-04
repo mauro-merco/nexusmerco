@@ -90,7 +90,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         type: 'document_shared',
         title: 'Te compartieron un documento',
         message: `${ownerName} te compartió: ${docTitle}`,
-        link: '/documentos',
+        link: `/documentos?doc=${id}`,
       });
     } catch (e) {
       console.error('share notification error:', e);

@@ -35,7 +35,7 @@ export default function AnalysisPage() {
           </p>
         </div>
         {isAdminOrTeam && (
-          <Button onClick={() => router.push('/wizard')} className="gap-2 shrink-0">
+          <Button onClick={() => router.push('/wizard')} variant="cta" className="gap-2 shrink-0">
             <Upload className="h-4 w-4" /> Cargar CSV
           </Button>
         )}

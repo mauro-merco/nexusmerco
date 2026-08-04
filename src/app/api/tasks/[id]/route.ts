@@ -64,7 +64,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         title: 'Te asignaron una tarea',
         message: `${actor?.full_name || actor?.email || 'Alguien'} te asignó: ${data.title}`,
         task_id: id,
-        link: '/operations',
+        link: `/operations?task=${id}`,
       });
     }
 

@@ -145,7 +145,7 @@ export function DocumentAiDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-          <Button onClick={generate} disabled={loading || !theme.trim()} className="gap-2">
+          <Button onClick={generate} variant="cta" disabled={loading || !theme.trim()} className="gap-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {loading ? 'Generando...' : 'Generar'}
           </Button>

@@ -306,7 +306,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
               </Button>
             </div>
           </div>
-          <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} className="gap-2">
+          <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="cta" size="cta" className="gap-2">
             <Plus className="h-4 w-4" /> Nueva Idea
           </Button>
         </div>

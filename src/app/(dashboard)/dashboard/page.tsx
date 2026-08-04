@@ -353,10 +353,10 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {isAdminOrTeam && (
             <>
-              <Button onClick={() => router.push('/clients/new')} className="gap-2">
+              <Button onClick={() => router.push('/clients/new')} variant="cta" className="gap-2">
                 <Plus className="h-4 w-4" /> Nuevo Cliente
               </Button>
-              <Button onClick={() => router.push('/wizard')} variant="outline" className="gap-2">
+              <Button onClick={() => router.push('/wizard')} variant="cta" className="gap-2">
                 <Upload className="h-4 w-4" /> Cargar CSV
               </Button>
             </>
@@ -522,7 +522,7 @@ export default function DashboardPage() {
             <p className="text-base font-semibold">No hay clientes todavía</p>
             <p className="text-sm text-center max-w-md">Creá un cliente para empezar a cargar datos de campañas y ver métricas de marketing digital.</p>
             {isAdminOrTeam && (
-              <Button onClick={() => router.push('/clients/new')} className="gap-2 mt-2">
+              <Button onClick={() => router.push('/clients/new')} variant="cta" className="gap-2 mt-2">
                 <Plus className="h-4 w-4" /> Crear Cliente
               </Button>
             )}

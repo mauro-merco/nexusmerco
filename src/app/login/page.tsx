@@ -99,7 +99,7 @@ export default function LoginPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading || code.length !== 6}>
+              <Button type="submit" variant="cta" size="cta" className="w-full" disabled={isLoading || code.length !== 6}>
                 {isLoading ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...</>
                 ) : (
@@ -165,7 +165,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" variant="cta" size="cta" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Iniciando sesión...</>
               ) : (

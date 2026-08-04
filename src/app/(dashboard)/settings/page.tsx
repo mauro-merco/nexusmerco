@@ -135,7 +135,7 @@ function ProfileTab() {
         </div>
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
         <div className="flex items-center gap-2 pt-2">
-          <Button onClick={handleSave} disabled={saving || !fullName.trim()}>
+          <Button onClick={handleSave} variant="cta" disabled={saving || !fullName.trim()}>
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> :
              saved ? <Check className="h-3.5 w-3.5 mr-1" /> : null}
             {saved ? 'Guardado' : 'Guardar'}
@@ -374,7 +374,7 @@ function UsersTab() {
           <Users className="h-4 w-4" />
           <span>{users.length} usuario{users.length !== 1 ? 's' : ''}</span>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => setShowCreate(true)}>
+        <Button size="sm" variant="cta" className="gap-2" onClick={() => setShowCreate(true)}>
           <Plus className="h-3.5 w-3.5" /> Crear usuario
         </Button>
       </div>

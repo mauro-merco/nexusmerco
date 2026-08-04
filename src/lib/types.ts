@@ -220,6 +220,7 @@ export interface Notification {
   task_id: string | null;
   link: string | null;
   read: boolean;
+  deleted_at: string | null;
   created_at: string;
 }
 

@@ -101,10 +101,34 @@ export default function DocumentosPage() {
     };
   }, [title, content, currentDoc?.id]);
 
+  // Deep link: open a specific shared document (?doc=<id>)
+  useEffect(() => {
+    if (view !== 'list' || !user?.id) return;
+    const docId = new URLSearchParams(window.location.search).get('doc');
+    if (!docId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const full = await getDocument(docId);
+        if (cancelled) return;
+        setCurrentDoc(full);
+        setTitle(full.title);
+        setContent(full.content);
+        setView('editor');
+      } catch {
+        /* doc no encontrado o sin acceso */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [view, user?.id, getDocument]);
+
   const handleBack = () => {
     setView('list');
     setCurrentDoc(null);
     setSavedAt(null);
+    if (window.location.search.includes('doc=')) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   };
 
   const handleAiGenerated = useCallback((html: string, mode: AiInsertMode) => {
@@ -234,7 +258,7 @@ export default function DocumentosPage() {
             Creá y organizá tus documentos. Compartilos con otros usuarios.
           </p>
         </div>
-        <Button onClick={handleNew} className="gap-2 shrink-0">
+        <Button onClick={handleNew} variant="cta" size="cta" className="gap-2 shrink-0">
           <Plus className="h-4 w-4" /> Nuevo documento
         </Button>
       </div>
@@ -271,7 +295,7 @@ export default function DocumentosPage() {
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-4">
           <FileText className="h-12 w-12 opacity-40" />
           <p className="text-base font-medium">No hay documentos</p>
-          <Button onClick={handleNew} variant="outline" className="gap-2">
+          <Button onClick={handleNew} variant="cta" className="gap-2">
             <Plus className="h-4 w-4" /> Crear el primero
           </Button>
         </div>

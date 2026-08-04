@@ -250,7 +250,7 @@ export function FolderUpload() {
           </CardContent>
           <CardFooter className="justify-end gap-2">
             <Button variant="outline" onClick={clearAll}>Cancelar</Button>
-            <Button onClick={handleUpload} disabled={!clientId}>
+            <Button onClick={handleUpload} variant="cta" disabled={!clientId}>
               <Upload className="h-4 w-4 mr-2" />
               Subir {inferredFiles.length} archivos
             </Button>
@@ -317,7 +317,7 @@ export function FolderUpload() {
           </CardContent>
         )}
         <CardFooter className="justify-center gap-3">
-          <Button onClick={clearAll}>Subir otra carpeta</Button>
+          <Button onClick={clearAll} variant="cta">Subir otra carpeta</Button>
           <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>Ir al dashboard</Button>
         </CardFooter>
       </Card>

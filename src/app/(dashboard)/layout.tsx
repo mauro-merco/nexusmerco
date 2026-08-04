@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { AIWidget } from '@/components/ai-widget';
 import { NotificationBell } from '@/components/notification-bell';
+import { NotificationToasts } from '@/components/notification-toasts';
 import { RemindersBell } from '@/components/reminders-bell';
 import { ProfileMenu } from '@/components/profile-menu';
 import { useAuthStore } from '@/store/auth-store';
@@ -56,6 +57,7 @@ export default function DashboardLayout({
         </main>
       </div>
       <AIWidget />
+      <NotificationToasts />
     </div>
   );
 }

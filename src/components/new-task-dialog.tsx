@@ -155,7 +155,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
 
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} variant="cta" disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
             Crear Tarea
           </Button>

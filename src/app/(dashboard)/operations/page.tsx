@@ -35,6 +35,23 @@ export default function OperationsPage() {
       .catch(() => {});
   }, []);
 
+  // Deep link: open a specific task (?task=<id>)
+  useEffect(() => {
+    const taskId = new URLSearchParams(window.location.search).get('task');
+    if (!taskId) return;
+    let cancelled = false;
+    fetch(`/api/tasks/${taskId}`)
+      .then(r => r.json())
+      .then(json => {
+        if (cancelled || !json.data) return;
+        setSelectedClientId(json.data.client_id || selectedClientId);
+        setSelectedTask(json.data);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleTaskMove = useCallback(async (taskId: string, newStatus: TaskStatus) => {
     await updateTask(taskId, { status: newStatus });
   }, [updateTask]);
@@ -91,7 +108,7 @@ export default function OperationsPage() {
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-          <Button onClick={() => setShowNewTask(true)} className="gap-2">
+          <Button onClick={() => setShowNewTask(true)} variant="cta" size="cta" className="gap-2">
             <Plus className="h-4 w-4" /> Nueva Tarea
           </Button>
         </div>

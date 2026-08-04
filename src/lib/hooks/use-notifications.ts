@@ -43,5 +43,34 @@ export function useNotifications(userId: string | null) {
     setUnreadCount(0);
   }, [userId]);
 
-  return { notifications, unreadCount, loading, refetch: fetchNotifications, markAsRead, markAllRead };
+  /** Soft delete: moves the notifications to the "deleted" bucket. */
+  const softDelete = useCallback(async (ids: string[]) => {
+    if (!userId || ids.length === 0) return;
+    try {
+      await fetch('/api/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_ids: ids }),
+      });
+    } catch { /* */ }
+    setNotifications(prev => prev.filter(n => !ids.includes(n.id)));
+    setUnreadCount(prev => {
+      const removedUnread = notifications.filter(n => ids.includes(n.id) && !n.read).length;
+      return Math.max(0, prev - removedUnread);
+    });
+  }, [userId, notifications]);
+
+  /** Restores soft-deleted notifications. */
+  const restore = useCallback(async (ids: string[]) => {
+    if (!userId || ids.length === 0) return;
+    try {
+      await fetch('/api/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restore_ids: ids }),
+      });
+    } catch { /* */ }
+  }, [userId]);
+
+  return { notifications, unreadCount, loading, refetch: fetchNotifications, markAsRead, markAllRead, softDelete, restore };
 }

@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
@@ -24,6 +23,8 @@ import {
   LogOut,
   Menu,
   Settings,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -67,6 +68,7 @@ function RailItem({
 }) {
   const inner = (
     <span
+      data-active={isActive ? 'true' : undefined}
       className={cn(
         'group relative flex w-full flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition-all duration-300',
         isActive ? 'bg-gradient-tech-soft' : 'hover:bg-white/[0.03]'
@@ -178,6 +180,35 @@ function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: stri
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const _ = useT();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canUp, setCanUp] = useState(false);
+  const [canDown, setCanDown] = useState(false);
+
+  const updateScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanUp(el.scrollTop > 4);
+    setCanDown(el.scrollTop + el.clientHeight < el.scrollHeight - 4);
+  }, []);
+
+  useEffect(() => {
+    updateScroll();
+    window.addEventListener('resize', updateScroll);
+    return () => window.removeEventListener('resize', updateScroll);
+  }, [updateScroll]);
+
+  // Keep the active item visible inside the rail
+  useEffect(() => {
+    const el = scrollRef.current;
+    const active = el?.querySelector('[data-active="true"]');
+    active?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [pathname]);
+
+  const scrollBy = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ top: dir * (el.clientHeight - 48), behavior: 'smooth' });
+  };
 
   const visibleItems = navItems.filter(
     (item) =>
@@ -194,24 +225,45 @@ function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: stri
         </div>
       </div>
 
-      <ScrollArea className="flex-1 px-1.5">
-        <nav className="flex flex-col gap-0.5 py-2">
-          {visibleItems.map((item) => {
-            const Icon = iconMap[item.icon];
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <RailItem
-                key={item.href}
-                Icon={Icon}
-                label={_(`nav.${item.label}`)}
-                href={item.href}
-                isActive={isActive}
-                onNavigate={onNavigate}
-              />
-            );
-          })}
-        </nav>
-      </ScrollArea>
+      <div className="relative min-h-0 flex-1 px-1.5">
+        <div
+          ref={scrollRef}
+          onScroll={updateScroll}
+          className="no-scrollbar h-full overflow-y-auto"
+        >
+          <nav className="flex flex-col gap-0.5 py-2">
+            {visibleItems.map((item) => {
+              const Icon = iconMap[item.icon];
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <RailItem
+                  key={item.href}
+                  Icon={Icon}
+                  label={_(`nav.${item.label}`)}
+                  href={item.href}
+                  isActive={isActive}
+                  onNavigate={onNavigate}
+                />
+              );
+            })}
+          </nav>
+        </div>
+
+        {canDown && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-sidebar via-sidebar/80 to-transparent" />
+        )}
+
+        {(canDown || (canUp && !canDown)) && (
+          <button
+            type="button"
+            onClick={() => scrollBy(canDown ? 1 : -1)}
+            aria-label={canDown ? 'Bajar' : 'Subir'}
+            className="bg-gradient-tech glow-tech absolute bottom-1 left-1/2 z-10 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 animate-[transition-fade_0.3s_ease-out]"
+          >
+            {canDown ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
 
       <div className="flex flex-col items-center gap-1 border-t p-2">
         {user && (

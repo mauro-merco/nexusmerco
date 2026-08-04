@@ -237,7 +237,7 @@ export default function EditClientPage() {
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving} className="gap-2">
+            <Button type="submit" variant="cta" disabled={saving} className="gap-2">
               {saving ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</>
               ) : (
