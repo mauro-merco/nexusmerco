@@ -78,8 +78,11 @@ export default function DocumentosPage() {
     }
   }, [createDocument, openEditor]);
 
+  const [triggerStartNew, setTriggerStartNew] = useState(false);
+
   const startNewNote = useCallback(() => {
     setTab('notes');
+    setTriggerStartNew(true);
   }, []);
 
   const saveDoc = useCallback(async (t = title, c = content) => {
@@ -305,9 +308,9 @@ export default function DocumentosPage() {
         />
        </div>
 
-       {tab === 'notes' ? (
-         <StickyNotes />
-       ) : (
+        {tab === 'notes' ? (
+          <StickyNotes triggerStartNew={triggerStartNew} onTriggerNew={() => setTriggerStartNew(false)} />
+        ) : (
          <>
        {loading && (
          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

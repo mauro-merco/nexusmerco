@@ -38,7 +38,7 @@ function authHeaders() {
   };
 }
 
-export function StickyNotes() {
+export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew?: boolean; onTriggerNew?: () => void }) {
   const { user } = useAuthStore();
   const [notes, setNotes] = useState<StickyNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +49,13 @@ export function StickyNotes() {
   const [color, setColor] = useState(COLORS[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (triggerStartNew) {
+      startNew();
+      onTriggerNew?.();
+    }
+  }, [triggerStartNew, onTriggerNew]);
 
   const fetchNotes = useCallback(async () => {
     if (!user?.id) return;
