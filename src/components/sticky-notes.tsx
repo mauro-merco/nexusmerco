@@ -138,12 +138,7 @@ export function StickyNotes() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold">Notas adhesivas</h2>
-        <Button onClick={startNew} variant="cta" size="cta" className="gap-2">
-          <Plus className="h-4 w-4" /> Nueva nota
-        </Button>
-      </div>
+      <h2 className="text-lg font-bold">Notas adhesivas</h2>
 
       {error && (
         <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
