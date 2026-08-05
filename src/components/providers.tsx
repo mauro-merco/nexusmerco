@@ -1,11 +1,11 @@
 'use client';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider } from '@/components/theme-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} enableColorScheme>
+    <ThemeProvider>
       <TooltipProvider>{children}</TooltipProvider>
     </ThemeProvider>
   );

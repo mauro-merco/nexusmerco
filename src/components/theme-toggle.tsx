@@ -1,6 +1,6 @@
 'use client';
 
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
 import { Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ export function ThemeToggle({ collapsed }: { collapsed?: boolean }) {
       variant="ghost"
       size="icon"
       aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      suppressHydrationWarning
       className={cn(
         'group relative h-9 w-9 rounded-xl transition-all duration-300 hover:scale-110 hover:bg-transparent hover:shadow-[0_0_16px_rgba(34,211,238,0.35)]',
         collapsed && 'justify-center px-0'
