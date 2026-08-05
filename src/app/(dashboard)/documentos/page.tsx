@@ -258,6 +258,7 @@ export default function DocumentosPage() {
   // List view
   return (
     <div className="space-y-6">
+         <div className="flex items-center justify-between">
          <div className="flex items-center gap-1 rounded-xl bg-muted/30 p-1 border border-border/50">
            <button
              type="button"
@@ -284,6 +285,11 @@ export default function DocumentosPage() {
              <StickyNote className="h-3.5 w-3.5" /> Notas adhesivas
            </button>
          </div>
+
+         <Button onClick={tab === 'notes' ? startNewNote : handleNew} variant="cta" size="cta" className="gap-2 shrink-0">
+           <Plus className="h-4 w-4" /> {tab === 'notes' ? 'Nueva nota' : 'Nuevo documento'}
+         </Button>
+       </div>
 
        {error && (
          <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
