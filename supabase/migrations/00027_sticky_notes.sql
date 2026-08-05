@@ -4,6 +4,7 @@ create table sticky_notes (
   title text not null default '',
   content text not null default '',
   color text not null default '#fbbf24',
+  category text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, id)

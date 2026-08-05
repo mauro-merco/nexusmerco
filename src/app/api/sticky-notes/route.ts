@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { title, content, color } = body as { title?: string; content?: string; color?: string };
+    const { title, content, color, category } = body as { title?: string; content?: string; color?: string; category?: string };
 
     const { data, error } = await supabase
       .from('sticky_notes')
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
         title: title || '',
         content: content || '',
         color: color || '#fbbf24',
+        category: category || '',
       })
       .select()
       .single();
