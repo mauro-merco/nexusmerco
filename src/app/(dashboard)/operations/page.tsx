@@ -102,7 +102,7 @@ export default function OperationsPage() {
           <select
             value={selectedClientId || ''}
             onChange={e => setSelectedClientId(e.target.value)}
-            className="rounded-lg border bg-transparent px-3 py-2 text-sm"
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
           >
             {clients.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
 import { Loader2, AlertCircle, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const PHRASES = [
   'Diseño que convierte',
@@ -19,44 +20,44 @@ const PHRASES = [
 ];
 
 function TypewriterText() {
-  const [display, setDisplay] = useState('');
-  const [phraseIndex, setPhraseIndex] = useState(0);
-  const [charIndex, setCharIndex] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [pause, setPause] = useState(false);
+  const [state, setState] = useState<{ phraseIndex: number; charIndex: number; phase: 'typing' | 'pausing' | 'deleting' }>({
+    phraseIndex: 0,
+    charIndex: 0,
+    phase: 'typing',
+  });
 
   useEffect(() => {
-    if (pause) {
-      const t = setTimeout(() => setPause(false), 1500);
-      return () => clearTimeout(t);
+    const current = PHRASES[state.phraseIndex];
+    let timeout: ReturnType<typeof setTimeout>;
+
+    switch (state.phase) {
+      case 'typing':
+        if (state.charIndex < current.length) {
+          timeout = setTimeout(() => setState(s => ({ ...s, charIndex: s.charIndex + 1 })), 55);
+        } else {
+          timeout = setTimeout(() => setState(s => ({ ...s, phase: 'pausing' })), 2000);
+        }
+        break;
+      case 'pausing':
+        timeout = setTimeout(() => setState(s => ({ ...s, phase: 'deleting' })), 1500);
+        break;
+      case 'deleting':
+        if (state.charIndex > 0) {
+          timeout = setTimeout(() => setState(s => ({ ...s, charIndex: s.charIndex - 1 })), 30);
+        } else {
+          timeout = setTimeout(() => setState(s => ({
+            phraseIndex: (s.phraseIndex + 1) % PHRASES.length,
+            charIndex: 0,
+            phase: 'typing',
+          })), 400);
+        }
+        break;
     }
 
-    const current = PHRASES[phraseIndex];
+    return () => clearTimeout(timeout);
+  }, [state.phraseIndex, state.charIndex, state.phase]);
 
-    if (!isDeleting) {
-      if (charIndex < current.length) {
-        const t = setTimeout(() => setDisplay(current.slice(0, charIndex + 1)), 55);
-        return () => clearTimeout(t);
-      } else {
-        const t = setTimeout(() => setPause(true), 2000);
-        return () => clearTimeout(t);
-      }
-    } else {
-      if (charIndex > 0) {
-        const t = setTimeout(() => setDisplay(current.slice(0, charIndex - 1)), 30);
-        return () => clearTimeout(t);
-      } else {
-        setIsDeleting(false);
-        setPhraseIndex((prev) => (prev + 1) % PHRASES.length);
-      }
-    }
-  }, [charIndex, isDeleting, pause, phraseIndex]);
-
-  useEffect(() => {
-    setCharIndex(0);
-    setIsDeleting(false);
-    setDisplay('');
-  }, [phraseIndex]);
+  const display = PHRASES[state.phraseIndex].slice(0, state.charIndex);
 
   return (
     <span className="inline-block">
@@ -116,14 +117,18 @@ export default function LoginPage() {
   if (pending2FA) {
     return (
       <div className="relative flex min-h-screen flex-col md:flex-row overflow-hidden">
-        <div className="hidden md:flex md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-[#0a0a1a] via-[#0f0a2e] to-[#1a0a2e] p-8">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(34,211,238,0.12),transparent_50%)]" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_50%,rgba(168,85,247,0.12),transparent_50%)]" />
+        <div className="hidden md:flex md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-[#f0f7ff] via-[#e0f2fe] to-[#f5f0ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] p-8 relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.12),transparent_55%)] dark:bg-[radial-gradient(circle_at_20%_30%,rgba(34,211,238,0.18),transparent_55%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.12),transparent_55%)] dark:bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.18),transparent_55%)]" />
+          <div className="pointer-events-none absolute top-1/4 left-1/4 h-64 w-64 rounded-full bg-cyan-400/20 blur-[120px] dark:bg-cyan-400/30" />
+          <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-violet-500/20 blur-[120px] dark:bg-violet-500/30" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.03)_1px,transparent_1px)] bg-[size:40px_40px] dark:bg-[linear-gradient(rgba(34,211,238,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.04)_1px,transparent_1px)]" />
+
           <div className="relative z-10 text-center">
-            <h1 className="text-5xl font-bold leading-tight">
+            <h1 className="text-5xl font-bold leading-tight text-gradient-tech">
               <TypewriterText />
             </h1>
-            <p className="mt-6 text-lg text-muted-foreground/80 max-w-md mx-auto">
+            <p className="mt-6 text-lg text-muted-foreground/80 dark:text-muted-foreground/70 max-w-md mx-auto">
               Plataforma de marketing para equipos que marcan la diferencia
             </p>
             <div className="mt-10 flex items-center justify-center gap-6 text-xs text-muted-foreground/50">
@@ -137,12 +142,16 @@ export default function LoginPage() {
         </div>
 
         <div className="flex w-full md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-6">
+          <div className="absolute top-4 right-4">
+            <ThemeToggle />
+          </div>
+
           <div className="mb-8">
             <img src="/merco-light-mode.svg" alt="Merco" className="h-8 mx-auto dark:hidden" />
             <img src="/merco-dark-mode.svg" alt="Merco" className="h-8 mx-auto hidden dark:block" />
           </div>
 
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md border-border/50 dark:border-border/80">
             <CardHeader className="text-center">
               <div className="flex justify-center mb-2">
                 <ShieldCheck className="h-10 w-10 text-primary" />
@@ -195,14 +204,18 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col md:flex-row overflow-hidden">
-      <div className="hidden md:flex md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-[#0a0a1a] via-[#0f0a2e] to-[#1a0a2e] p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(34,211,238,0.12),transparent_50%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_50%,rgba(168,85,247,0.12),transparent_50%)]" />
+      <div className="hidden md:flex md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-[#f0f7ff] via-[#e0f2fe] to-[#f5f0ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] p-8 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.12),transparent_55%)] dark:bg-[radial-gradient(circle_at_20%_30%,rgba(34,211,238,0.18),transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.12),transparent_55%)] dark:bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.18),transparent_55%)]" />
+        <div className="pointer-events-none absolute top-1/4 left-1/4 h-64 w-64 rounded-full bg-cyan-400/20 blur-[120px] dark:bg-cyan-400/30" />
+        <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-violet-500/20 blur-[120px] dark:bg-violet-500/30" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.03)_1px,transparent_1px)] bg-[size:40px_40px] dark:bg-[linear-gradient(rgba(34,211,238,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.04)_1px,transparent_1px)]" />
+
         <div className="relative z-10 text-center">
-          <h1 className="text-5xl font-bold leading-tight">
+          <h1 className="text-5xl font-bold leading-tight text-gradient-tech">
             <TypewriterText />
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground/80 max-w-md mx-auto">
+          <p className="mt-6 text-lg text-muted-foreground/80 dark:text-muted-foreground/70 max-w-md mx-auto">
             Plataforma de marketing para equipos que marcan la diferencia
           </p>
           <div className="mt-10 flex items-center justify-center gap-6 text-xs text-muted-foreground/50">
@@ -215,13 +228,17 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="flex w-full md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-6">
+      <div className="flex w-full md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-[#ffffff] via-[#f8fafc] to-[#faf5ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] p-6">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+
         <div className="mb-8">
           <img src="/merco-light-mode.svg" alt="Merco" className="h-8 mx-auto dark:hidden" />
           <img src="/merco-dark-mode.svg" alt="Merco" className="h-8 mx-auto hidden dark:block" />
         </div>
 
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md border-border/50 dark:border-border/80">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">{_('login.welcome')}</CardTitle>
             <CardDescription>Ingresá tus credenciales para acceder</CardDescription>
