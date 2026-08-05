@@ -214,7 +214,8 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
       resetForm();
       await fetchNotes();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : 'Error al guardar');
+      console.error(e);
     } finally {
       setSaving(false);
     }
@@ -225,7 +226,8 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
       await apiRequest(`/api/sticky-notes/${id}`, 'DELETE');
       await fetchNotes();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : 'Error al eliminar');
+      console.error(e);
     }
   }
 
