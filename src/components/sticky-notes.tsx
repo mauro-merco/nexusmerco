@@ -30,6 +30,14 @@ interface StickyNote {
   updated_at: string;
 }
 
+function authHeaders() {
+  const token = useAuthStore.getState().token;
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export function StickyNotes() {
   const { user } = useAuthStore();
   const [notes, setNotes] = useState<StickyNote[]>([]);
@@ -44,14 +52,10 @@ export function StickyNotes() {
 
   const fetchNotes = useCallback(async () => {
     if (!user?.id) return;
+    setLoading(true);
     try {
-      const sessionRes = await fetch('/api/auth/session');
-      const session = await sessionRes.json();
-      const token = session.session?.access_token;
-      const res = await fetch('/api/sticky-notes', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
+      const res = await fetch('/api/sticky-notes', { headers: authHeaders() });
+      if (!res.ok) throw new Error('Error al cargar notas');
       const json = await res.json();
       setNotes(json.data || []);
     } catch { /* */ } finally {
@@ -59,20 +63,12 @@ export function StickyNotes() {
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
+  useEffect(() => { fetchNotes(); }, [fetchNotes]);
 
   async function apiRequest(url: string, method: string, body?: unknown) {
-    const sessionRes = await fetch('/api/auth/session');
-    const session = await sessionRes.json();
-    const token = session.session?.access_token;
     const res = await fetch(url, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authHeaders(),
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
