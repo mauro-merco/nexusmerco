@@ -78,6 +78,10 @@ export default function DocumentosPage() {
     }
   }, [createDocument, openEditor]);
 
+  const startNewNote = useCallback(() => {
+    setTab('notes');
+  }, []);
+
   const saveDoc = useCallback(async (t = title, c = content) => {
     if (!currentDoc) return;
     setSaving(true);
@@ -254,40 +258,32 @@ export default function DocumentosPage() {
   // List view
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-         <div>
-           <h1 className="text-gradient-tech text-2xl md:text-3xl font-bold tracking-tight">Centro de Documentos</h1>
-           <p className="text-muted-foreground mt-1 text-sm md:text-base">
-             Creá y organizá tus documentos. Compartilos con otros usuarios.
-           </p>
+         <div className="flex items-center gap-1 rounded-xl bg-muted/30 p-1 border border-border/50">
+           <button
+             type="button"
+             onClick={() => setTab('docs')}
+             className={cn(
+               'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
+               tab === 'docs'
+                 ? 'bg-background shadow-sm text-foreground ring-1 ring-border/50'
+                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+             )}
+           >
+             <FileText className="h-3.5 w-3.5" /> Documentos
+           </button>
+           <button
+             type="button"
+             onClick={() => setTab('notes')}
+             className={cn(
+               'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
+               tab === 'notes'
+                 ? 'bg-background shadow-sm text-foreground ring-1 ring-border/50'
+                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+             )}
+           >
+             <StickyNote className="h-3.5 w-3.5" /> Notas adhesivas
+           </button>
          </div>
-         <Button onClick={handleNew} variant="cta" size="cta" className="gap-2 shrink-0">
-           <Plus className="h-4 w-4" /> Nuevo documento
-         </Button>
-       </div>
-
-       <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1">
-         <button
-           type="button"
-           onClick={() => setTab('docs')}
-           className={cn(
-             'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-             tab === 'docs' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-           )}
-         >
-           <FileText className="h-3.5 w-3.5" /> Documentos
-         </button>
-         <button
-           type="button"
-           onClick={() => setTab('notes')}
-           className={cn(
-             'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-             tab === 'notes' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-           )}
-         >
-           <StickyNote className="h-3.5 w-3.5" /> Notas adhesivas
-         </button>
-       </div>
 
        {error && (
          <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
