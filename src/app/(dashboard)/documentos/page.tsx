@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,10 +16,11 @@ import { useDocuments } from '@/lib/hooks/use-documents';
 import { DocumentEditor } from '@/components/document-editor';
 import { DocumentShareDialog } from '@/components/document-share-dialog';
 import { DocumentAiDialog, type AiInsertMode } from '@/components/document-ai-dialog';
+import { StickyNotes } from '@/components/sticky-notes';
 import type { NexusDocument } from '@/lib/types';
 import {
   FileText, Plus, Share2, Trash2, ArrowLeft, Loader2, Search,
-  Clock, User, Save, Users, Sparkles,
+  Clock, User, Save, Users, Sparkles, StickyNote,
 } from 'lucide-react';
 
 function formatDate(iso: string) {
@@ -35,6 +37,7 @@ export default function DocumentosPage() {
   const { documents, loading, createDocument, getDocument, updateDocument, deleteDocument, refetch } = useDocuments();
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'list' | 'editor'>('list');
+  const [tab, setTab] = useState<'docs' | 'notes'>('docs');
   const [currentDoc, setCurrentDoc] = useState<NexusDocument | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -252,20 +255,43 @@ export default function DocumentosPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-gradient-tech text-2xl md:text-3xl font-bold tracking-tight">Centro de Documentos</h1>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">
-            Creá y organizá tus documentos. Compartilos con otros usuarios.
-          </p>
-        </div>
-        <Button onClick={handleNew} variant="cta" size="cta" className="gap-2 shrink-0">
-          <Plus className="h-4 w-4" /> Nuevo documento
-        </Button>
-      </div>
+         <div>
+           <h1 className="text-gradient-tech text-2xl md:text-3xl font-bold tracking-tight">Centro de Documentos</h1>
+           <p className="text-muted-foreground mt-1 text-sm md:text-base">
+             Creá y organizá tus documentos. Compartilos con otros usuarios.
+           </p>
+         </div>
+         <Button onClick={handleNew} variant="cta" size="cta" className="gap-2 shrink-0">
+           <Plus className="h-4 w-4" /> Nuevo documento
+         </Button>
+       </div>
 
-      {error && (
-        <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
-      )}
+       <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1">
+         <button
+           type="button"
+           onClick={() => setTab('docs')}
+           className={cn(
+             'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+             tab === 'docs' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+           )}
+         >
+           <FileText className="h-3.5 w-3.5" /> Documentos
+         </button>
+         <button
+           type="button"
+           onClick={() => setTab('notes')}
+           className={cn(
+             'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+             tab === 'notes' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+           )}
+         >
+           <StickyNote className="h-3.5 w-3.5" /> Notas adhesivas
+         </button>
+       </div>
+
+       {error && (
+         <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+       )}
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -275,33 +301,37 @@ export default function DocumentosPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
+       </div>
 
-      {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <Card key={i}>
-              <CardContent className="p-5 space-y-3">
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-4/5" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+       {tab === 'notes' ? (
+         <StickyNotes />
+       ) : (
+         <>
+       {loading && (
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+           {[1, 2, 3, 4, 5, 6].map(i => (
+             <Card key={i}>
+               <CardContent className="p-5 space-y-3">
+                 <Skeleton className="h-5 w-2/3" />
+                 <Skeleton className="h-3 w-full" />
+                 <Skeleton className="h-3 w-4/5" />
+               </CardContent>
+             </Card>
+           ))}
+         </div>
+       )}
 
-      {!loading && filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-4">
-          <FileText className="h-12 w-12 opacity-40" />
-          <p className="text-base font-medium">No hay documentos</p>
-          <Button onClick={handleNew} variant="cta" className="gap-2">
-            <Plus className="h-4 w-4" /> Crear el primero
-          </Button>
-        </div>
-      )}
+       {!loading && filtered.length === 0 && (
+         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-4">
+           <FileText className="h-12 w-12 opacity-40" />
+           <p className="text-base font-medium">No hay documentos</p>
+           <Button onClick={handleNew} variant="cta" className="gap-2">
+             <Plus className="h-4 w-4" /> Crear el primero
+           </Button>
+         </div>
+       )}
 
-      {!loading && filtered.length > 0 && (
+       {!loading && filtered.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((doc) => (
             <Card
@@ -353,16 +383,18 @@ export default function DocumentosPage() {
             </Card>
           ))}
         </div>
-      )}
+       )}
 
-      <DocumentShareDialog
-        document={shareTarget}
-        isOwner={isOwner(shareTarget)}
-        onShared={() => {
-          setShareTarget(null);
-          refetch();
-        }}
-      />
+       <DocumentShareDialog
+         document={shareTarget}
+         isOwner={isOwner(shareTarget)}
+         onShared={() => {
+           setShareTarget(null);
+           refetch();
+         }}
+       />
+       </>
+     )}
     </div>
   );
 }
