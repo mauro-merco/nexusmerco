@@ -25,21 +25,28 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Tag, Edit3, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const COLORS = [
-  '#fbbf24',
-  '#f87171',
-  '#60a5fa',
-  '#34d399',
-  '#a78bfa',
-  '#fb923c',
-  '#2dd4bf',
-  '#f472b6',
+const NOTE_COLORS = [
+  '#fef3c7', // amarillo claro
+  '#fee2e2', // rojo claro
+  '#dbeafe', // azul claro
+  '#dcfce7', // verde claro
+  '#ede9fe', // violeta claro
+  '#fce7f3', // rosa claro
+  '#d1fae5', // teal claro
+  '#fbcfe8', // fucsia claro
 ];
 
-const CATEGORY_PRESETS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+const CATEGORY_COLORS = [
+  '#ef4444', // rojo intenso
+  '#f59e0b', // amarillo intenso
+  '#10b981', // verde intenso
+  '#3b82f6', // azul intenso
+  '#8b5cf6', // violeta intenso
+  '#ec4899', // rosa intenso
+];
 
 interface StickyNote {
   id: string;
@@ -48,8 +55,15 @@ interface StickyNote {
   content: string;
   color: string;
   category: string;
+  category_color: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface CategoryInfo {
+  name: string;
+  color: string;
+  count: number;
 }
 
 function getContrastTextColor(bgColor: string): string {
@@ -91,7 +105,9 @@ function SortableNote({
   } = useSortable({ id: note.id });
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform?.toString(transform) ?? (transform ? `${transform.x}px, ${transform.y}px` : undefined),
+    transform:
+      CSS.Transform?.toString(transform) ??
+      (transform ? `${transform.x}px, ${transform.y}px` : undefined),
     transition,
     zIndex: isDragging ? 50 : undefined,
   };
@@ -99,67 +115,119 @@ function SortableNote({
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, backgroundColor: note.color }}
+      style={{
+        ...style,
+      }}
       {...attributes}
       className={cn(
-        'relative rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group',
-        isDragging && 'opacity-50'
+        'relative cursor-pointer group transition-all duration-200',
+        isDragging && 'opacity-50',
       )}
       onClick={() => onEdit(note)}
     >
       <div
-        {...listeners}
-        className="absolute top-1 left-1 cursor-grab rounded p-0.5 opacity-0 group-hover:opacity-100 hover:bg-black/10"
+        className={cn(
+          'relative rounded-[1.25rem] p-4 overflow-hidden',
+          'before:absolute before:inset-0 before:rounded-[1.25rem] before:backdrop-blur-sm',
+          'before:bg-white/10 dark:before:bg-black/20',
+          'before:border before:border-white/20 dark:before:border-white/5',
+          'shadow-lg hover:shadow-xl',
+          isDragging && 'opacity-50',
+        )}
+        style={{
+          backgroundColor: note.color,
+        }}
       >
-        <GripVertical className="h-3.5 w-3.5" style={{ color: textColor }} />
-      </div>
-
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onDelete(note.id); }}
-        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 hover:bg-black/10"
-        style={{ color: textColor }}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-
-      {note.category && (
-        <Badge
-          className="absolute top-6 left-1 text-xs px-1.5 py-0.5"
-          style={{ backgroundColor: note.category, color: getContrastTextColor(note.category) }}
+        {/* Drag handle */}
+        <div
+          {...listeners}
+          className="absolute top-3 left-3 z-10 cursor-grab rounded-lg p-1 bg-white/20 dark:bg-black/20 backdrop-blur-sm opacity-0 group-hover:opacity-100 hover:bg-white/30 dark:hover:bg-black/30 transition-opacity"
         >
-          {note.category}
-        </Badge>
-      )}
+          <GripVertical className="h-3.5 w-3.5" style={{ color: textColor }} />
+        </div>
 
-      <div className="mt-5">
-        {note.title && (
-          <h3 className="font-bold text-sm mb-1 line-clamp-2" style={{ color: textColor }}>
-            {note.title}
-          </h3>
+        {/* Delete button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(note.id);
+          }}
+          className="absolute top-3 right-3 z-10 cursor-pointer rounded-lg p-1 bg-white/20 dark:bg-black/20 backdrop-blur-sm opacity-0 group-hover:opacity-100 hover:bg-red-500/30 transition-colors"
+          style={{ color: textColor }}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Category pill */}
+        {note.category && note.category_color && (
+          <div
+            className="absolute top-10 left-3 z-10"
+            style={{
+              backgroundColor: note.category_color,
+              color: getContrastTextColor(note.category_color),
+            }}
+          >
+            <Badge
+              variant="secondary"
+              className="text-xs px-2 py-1 font-medium rounded-lg shadow-sm"
+              style={{
+                backgroundColor: note.category_color,
+                color: getContrastTextColor(note.category_color),
+              }}
+            >
+              {note.category}
+            </Badge>
+          </div>
         )}
-        {note.content && (
-          <p className="text-xs leading-relaxed line-clamp-3 opacity-80" style={{ color: textColor }}>
-            {note.content}
-          </p>
-        )}
+
+        {/* Content */}
+        <div className={cn('mt-1', note.category && note.category_color ? 'mt-8' : 'mt-1')}>
+          {note.title && (
+            <h3
+              className="font-bold text-sm mb-1 line-clamp-2 drop-shadow-sm"
+              style={{ color: textColor }}
+            >
+              {note.title}
+            </h3>
+          )}
+          {note.content && (
+            <p
+              className="text-xs leading-relaxed line-clamp-3 opacity-80 drop-shadow-sm"
+              style={{ color: textColor }}
+            >
+              {note.content}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew?: boolean; onTriggerNew?: () => void }) {
+export function StickyNotes({
+  triggerStartNew,
+  onTriggerNew,
+}: {
+  triggerStartNew?: boolean;
+  onTriggerNew?: () => void;
+}) {
   const { user } = useAuthStore();
   const [notes, setNotes] = useState<StickyNote[]>([]);
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState(NOTE_COLORS[0]);
   const [category, setCategory] = useState('');
+  const [categoryColor, setCategoryColor] = useState(CATEGORY_COLORS[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryColor, setEditCategoryColor] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -181,12 +249,33 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
       if (!res.ok) throw new Error('Error al cargar notas');
       const json = await res.json();
       setNotes(json.data || []);
-    } catch { /* */ } finally {
+      // Derive categories from notes
+      const catMap = new Map<string, { color: string; count: number }>();
+      for (const n of json.data || []) {
+        if (n.category) {
+          if (!catMap.has(n.category)) {
+            catMap.set(n.category, { color: n.category_color || '#6366f1', count: 0 });
+          }
+          catMap.get(n.category)!.count++;
+        }
+      }
+      setCategories(
+        Array.from(catMap.entries()).map(([name, info]) => ({
+          name,
+          color: info.color,
+          count: info.count,
+        })),
+      );
+    } catch {
+      /* */
+    } finally {
       setLoading(false);
     }
   }, [user?.id]);
 
-  useEffect(() => { fetchNotes(); }, [fetchNotes]);
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
 
   async function apiRequest(url: string, method: string, body?: unknown) {
     const res = await fetch(url, {
@@ -207,9 +296,21 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
     setError(null);
     try {
       if (editingId) {
-        await apiRequest(`/api/sticky-notes/${editingId}`, 'PUT', { title, content, color, category });
+        await apiRequest(`/api/sticky-notes/${editingId}`, 'PUT', {
+          title,
+          content,
+          color,
+          category: category || '',
+          category_color: category ? categoryColor : null,
+        });
       } else {
-        await apiRequest('/api/sticky-notes', 'POST', { title, content, color, category });
+        await apiRequest('/api/sticky-notes', 'POST', {
+          title,
+          content,
+          color,
+          category: category || '',
+          category_color: category ? categoryColor : null,
+        });
       }
       resetForm();
       await fetchNotes();
@@ -231,12 +332,38 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
     }
   }
 
+  async function handleDeleteCategory(catName: string) {
+    try {
+      await apiRequest('/api/sticky-notes/categories', 'DELETE', { category: catName });
+      await fetchNotes();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al eliminar categoría');
+      console.error(e);
+    }
+  }
+
+  async function handleEditCategory(catName: string) {
+    try {
+      await apiRequest('/api/sticky-notes/categories', 'PUT', {
+        oldCategory: catName,
+        newCategory: editCategoryName,
+        newColor: editCategoryColor,
+      });
+      setEditingCategory(null);
+      await fetchNotes();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al editar categoría');
+      console.error(e);
+    }
+  }
+
   function startEdit(note: StickyNote) {
     setEditingId(note.id);
     setTitle(note.title);
     setContent(note.content);
     setColor(note.color);
     setCategory(note.category || '');
+    setCategoryColor(note.category_color || CATEGORY_COLORS[0]);
     setShowForm(true);
   }
 
@@ -248,8 +375,9 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
   function resetForm() {
     setTitle('');
     setContent('');
-    setColor(COLORS[0]);
+    setColor(NOTE_COLORS[0]);
     setCategory('');
+    setCategoryColor(CATEGORY_COLORS[0]);
     setEditingId(null);
     setShowForm(false);
   }
@@ -259,98 +387,287 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
     if (!over || active.id === over.id) return;
     setNotes((prev) => {
       const oldIndex = prev.findIndex((n) => n.id === active.id);
-      const newIndex = prev.findIndex((n) => n.id === over!.id);
+      const newIndex = prev.findIndex((n) => n.id === over.id);
       return arrayMove(prev, oldIndex, newIndex);
     });
   };
 
-  const uncategorizedNotes = notes.filter(n => !n.category);
-  const categoriesMap = new Map<string, StickyNote[]>();
-  notes.filter(n => n.category).forEach(note => {
-    if (!categoriesMap.has(note.category)) categoriesMap.set(note.category, []);
-    categoriesMap.get(note.category)!.push(note);
-  });
-  const categorizedNotes = Array.from(categoriesMap.entries()).map(([category, categoryNotes]) => ({
-    category,
-    notes: categoryNotes,
+  const groupNotesByCategory = (catNotes: StickyNote[]): StickyNote[] => {
+    return catNotes;
+  };
+
+  const uncategorizedNotes = notes.filter((n) => !n.category);
+  const categorizedNotes = categories.map((cat) => ({
+    category: cat.name,
+    color: cat.color,
+    count: cat.count,
+    notes: notes.filter((n) => n.category === cat.name),
   }));
 
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-32 rounded-xl bg-muted/50 animate-pulse" />
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-32 rounded-[1.25rem] bg-muted/50 animate-pulse" />
         ))}
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-bold">Notas adhesivas</h2>
+  function CategorySection({
+    categoryName,
+    categoryColor,
+    catNotes,
+  }: {
+    categoryName: string;
+    categoryColor: string;
+    catNotes: StickyNote[];
+  }) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2.5 mb-3">
+          <div
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: categoryColor }}
+          />
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {categoryName}
+          </h3>
+          <Badge
+            variant="secondary"
+            className="text-xs"
+            style={{
+              backgroundColor: categoryColor,
+              color: getContrastTextColor(categoryColor),
+            }}
+          >
+            {catNotes.length}
+          </Badge>
 
-      {error && (
-        <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
-      )}
+          {/* Edit category */}
+          {editingCategory !== categoryName && (
+            <button
+              onClick={() => {
+                setEditingCategory(categoryName);
+                setEditCategoryName(categoryName);
+                setEditCategoryColor(categoryColor);
+              }}
+              className="ml-auto p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              title="Editar categoría"
+            >
+              <Edit3 className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
+            </button>
+          )}
 
-      {showForm && (
-        <Card className="border-border/50">
-          <CardContent className="p-4 space-y-3">
+          {/* Delete category */}
+          {editingCategory !== categoryName && (
+            <button
+              onClick={() => handleDeleteCategory(categoryName)}
+              className="p-1 rounded-lg hover:bg-red-500/20 transition-colors"
+              title="Eliminar categoría"
+            >
+              <X className="h-3.5 w-3.5 text-red-500" />
+            </button>
+          )}
+        </div>
+
+        {editingCategory === categoryName && (
+          <div className="mb-3 p-3 rounded-xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 space-y-2">
             <Input
-              placeholder="Título..."
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className="h-10 rounded-xl text-base"
-              autoFocus
+              placeholder="Nombre de la categoría..."
+              value={editCategoryName}
+              onChange={(e) => setEditCategoryName(e.target.value)}
+              className="h-8 rounded-lg text-sm"
             />
-            <Textarea
-              placeholder="Escribí tu nota..."
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              className="min-h-[80px] rounded-xl text-base resize-none"
-            />
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-muted-foreground">Color:</span>
-              {COLORS.map(c => (
+              {CATEGORY_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setColor(c)}
+                  onClick={() => setEditCategoryColor(c)}
                   className={cn(
-                    'h-7 w-7 rounded-lg border-2 transition-all active:scale-90',
-                    color === c ? 'border-foreground scale-110' : 'border-transparent'
-                  )}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">Categoría:</span>
-              <Input
-                type="text"
-                placeholder="Nombre de la categoría..."
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-                className="h-8 rounded-lg text-sm max-w-[150px]"
-              />
-              {CATEGORY_PRESETS.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(c)}
-                  className={cn(
-                    'h-5 w-5 rounded border-2 transition-all active:scale-90',
-                    category === c ? 'scale-110 border-foreground' : 'border-transparent'
+                    'h-6 w-6 rounded-lg border-2 transition-all active:scale-90',
+                    editCategoryColor === c
+                      ? 'border-foreground scale-110'
+                      : 'border-transparent',
                   )}
                   style={{ backgroundColor: c }}
                 />
               ))}
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSave} variant="cta" size="cta" disabled={saving || !title.trim()}>
+              <Button
+                size="sm"
+                variant="cta"
+                onClick={handleEditCategory.bind(null, categoryName)}
+                disabled={!editCategoryName.trim()}
+              >
+                <Check className="h-3.5 w-3.5 mr-1" />
+                Guardar
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditingCategory(null)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={catNotes.map((n) => n.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {catNotes.map((note) => (
+                <SortableNote
+                  key={note.id}
+                  note={note}
+                  onEdit={startEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+          Notas adhesivas
+        </h2>
+        <Button
+          variant="cta"
+          size="cta"
+          onClick={startNew}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" /> Nueva nota
+        </Button>
+      </div>
+
+      {error && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+
+      {showForm && (
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-lg">
+          <CardContent className="p-4 space-y-3">
+            <Input
+              placeholder="Título..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-10 rounded-xl text-base"
+              autoFocus
+            />
+            <Textarea
+              placeholder="Escribí tu nota..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="min-h-[80px] rounded-xl text-base resize-none"
+            />
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground">Color:</span>
+                {NOTE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={cn(
+                      'h-7 w-7 rounded-xl border-2 transition-all active:scale-90',
+                      color === c
+                        ? 'border-foreground scale-110'
+                        : 'border-gray-300 dark:border-gray-600',
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Categoría:</span>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="Nombre de la categoría..."
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="h-8 rounded-lg text-sm pr-8 max-w-[200px]"
+                    list="category-list"
+                  />
+                  <datalist id="category-list">
+                    {categories.map((c) => (
+                      <option key={c.name} value={c.name} />
+                    ))}
+                  </datalist>
+                </div>
+
+                {category && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">Color:</span>
+                    {CATEGORY_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setCategoryColor(c)}
+                        className={cn(
+                          'h-5 w-5 rounded-lg border-2 transition-all active:scale-90',
+                          categoryColor === c
+                            ? 'scale-110 border-foreground'
+                            : 'border-transparent',
+                        )}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {category && (
+                <div className="flex items-center gap-2 pl-6">
+                  <Badge
+                    variant="outline"
+                    className="text-xs"
+                    style={{
+                      backgroundColor: categoryColor,
+                      color: getContrastTextColor(categoryColor),
+                    }}
+                  >
+                    {category}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                onClick={handleSave}
+                variant="cta"
+                size="cta"
+                disabled={saving || !title.trim()}
+              >
                 {saving ? 'Guardando...' : editingId ? 'Guardar' : 'Crear'}
               </Button>
-              <Button variant="outline" onClick={resetForm}>
+              <Button variant="outline" size="cta" onClick={resetForm}>
                 Cancelar
               </Button>
             </div>
@@ -370,15 +687,27 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
 
       {uncategorizedNotes.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">Sin categoría</h3>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-2.5 w-2.5 rounded-full bg-gray-400" />
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Sin categoría
+            </h3>
+            <Badge variant="secondary" className="text-xs">
+              {uncategorizedNotes.length}
+            </Badge>
+          </div>
+
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext items={uncategorizedNotes.map(n => n.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              items={uncategorizedNotes.map((n) => n.id)}
+              strategy={verticalListSortingStrategy}
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {uncategorizedNotes.map(note => (
+                {uncategorizedNotes.map((note) => (
                   <SortableNote
                     key={note.id}
                     note={note}
@@ -392,56 +721,14 @@ export function StickyNotes({ triggerStartNew, onTriggerNew }: { triggerStartNew
         </div>
       )}
 
-      {categorizedNotes.map(({ category: cat, notes: catNotes }) => {
-        const catColor = cat.startsWith('#') ? cat : '#6366f1';
-        return (
-          <div key={cat} className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: catColor }} />
-              <h3 className="text-sm font-medium">{cat.replace(/^#/, '')}</h3>
-              <Badge style={{ backgroundColor: catColor, color: getContrastTextColor(catColor) }}>
-                {catNotes.length}
-              </Badge>
-            </div>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={(e) => {
-                const { active, over } = e;
-                if (!over || active.id === over.id) return;
-                const oldIndex = catNotes.findIndex((n) => n.id === active.id);
-                const newIndex = catNotes.findIndex((n) => n.id === over.id);
-                if (oldIndex !== newIndex) {
-                  const newCatNotes = arrayMove(catNotes, oldIndex, newIndex);
-                  setNotes(prev => {
-                    const newNotes = [...prev];
-                    let writeIndex = 0;
-                    for (let i = 0; i < newNotes.length; i++) {
-                      if (newNotes[i].category === cat) {
-                        newNotes[i] = newCatNotes[writeIndex++];
-                      }
-                    }
-                    return newNotes;
-                  });
-                }
-              }}
-            >
-              <SortableContext items={catNotes.map(n => n.id)} strategy={verticalListSortingStrategy}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {catNotes.map(note => (
-                    <SortableNote
-                      key={note.id}
-                      note={note}
-                      onEdit={startEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </div>
-        );
-      })}
+      {categorizedNotes.map((cat) => (
+        <CategorySection
+          key={cat.category}
+          categoryName={cat.category}
+          categoryColor={cat.color}
+          catNotes={cat.notes}
+        />
+      ))}
     </div>
   );
 }

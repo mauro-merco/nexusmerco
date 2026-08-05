@@ -28,7 +28,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const body = await request.json();
-    const { title, content, color, category } = body as { title?: string; content?: string; color?: string; category?: string };
+    const { title, content, color, category, category_color } = body as { title?: string; content?: string; color?: string; category?: string; category_color?: string };
 
     const { data, error } = await supabase
       .from('sticky_notes')
@@ -37,6 +37,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         content,
         color,
         category,
+        category_color,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
