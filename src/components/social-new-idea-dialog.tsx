@@ -28,6 +28,7 @@ interface SocialNewIdeaDialogProps {
     description?: string;
     brief?: string;
     eje_contenido?: string;
+    copy_text?: string;
     responsable?: Responsable;
     post_type: PostType;
     status?: IdeaStatus;
@@ -40,6 +41,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
   const [publishDate, setPublishDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const [ejeContenido, setEjeContenido] = useState('');
   const [brief, setBrief] = useState('');
+  const [copyText, setCopyText] = useState('');
   const [description, setDescription] = useState('');
   const [postType, setPostType] = useState<PostType>('historia');
   const [status, setStatus] = useState<IdeaStatus>('borrador');
@@ -52,6 +54,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
       setResponsable('mau');
       setEjeContenido('');
       setBrief('');
+      setCopyText('');
       setDescription('');
       setPostType('historia');
       setStatus('borrador');
@@ -73,6 +76,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
         description: description.trim(),
         brief: brief.trim(),
         eje_contenido: ejeContenido.trim(),
+        copy_text: copyText.trim(),
         responsable,
         post_type: postType,
         status,
@@ -167,6 +171,16 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
               placeholder="Descripción general de la publicación..."
               value={brief}
               onChange={(e) => setBrief(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>COPY</Label>
+            <textarea
+              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[60px] resize-none"
+              placeholder="Texto del copy para la publicación..."
+              value={copyText}
+              onChange={(e) => setCopyText(e.target.value)}
             />
           </div>
 

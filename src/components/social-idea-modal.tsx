@@ -46,6 +46,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
   const [title, setTitle] = useState(idea.title);
   const [description, setDescription] = useState(idea.description);
   const [brief, setBrief] = useState(idea.brief || '');
+  const [copyText, setCopyText] = useState(idea.copy_text || '');
   const [ejeContenido, setEjeContenido] = useState(idea.eje_contenido || '');
   const [responsable, setResponsable] = useState<Responsable>(idea.responsable || 'mau');
   const [postType, setPostType] = useState<PostType>(idea.post_type);
@@ -63,6 +64,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     setTitle(idea.title);
     setDescription(idea.description);
     setBrief(idea.brief || '');
+    setCopyText(idea.copy_text || '');
     setEjeContenido(idea.eje_contenido || '');
     setResponsable(idea.responsable || 'mau');
     setPostType(idea.post_type);
@@ -81,7 +83,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title, description, brief, eje_contenido: ejeContenido,
+          title, description, brief, eje_contenido: ejeContenido, copy_text: copyText,
           responsable, post_type: postType, status, publish_date: publishDate,
         }),
       });
@@ -94,7 +96,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     } finally {
       setSaving(false);
     }
-  }, [idea.id, title, description, brief, ejeContenido, responsable, postType, status, publishDate, onIdeaUpdated]);
+  }, [idea.id, title, description, brief, copyText, ejeContenido, responsable, postType, status, publishDate, onIdeaUpdated]);
 
   const handleQuickStatusChange = useCallback(async (newStatus: IdeaStatus) => {
     if (newStatus === idea.status) return;
@@ -188,7 +190,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
               </Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setSaveError(null); setTitle(idea.title); setDescription(idea.description); setBrief(idea.brief || ''); setEjeContenido(idea.eje_contenido || ''); setResponsable(idea.responsable || 'mau'); setPostType(idea.post_type); setStatus(idea.status); setPublishDate(idea.publish_date); }}>
+                   <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setSaveError(null); setTitle(idea.title); setDescription(idea.description); setBrief(idea.brief || ''); setCopyText(idea.copy_text || ''); setEjeContenido(idea.eje_contenido || ''); setResponsable(idea.responsable || 'mau'); setPostType(idea.post_type); setStatus(idea.status); setPublishDate(idea.publish_date); }}>
                   Cancelar
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -294,6 +296,16 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                   </div>
 
                   <div className="space-y-1.5">
+                    <Label>COPY</Label>
+                    <textarea
+                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm min-h-[60px] resize-none"
+                      value={copyText}
+                      onChange={(e) => setCopyText(e.target.value)}
+                      placeholder="Texto del copy para la publicación..."
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
                     <Label>Tipo</Label>
                     <div className="flex gap-2">
                       {POST_TYPES.map(pt => {
@@ -340,13 +352,19 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                       <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.brief}</p>
                     </div>
                   )}
-                  {idea.description && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Guión / Descripción</p>
-                      <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.description}</p>
-                    </div>
-                  )}
-                  {!idea.eje_contenido && !idea.brief && !idea.description && (
+                   {idea.description && (
+                     <div>
+                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Guión / Descripción</p>
+                       <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.description}</p>
+                     </div>
+                   )}
+                   {idea.copy_text && (
+                     <div>
+                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Copy</p>
+                       <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.copy_text}</p>
+                     </div>
+                   )}
+                   {!idea.eje_contenido && !idea.brief && !idea.description && !idea.copy_text && (
                     <p className="text-sm text-muted-foreground italic">Sin contenido</p>
                   )}
                 </div>

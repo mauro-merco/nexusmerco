@@ -41,7 +41,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (body.status !== undefined) updates.status = body.status;
     if (body.publish_date !== undefined) updates.publish_date = body.publish_date;
 
-    const newCols = ['brief', 'eje_contenido', 'responsable'];
+     if (body.copy_text !== undefined) updates.copy_text = body.copy_text;
+
+     const newCols = ['brief', 'eje_contenido', 'responsable', 'copy_text'];
     let result = await supabase
       .from('social_ideas')
       .update(updates)

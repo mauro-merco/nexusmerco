@@ -127,6 +127,7 @@ export interface SocialIdea {
   description: string;
   brief: string;
   eje_contenido: string;
+  copy_text: string;
   responsable: Responsable;
   post_type: PostType;
   status: IdeaStatus;

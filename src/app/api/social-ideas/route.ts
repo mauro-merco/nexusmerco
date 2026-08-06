@@ -53,7 +53,7 @@ async function insertIdea(payload: Record<string, unknown>) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { client_id, title, description, brief, eje_contenido, responsable, post_type, status, publish_date, author_id } = body;
+    const { client_id, title, description, brief, eje_contenido, copy_text, responsable, post_type, status, publish_date, author_id } = body;
 
     if (!client_id || !title || !post_type || !publish_date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       description: description || '',
       brief: brief || '',
       eje_contenido: eje_contenido || '',
+      copy_text: copy_text || '',
       responsable: responsable || 'mau',
       post_type,
       status: status || 'borrador',
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
     let result = await insertIdea(fullPayload);
 
     if (result.error && (result.error.code === '42703' || result.error.message?.includes('column'))) {
-      const { brief: _b, eje_contenido: _e, responsable: _r, ...fallbackPayload } = fullPayload;
+      const { brief: _b, eje_contenido: _e, responsable: _r, copy_text: _c, ...fallbackPayload } = fullPayload;
       result = await insertIdea(fallbackPayload);
     }
 

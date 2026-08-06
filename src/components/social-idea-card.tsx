@@ -99,6 +99,11 @@ export function SocialIdeaCard({ idea, attachments = [], onClick, onStatusChange
         {!idea.brief && idea.description && (
           <p className={cn('text-xs text-muted-foreground line-clamp-2 mb-2', isPublished && 'blur-[1px]')}>{idea.description}</p>
         )}
+        {idea.copy_text && (
+          <p className={cn('text-xs line-clamp-2 mb-2 font-medium', isPublished && 'blur-[1px]', 'text-foreground/90')}>
+            {idea.copy_text}
+          </p>
+        )}
         {attachments.length > 0 && (
           <div className={cn('flex flex-wrap gap-1 mb-2', isPublished && 'blur-[1px]')}>
             {attachments.map((att, i) => (
