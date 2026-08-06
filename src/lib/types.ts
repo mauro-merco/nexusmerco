@@ -153,6 +153,8 @@ export interface SocialComment {
   user_id: string;
   content: string;
   parent_id: string | null;
+  guest_name: string | null;
+  action_type: string;
   created_at: string;
   user?: User;
   replies?: SocialComment[];

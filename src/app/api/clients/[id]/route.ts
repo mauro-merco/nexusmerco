@@ -37,7 +37,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, logo_url, description, industry, campaign_types, plan, status, public_enabled, public_description, social_calendar_enabled, analysis_enabled } = body;
+    const { name, logo_url, description, industry, campaign_types, plan, status, public_enabled, public_description, social_calendar_enabled, analysis_enabled, share_token } = body;
 
     if (name !== undefined && !name.trim()) {
       return NextResponse.json({ error: 'El nombre no puede estar vacío' }, { status: 400 });
@@ -56,6 +56,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (public_description !== undefined) updates.public_description = public_description;
     if (social_calendar_enabled !== undefined) updates.social_calendar_enabled = social_calendar_enabled;
     if (analysis_enabled !== undefined) updates.analysis_enabled = analysis_enabled;
+    if (share_token !== undefined) updates.share_token = share_token;
 
     let { data, error } = await supabase
       .from('clients')

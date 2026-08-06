@@ -25,7 +25,7 @@ async function ensureMigration() {
           Authorization: `Bearer ${supabaseServiceKey}`,
         },
         body: JSON.stringify({
-          query: 'ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS social_calendar_enabled BOOLEAN DEFAULT FALSE; ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS analysis_enabled BOOLEAN DEFAULT TRUE;',
+          query: 'ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS social_calendar_enabled BOOLEAN DEFAULT FALSE; ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS analysis_enabled BOOLEAN DEFAULT TRUE; ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS share_token UUID DEFAULT gen_random_uuid();',
         }),
       });
       if (!res.ok) {
@@ -120,6 +120,7 @@ export async function POST(request: Request) {
       industry: industry || '',
       plan: plan || 'basic',
       status: status || 'active',
+      share_token: crypto.randomUUID(),
     };
     if (campaign_types !== undefined) insertData.campaign_types = campaign_types;
     if (social_calendar_enabled !== undefined) insertData.social_calendar_enabled = social_calendar_enabled;

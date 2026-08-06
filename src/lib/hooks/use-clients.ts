@@ -15,6 +15,7 @@ export interface ClientRecord {
   public_description: string;
   social_calendar_enabled: boolean;
   analysis_enabled: boolean;
+  share_token: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -33,6 +33,7 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
     description?: string;
     brief?: string;
     eje_contenido?: string;
+    copy_text?: string;
     responsable?: Responsable;
     post_type: PostType;
     status?: IdeaStatus;
@@ -55,6 +56,7 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
     description: string;
     brief: string;
     eje_contenido: string;
+    copy_text: string;
     responsable: Responsable;
     post_type: PostType;
     status: IdeaStatus;

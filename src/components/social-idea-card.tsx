@@ -93,6 +93,11 @@ export function SocialIdeaCard({ idea, attachments = [], onClick, onStatusChange
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        {idea.copy_text && (
+          <p className={cn('text-xs line-clamp-2 mb-2 font-medium', isPublished && 'blur-[1px]', 'text-foreground/90')}>
+            {idea.copy_text}
+          </p>
+        )}
         {idea.brief && (
           <p className={cn('text-xs text-muted-foreground line-clamp-2 mb-2', isPublished && 'blur-[1px]')}>{idea.brief}</p>
         )}
