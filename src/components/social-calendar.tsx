@@ -23,7 +23,7 @@ import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { SocialIdeaCard } from '@/components/social-idea-card';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
-import { ChevronLeft, ChevronRight, Plus, Calendar, Loader2, GripVertical, Check, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, Loader2, GripVertical, Check, ChevronDown, Copy, Share, RefreshCw } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
 
@@ -185,6 +185,9 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
   const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
 
   const { ideas, loading, createIdea, updateIdea, deleteIdea, patchIdea } = useSocialIdeas(clientId, monthStr);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [showNewIdea, setShowNewIdea] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
@@ -195,6 +198,27 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
     setSelectedIdea(updated);
     patchIdea(updated);
   }, [patchIdea]);
+
+  // Fetch client share token
+  const fetchShareToken = useCallback(async () => {
+    if (!clientId) return;
+    setShareLoading(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setShareToken(json.data?.share_token || null);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setShareLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    fetchShareToken();
+  }, [fetchShareToken]);
 
   useEffect(() => {
     if (ideas.length === 0) { setAttachmentsByIdea({}); return; }
@@ -309,6 +333,60 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
           <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="cta" size="cta" className="gap-2">
             <Plus className="h-4 w-4" /> Nueva Idea
           </Button>
+
+          {shareToken && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={async () => {
+                  const link = `${window.location.origin}/c/${shareToken}`;
+                  await navigator.clipboard.writeText(link);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? '¡Copiado!' : 'Compartir calendario'}
+              </Button>
+              <a
+                href={`/c/${shareToken}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+              >
+                <Share className="h-3.5 w-3.5 mr-1" /> Ver landing
+              </a>
+            </div>
+          )}
+
+          {!shareToken && !shareLoading && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={async () => {
+                // This will trigger the auto-migration to generate the share_token
+                // We need to ensure the token exists
+                try {
+                  const res = await fetch(`/api/clients/${clientId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ share_token: crypto.randomUUID() }),
+                  });
+                  if (res.ok) {
+                    const json = await res.json();
+                    setShareToken(json.data?.share_token);
+                  }
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              <Share className="h-3.5 w-3.5" /> Generar link
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
