@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -52,6 +52,17 @@ export function DocumentEditor({
   readOnly?: boolean;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const isExternalUpdate = useRef(false);
+
+  // Update the editor's content only when initialContent changes from outside
+  // (not from user input), to avoid cursor jumps
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (editorRef.current.innerHTML === initialContent) return;
+    isExternalUpdate.current = true;
+    editorRef.current.innerHTML = initialContent;
+    isExternalUpdate.current = false;
+  }, [initialContent]);
 
   const exec = useCallback((cmd: string, value?: string) => {
     const el = editorRef.current;
@@ -64,6 +75,16 @@ export function DocumentEditor({
     }
     document.execCommand(cmd, false, value);
     if (onChange && el.innerHTML) onChange(el.innerHTML);
+  }, [onChange]);
+
+  const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    if (isExternalUpdate.current) return;
+    if (onChange) onChange(e.currentTarget.innerHTML);
+  }, [onChange]);
+
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+    if (isExternalUpdate.current) return;
+    if (onChange) onChange(e.currentTarget.innerHTML);
   }, [onChange]);
 
   const ToolbarGroup = ({ tools }: { tools: Tool[] }) => (
@@ -146,9 +167,8 @@ export function DocumentEditor({
           fontSize: '1rem',
           color: 'var(--foreground)',
         }}
-        dangerouslySetInnerHTML={{ __html: initialContent }}
-        onInput={(e) => onChange((e.currentTarget as HTMLDivElement).innerHTML)}
-        onBlur={(e) => onChange((e.currentTarget as HTMLDivElement).innerHTML)}
+        onInput={handleInput}
+        onBlur={handleBlur}
       />
     </div>
   );
