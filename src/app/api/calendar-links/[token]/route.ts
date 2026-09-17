@@ -4,60 +4,18 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-let migrationChecked = false;
-
-async function ensureMigration() {
-  if (migrationChecked) return;
-  migrationChecked = true;
-  try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseServiceKey,
-        Authorization: `Bearer ${supabaseServiceKey}`,
-      },
-      body: JSON.stringify({
-        query: `
-          ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS share_token UUID DEFAULT gen_random_uuid();
-          ALTER TABLE public.social_comments ADD COLUMN IF NOT EXISTS guest_name TEXT;
-          ALTER TABLE public.social_comments ADD COLUMN IF NOT EXISTS action_type TEXT DEFAULT 'comment';
-        `,
-      }),
-    });
-    if (!res.ok) {
-      console.warn('Auto-migration: exec_sql not available, run 00030 manually');
-    }
-  } catch {
-    // ignore
-  }
-}
-
 function getAdmin() {
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
   });
 }
 
-function getCurrentUserId(request: Request): string | null {
-  const authHeader = request.headers.get('authorization') || '';
-  const token = authHeader.replace('Bearer ', '');
-  if (!token) return null;
+export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    return payload.sub || null;
-  } catch {
-    return null;
-  }
-}
-
-export async function GET(request: Request) {
-  try {
-    await ensureMigration();
+    const { token } = await params;
     const url = new URL(request.url);
-    const token = url.searchParams.get('token');
     const month = url.searchParams.get('month');
-    const userId = getCurrentUserId(request);
+    const type = url.searchParams.get('type') || 'social'; // 'social' | 'ads'
 
     if (!token) {
       return NextResponse.json({ error: 'Token requerido' }, { status: 400 });
@@ -68,7 +26,7 @@ export async function GET(request: Request) {
     // Look up client by share_token
     const { data: client, error: clientError } = await supabase
       .from('clients')
-      .select('id, name, logo_url, share_token')
+      .select('id, name, logo_url, share_token, social_calendar_enabled, ads_calendar_enabled')
       .eq('share_token', token)
       .single();
 
@@ -76,9 +34,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Calendario no encontrado' }, { status: 404 });
     }
 
-    // Fetch ideas for this client
+    // Validate the requested calendar type is enabled
+    if (type === 'ads' && !client.ads_calendar_enabled) {
+      return NextResponse.json({ error: 'Calendario ADS no disponible para este cliente' }, { status: 404 });
+    }
+    if (type === 'social' && !client.social_calendar_enabled) {
+      return NextResponse.json({ error: 'Calendario de redes no disponible para este cliente' }, { status: 404 });
+    }
+
+    const table = type === 'ads' ? 'ads_ideas' : 'social_ideas';
+
+    // Fetch ideas
     let query = supabase
-      .from('social_ideas')
+      .from(table)
       .select('*')
       .eq('client_id', client.id)
       .order('publish_date', { ascending: true });
@@ -92,10 +60,9 @@ export async function GET(request: Request) {
     const { data: ideas, error: ideasError } = await query;
     if (ideasError) throw ideasError;
 
-    // Fetch attachments for these ideas
+    // Fetch attachments (social only — ads doesn't have attachments yet)
     let attachments: Record<string, { url: string; name: string; type: string }[]> = {};
-    if (ideas && ideas.length > 0) {
-      const ideaIds = ideas.map((i) => i.id).join(',');
+    if (type === 'social' && ideas && ideas.length > 0) {
       const { data: atts } = await supabase
         .from('social_attachments')
         .select('*')
@@ -104,20 +71,17 @@ export async function GET(request: Request) {
       if (atts) {
         for (const att of atts) {
           if (!attachments[att.idea_id]) attachments[att.idea_id] = [];
-          attachments[att.idea_id].push({
-            url: att.url,
-            name: att.name,
-            type: att.type,
-          });
+          attachments[att.idea_id].push({ url: att.url, name: att.name, type: att.type });
         }
       }
     }
 
-    // Fetch comments for all ideas in this client's calendar
-    let comments: Record<string, any[]> = {};
+    // Fetch comments
+    let comments: Record<string, unknown[]> = {};
     if (ideas && ideas.length > 0) {
+      const commentTable = type === 'ads' ? 'ads_comments' : 'social_comments';
       const { data: comms } = await supabase
-        .from('social_comments')
+        .from(commentTable)
         .select('*')
         .in('idea_id', ideas.map((i) => i.id))
         .order('created_at', { ascending: true });
@@ -130,16 +94,33 @@ export async function GET(request: Request) {
       }
     }
 
+    // Fetch ecommerce dates for ADS calendar
+    let ecommerceDates: unknown[] = [];
+    if (type === 'ads') {
+      let edQuery = supabase
+        .from('ecommerce_dates')
+        .select('*')
+        .eq('client_id', client.id)
+        .order('start_date', { ascending: true });
+
+      if (month) {
+        const [y, m] = month.split('-').map(Number);
+        const monthStart = `${month}-01`;
+        const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+        edQuery = edQuery.lt('start_date', nextMonth).gte('end_date', monthStart);
+      }
+
+      const { data: eds } = await edQuery;
+      ecommerceDates = eds || [];
+    }
+
     return NextResponse.json({
-      client: {
-        id: client.id,
-        name: client.name,
-        logo_url: client.logo_url,
-      },
+      client: { id: client.id, name: client.name, logo_url: client.logo_url },
       ideas: ideas || [],
       attachments_by_idea: attachments,
       comments_by_idea: comments,
-      is_authenticated: !!userId,
+      ecommerce_dates: ecommerceDates,
+      calendar_type: type,
     });
   } catch (e) {
     console.error('GET /api/calendar-links/[token] error:', e);

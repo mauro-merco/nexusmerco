@@ -24,7 +24,7 @@ import type { SocialIdea, IdeaStatus, EcommerceDate } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import {
   ChevronLeft, ChevronRight, Plus, Loader2, GripVertical, Check,
-  ChevronDown, ShoppingBag, Trash2, X,
+  ChevronDown, ShoppingBag, Trash2, X, Copy, Share, ExternalLink,
 } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
@@ -345,6 +345,19 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!clientId) return;
+    setShareLoading(true);
+    fetch(`/api/clients/${clientId}`)
+      .then(r => r.json())
+      .then(json => setShareToken(json.data?.share_token || null))
+      .catch(() => {})
+      .finally(() => setShareLoading(false));
+  }, [clientId]);
 
   const syncIdea = useCallback((updated: SocialIdea) => {
     setSelectedIdea(updated);
@@ -437,7 +450,43 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {shareToken && (
+              <>
+                <Button variant="outline" size="sm" className="gap-1.5"
+                  onClick={async () => {
+                    const link = `${window.location.origin}/c/${shareToken}?type=ads`;
+                    await navigator.clipboard.writeText(link);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}>
+                  {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? '¡Copiado!' : 'Compartir'}
+                </Button>
+                <a href={`/c/${shareToken}?type=ads`} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors gap-1.5">
+                  <ExternalLink className="h-3.5 w-3.5" /> Ver landing
+                </a>
+              </>
+            )}
+            {!shareToken && !shareLoading && (
+              <Button variant="outline" size="sm" className="gap-1.5"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/clients/${clientId}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ share_token: crypto.randomUUID() }),
+                    });
+                    if (res.ok) {
+                      const json = await res.json();
+                      setShareToken(json.data?.share_token);
+                    }
+                  } catch { /* ignore */ }
+                }}>
+                <Share className="h-3.5 w-3.5" /> Generar link
+              </Button>
+            )}
             <Button onClick={() => setShowNewEcomDate(true)} variant="outline" size="sm" className="gap-1.5">
               <ShoppingBag className="h-3.5 w-3.5" /> Fecha Ecommerce
             </Button>

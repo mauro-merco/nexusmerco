@@ -67,7 +67,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const { token } = await params;
     const userId = getCurrentUserId(request);
     const body = await request.json();
-    const { idea_id, content, guest_name, action_type, status, publish_date } = body;
+    const { idea_id, content, guest_name, action_type, status, publish_date, calendar_type } = body;
+    const ideasTable = calendar_type === 'ads' ? 'ads_ideas' : 'social_ideas';
+    const commentsTable = calendar_type === 'ads' ? 'ads_comments' : 'social_comments';
 
     const { client, error: clientError } = await resolveClient(token);
     if (clientError || !client) {
@@ -79,7 +81,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     // Handle different action types
     if (action_type === 'status_change' && status) {
       const { error } = await supabase
-        .from('social_ideas')
+        .from(ideasTable)
         .update({ status })
         .eq('id', idea_id)
         .eq('client_id', client.id);
@@ -88,7 +90,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
       // Log the action as a comment
       if (content || guest_name) {
-        await supabase.from('social_comments').insert({
+        await supabase.from(commentsTable).insert({
           idea_id,
           user_id: userId || null,
           guest_name: guest_name || null,
@@ -102,7 +104,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
     if (action_type === 'date_move' && publish_date) {
       const { error } = await supabase
-        .from('social_ideas')
+        .from(ideasTable)
         .update({ publish_date })
         .eq('id', idea_id)
         .eq('client_id', client.id);
@@ -110,7 +112,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       if (error) throw error;
 
       if (content || guest_name) {
-        await supabase.from('social_comments').insert({
+        await supabase.from(commentsTable).insert({
           idea_id,
           user_id: userId || null,
           guest_name: guest_name || null,
@@ -127,7 +129,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       return NextResponse.json({ error: 'Content requerido' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('social_comments').insert({
+    const { error } = await supabase.from(commentsTable).insert({
       idea_id,
       user_id: userId || null,
       guest_name: guest_name || null,
