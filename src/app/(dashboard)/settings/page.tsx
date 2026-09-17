@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -407,12 +407,40 @@ function UsersTab() {
     setShowCreate(false);
   }, []);
 
+  const teamUsers = users.filter(u => u.role === 'admin' || u.role === 'operador');
+  const clientUsers = users.filter(u => u.role === 'client');
+
+  const renderSection = (title: string, icon: React.ReactNode, list: ManagedUser[], emptyMsg: string) => (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground border-b pb-2">
+        {icon}
+        <span>{title}</span>
+        <span className="ml-auto font-normal text-xs">{list.length} usuario{list.length !== 1 ? 's' : ''}</span>
+      </div>
+      {list.length === 0 ? (
+        <p className="text-xs text-muted-foreground/60 py-3 text-center">{emptyMsg}</p>
+      ) : (
+        list.map(u => (
+          <UserRow
+            key={u.id}
+            user={u}
+            isEditing={editingId === u.id}
+            onEdit={() => setEditingId(u.id)}
+            onCancelEdit={() => setEditingId(null)}
+            onSave={handleUpdateUser}
+            onDelete={handleDeleteUser}
+          />
+        ))
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-4 mt-4">
+    <div className="space-y-6 mt-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4" />
-          <span>{users.length} usuario{users.length !== 1 ? 's' : ''}</span>
+          <span>{users.length} usuario{users.length !== 1 ? 's' : ''} en total</span>
         </div>
         <Button size="sm" variant="cta" className="gap-2" onClick={() => setShowCreate(true)}>
           <Plus className="h-3.5 w-3.5" /> Crear usuario
@@ -424,18 +452,19 @@ function UsersTab() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="space-y-2">
-          {users.map(u => (
-            <UserRow
-              key={u.id}
-              user={u}
-              isEditing={editingId === u.id}
-              onEdit={() => setEditingId(u.id)}
-              onCancelEdit={() => setEditingId(null)}
-              onSave={handleUpdateUser}
-              onDelete={handleDeleteUser}
-            />
-          ))}
+        <div className="space-y-6">
+          {renderSection(
+            'Equipo interno',
+            <Shield className="h-4 w-4 text-purple-500" />,
+            teamUsers,
+            'No hay admins ni operadores creados.',
+          )}
+          {renderSection(
+            'Clientes',
+            <Users className="h-4 w-4 text-green-500" />,
+            clientUsers,
+            'No hay clientes creados.',
+          )}
         </div>
       )}
 
