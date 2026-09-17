@@ -19,6 +19,26 @@ const PHRASES = [
   'Creatividad con resultados',
 ];
 
+function MobileHero() {
+  return (
+    <div className="md:hidden flex flex-col items-center text-center px-4 mb-8 w-full">
+      <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-gradient-tech">
+        <TypewriterText />
+      </h2>
+      <p className="mt-3 text-sm text-muted-foreground/80 dark:text-muted-foreground/70 max-w-xs mx-auto">
+        Plataforma de marketing para equipos que marcan la diferencia
+      </p>
+      <div className="mt-5 flex items-center justify-center gap-4 text-xs text-muted-foreground/60">
+        <span>Analytics</span>
+        <span className="w-1 h-1 rounded-full bg-primary/50" />
+        <span>Automatización</span>
+        <span className="w-1 h-1 rounded-full bg-primary/50" />
+        <span>Creatividad</span>
+      </div>
+    </div>
+  );
+}
+
 function TypewriterText() {
   const [state, setState] = useState<{ phraseIndex: number; charIndex: number; phase: 'typing' | 'pausing' | 'deleting' }>({
     phraseIndex: 0,
@@ -141,10 +161,12 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="flex w-full md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-6">
+        <div className="flex w-full md:w-1/2 flex-1 flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-6 py-12">
           <div className="absolute top-4 right-4">
             <ThemeToggle />
           </div>
+
+          <MobileHero />
 
           <div className="mb-8">
             <img src="/merco-light-mode.svg" alt="Merco" className="h-8 mx-auto dark:hidden" />
@@ -228,10 +250,12 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="flex w-full md:w-1/2 flex-col items-center justify-center bg-gradient-to-br from-[#ffffff] via-[#f8fafc] to-[#faf5ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] p-6">
+      <div className="flex w-full md:w-1/2 flex-1 flex-col items-center justify-center bg-gradient-to-br from-[#ffffff] via-[#f8fafc] to-[#faf5ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] p-6 py-12">
         <div className="absolute top-4 right-4">
           <ThemeToggle />
         </div>
+
+        <MobileHero />
 
         <div className="mb-8">
           <img src="/merco-light-mode.svg" alt="Merco" className="h-8 mx-auto dark:hidden" />
