@@ -14,6 +14,7 @@ export interface ClientRecord {
   public_enabled: boolean;
   public_description: string;
   social_calendar_enabled: boolean;
+  ads_calendar_enabled: boolean;
   analysis_enabled: boolean;
   share_token: string | null;
   created_at: string;
@@ -31,6 +32,7 @@ interface ClientFormData {
   public_enabled?: boolean;
   public_description?: string;
   social_calendar_enabled?: boolean;
+  ads_calendar_enabled?: boolean;
   analysis_enabled?: boolean;
 }
 
