@@ -288,6 +288,16 @@ export interface Message {
   recipient?: User | null;
 }
 
+export interface EcommerceDate {
+  id: string;
+  client_id: string;
+  name: string;
+  color: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+}
+
 export interface PublicProfile {
   user: User | null;
   tasks: Task[];

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { createClient } from '@/lib/hooks/use-clients';
-import { ArrowLeft, Loader2, AlertCircle, Check, BarChart3, Calendar } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Check, BarChart3, Calendar, ShoppingBag } from 'lucide-react';
 
 const CAMPAIGN_TYPES = [
   { id: 'google_ads', label: 'Google Ads' },
@@ -36,6 +36,7 @@ export default function NewClientPage() {
   const [logoUrl, setLogoUrl] = useState('');
   const [analysisEnabled, setAnalysisEnabled] = useState(true);
   const [socialCalendarEnabled, setSocialCalendarEnabled] = useState(false);
+  const [adsCalendarEnabled, setAdsCalendarEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +58,7 @@ export default function NewClientPage() {
         logo_url: logoUrl,
         analysis_enabled: analysisEnabled,
         social_calendar_enabled: socialCalendarEnabled,
+        ads_calendar_enabled: adsCalendarEnabled,
       });
       router.push(`/clients/${client.id}`);
     } catch (err) {
@@ -194,6 +196,14 @@ export default function NewClientPage() {
                   <div>
                     <p className="text-sm font-medium">Calendario de Redes</p>
                     <p className="text-[10px] text-muted-foreground">Planificá publicaciones, historias, reels y carruseles</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 rounded-md border p-3 cursor-pointer hover:bg-accent">
+                  <Checkbox checked={adsCalendarEnabled} onCheckedChange={(v) => setAdsCalendarEnabled(v === true)} />
+                  <ShoppingBag className="h-4 w-4 text-violet-500" />
+                  <div>
+                    <p className="text-sm font-medium">Piezas para ADS</p>
+                    <p className="text-[10px] text-muted-foreground">Calendário de piezas publicitarias con fechas ecommerce</p>
                   </div>
                 </label>
               </div>

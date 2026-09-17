@@ -9,21 +9,25 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useT } from '@/lib/use-t';
 import { useClients } from '@/lib/hooks/use-clients';
 import { SocialCalendar } from '@/components/social-calendar';
+import { AdsCalendar } from '@/components/ads-calendar';
 import { cn } from '@/lib/utils';
 import {
-  Building2, Search, Calendar, ArrowLeft, Loader2, ChevronRight,
+  Building2, Search, Calendar, ArrowLeft, Loader2, ChevronRight, ShoppingBag,
 } from 'lucide-react';
+
+type CalendarTab = 'redes' | 'ads';
 
 export default function CalendariosPage() {
   const { user } = useAuthStore();
   const _ = useT();
   const { clients, loading } = useClients();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<CalendarTab>('redes');
   const [search, setSearch] = useState('');
 
   const isClientUser = user?.role === 'client';
 
-  const calendarClients = clients.filter(c => c.social_calendar_enabled);
+  const calendarClients = clients.filter(c => c.social_calendar_enabled || c.ads_calendar_enabled);
   const filteredClients = calendarClients.filter(
     (c) => c.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -36,18 +40,24 @@ export default function CalendariosPage() {
     );
   }
 
-  // Client user: show their own calendar directly (if enabled)
+  // Client user: show their own calendar directly
   if (isClientUser && user?.client_id) {
     const client = clients.find(c => c.id === user.client_id);
-    if (!client?.social_calendar_enabled) {
+    const hasSocial = client?.social_calendar_enabled;
+    const hasAds = client?.ads_calendar_enabled;
+
+    if (!hasSocial && !hasAds) {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-4">
           <Calendar className="h-12 w-12 opacity-30" />
           <p className="text-base font-medium">Calendario no disponible</p>
-          <p className="text-sm">El calendario de redes no está habilitado para tu cuenta.</p>
+          <p className="text-sm">El calendario no está habilitado para tu cuenta.</p>
         </div>
       );
     }
+
+    const tab = hasSocial && hasAds ? activeTab : hasSocial ? 'redes' : 'ads';
+
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -62,11 +72,15 @@ export default function CalendariosPage() {
             </div>
           )}
           <div>
-            <p className="text-sm font-bold">{client?.name || 'Calendario de Redes'}</p>
+            <p className="text-sm font-bold">{client?.name || 'Calendario'}</p>
             <p className="text-xs text-muted-foreground">Calendario de clientes</p>
           </div>
         </div>
-        <SocialCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} />
+        {hasSocial && hasAds && (
+          <CalendarTabs active={tab as CalendarTab} onChange={setActiveTab} />
+        )}
+        {tab === 'redes' && <SocialCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} />}
+        {tab === 'ads' && <AdsCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} />}
       </div>
     );
   }
@@ -143,10 +157,14 @@ export default function CalendariosPage() {
 
   // Calendar view for admin/operador
   const selectedClient = clients.find(c => c.id === selectedClientId);
+  const hasSocial = selectedClient?.social_calendar_enabled;
+  const hasAds = selectedClient?.ads_calendar_enabled;
+  const tab = hasSocial && hasAds ? activeTab : hasSocial ? 'redes' : 'ads';
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => setSelectedClientId(null)} className="gap-1.5 text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="sm" onClick={() => { setSelectedClientId(null); setActiveTab('redes'); }} className="gap-1.5 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Button>
@@ -163,12 +181,51 @@ export default function CalendariosPage() {
         )}
         <div>
           <p className="text-sm font-bold">{selectedClient?.name}</p>
-            <p className="text-xs text-muted-foreground">Calendario de clientes</p>
-          </div>
+          <p className="text-xs text-muted-foreground">Calendario de clientes</p>
         </div>
-      {selectedClient && (
+      </div>
+      {hasSocial && hasAds && (
+        <CalendarTabs active={tab as CalendarTab} onChange={setActiveTab} />
+      )}
+      {selectedClient && tab === 'redes' && (
         <SocialCalendar clientId={selectedClient.id} clientName={selectedClient.name} />
       )}
+      {selectedClient && tab === 'ads' && (
+        <AdsCalendar clientId={selectedClient.id} clientName={selectedClient.name} />
+      )}
+    </div>
+  );
+}
+
+function CalendarTabs({ active, onChange }: { active: CalendarTab; onChange: (t: CalendarTab) => void }) {
+  return (
+    <div className="flex gap-1 rounded-xl border bg-muted/30 p-1 w-fit">
+      <button
+        type="button"
+        onClick={() => onChange('redes')}
+        className={cn(
+          'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+          active === 'redes'
+            ? 'bg-background shadow text-foreground'
+            : 'text-muted-foreground hover:text-foreground',
+        )}
+      >
+        <Calendar className="h-4 w-4 text-emerald-500" />
+        Redes
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('ads')}
+        className={cn(
+          'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+          active === 'ads'
+            ? 'bg-background shadow text-foreground'
+            : 'text-muted-foreground hover:text-foreground',
+        )}
+      >
+        <ShoppingBag className="h-4 w-4 text-violet-500" />
+        ADS
+      </button>
     </div>
   );
 }
