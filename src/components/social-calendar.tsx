@@ -152,6 +152,69 @@ function DroppableDay({ date, ideas, isToday, onIdeaClick, onAddClick, onStatusC
   );
 }
 
+function VerticalDayRow({ date, dayName, ideas, isToday, onIdeaClick, onAddClick, onStatusChange }: {
+  date: string;
+  dayName: string;
+  ideas: SocialIdea[];
+  isToday: boolean;
+  onIdeaClick: (idea: SocialIdea) => void;
+  onAddClick: (date: string) => void;
+  onStatusChange: (id: string, status: IdeaStatus) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: date });
+  const day = new Date(date + 'T12:00:00').getDate();
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'rounded-xl border p-3 transition-colors',
+        isToday ? 'border-primary/60 bg-primary/5' : 'border-border/40',
+        isOver && 'border-primary bg-primary/10',
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => onAddClick(date)}
+        className="w-full flex items-center justify-between gap-2"
+      >
+        <div className="flex items-center gap-3">
+          <span className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-base font-bold',
+            isToday ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground',
+          )}>
+            {day}
+          </span>
+          <div className="text-left">
+            <span className={cn('block text-sm font-semibold', isToday ? 'text-primary' : 'text-foreground')}>
+              {dayName}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              {ideas.length} idea{ideas.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary opacity-60 hover:opacity-100 transition-opacity">
+          <Plus className="h-4 w-4" />
+        </span>
+      </button>
+
+      {ideas.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2">
+          {ideas.map(idea => (
+            <DraggableIdeaPill
+              key={idea.id}
+              idea={idea}
+              onClick={() => onIdeaClick(idea)}
+              onStatusChange={onStatusChange}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DragOverlayPill({ idea }: { idea: SocialIdea }) {
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
   const PtIcon = ptConfig.icon;
@@ -426,14 +489,14 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
               onDragEnd={handleDragEnd}
             >
               {/* Day names */}
-              <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+              <div className="hidden md:grid grid-cols-7 gap-1.5 mb-1.5">
                 {dayNames.map(n => (
                   <div key={n} className="text-center text-xs font-semibold text-muted-foreground py-1.5">{n}</div>
                 ))}
               </div>
 
-              {/* Days grid */}
-              <div className="grid grid-cols-7 gap-1.5">
+              {/* Days grid - desktop */}
+              <div className="hidden md:grid grid-cols-7 gap-1.5">
                 {Array.from({ length: firstDayOfWeek }).map((_, i) => (
                   <div key={`empty-${i}`} />
                 ))}
@@ -447,6 +510,31 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
                     <DroppableDay
                       key={dateStr}
                       date={dateStr}
+                      ideas={dayIdeas}
+                      isToday={isToday}
+                      onIdeaClick={setSelectedIdea}
+                      onAddClick={handleDayClick}
+                      onStatusChange={handleStatusChange}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Vertical list - mobile */}
+              <div className="md:hidden flex flex-col gap-2">
+                {Array.from({ length: daysInMonth }).map((_, idx) => {
+                  const day = idx + 1;
+                  const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
+                  const dayIdeas = ideasByDate.get(dateStr) || [];
+                  const isToday = today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === day;
+                  const dateObj = new Date(viewYear, viewMonth, day);
+                  const dayName = dayNames[dateObj.getDay()];
+
+                  return (
+                    <VerticalDayRow
+                      key={dateStr}
+                      date={dateStr}
+                      dayName={dayName}
                       ideas={dayIdeas}
                       isToday={isToday}
                       onIdeaClick={setSelectedIdea}
