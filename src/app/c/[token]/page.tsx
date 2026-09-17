@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -446,29 +446,41 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     setCalendarType(type);
 
     async function checkSession() {
+      // 1) Try Supabase session (set when user logged in via the app or the calendar gate)
       try {
         const { getSupabase } = await import('@/lib/supabase');
         const supabase = getSupabase();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.access_token) {
-          // Already logged in — fetch profile
           const { data: userData } = await supabase
             .from('users')
             .select('full_name')
             .eq('id', session.user.id)
             .single();
           const name = userData?.full_name || session.user.email || 'Usuario';
-          const newViewer: Viewer = { type: 'user', name, color: GUEST_COLORS[0], authToken: session.access_token };
-          setViewer(newViewer);
-          // Also persist so modal has it
-          localStorage.setItem(getStorageKey(resolvedToken, type), JSON.stringify({ ...newViewer, authToken: undefined }));
+          setViewer({ type: 'user', name, color: GUEST_COLORS[0], authToken: session.access_token });
           setAuthMode('authenticated');
           return;
         }
       } catch { /* ignore */ }
 
-      // Check localStorage for saved guest/viewer
+      // 2) Try Zustand nexus-auth persisted token (app users land here if Supabase session not detected)
+      try {
+        const nexusRaw = localStorage.getItem('nexus-auth');
+        if (nexusRaw) {
+          const nexus = JSON.parse(nexusRaw);
+          const zustandToken: string = nexus?.state?.token || '';
+          const zustandUser = nexus?.state?.user;
+          if (zustandToken && zustandUser?.full_name) {
+            setViewer({ type: 'user', name: zustandUser.full_name, color: GUEST_COLORS[0], authToken: zustandToken });
+            setAuthMode('authenticated');
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+
+      // 3) Saved guest (only guests are saved in this key)
       try {
         const stored = localStorage.getItem(getStorageKey(resolvedToken, type));
         if (stored) {
@@ -515,9 +527,24 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
   const handleViewerEnter = (v: Viewer) => {
     setViewer(v);
-    // Save non-sensitive viewer info (no authToken)
-    localStorage.setItem(getStorageKey(token!, calendarType), JSON.stringify({ type: v.type, name: v.name, color: v.color }));
+    // Only persist guest sessions; authenticated users re-detect via session on next load
+    if (v.type === 'guest') {
+      localStorage.setItem(getStorageKey(token!, calendarType), JSON.stringify({ type: 'guest', name: v.name, color: v.color }));
+    }
     setAuthMode('authenticated');
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { getSupabase } = await import('@/lib/supabase');
+      await getSupabase().auth.signOut();
+    } catch { /* ignore */ }
+    localStorage.removeItem(getStorageKey(token!, calendarType));
+    setViewer(null);
+    setData(null);
+    setError(null);
+    setViewMonth('');
+    setAuthMode('gate');
   };
 
   const handlePrevMonth = () => {
@@ -603,10 +630,16 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handlePrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
-            <span className="text-sm font-medium min-w-[140px] text-center">{monthLabel}</span>
-            <Button variant="ghost" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={handlePrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="text-sm font-medium min-w-[140px] text-center">{monthLabel}</span>
+              <Button variant="ghost" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs text-muted-foreground h-8" onClick={handleLogout}>
+              <LogOut className="h-3.5 w-3.5" />
+              Salir
+            </Button>
           </div>
         </div>
 
