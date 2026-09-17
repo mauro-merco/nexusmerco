@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, User, Send, MessageCircle, Loader2, ShoppingBag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,36 +21,71 @@ interface CalendarData {
   calendar_type: 'social' | 'ads';
 }
 
-interface GuestConfig {
-  guest_name: string;
-  guest_color: string;
+type AuthMode = 'loading' | 'authenticated' | 'gate';
+
+interface Viewer {
+  type: 'user' | 'guest';
+  name: string;
+  color: string;
+  authToken?: string; // JWT for authenticated users
 }
 
 const GUEST_COLORS = ['#6366f1', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#14b8a3'];
 
 function getStorageKey(token: string, type: string) {
-  return `calendar_guest_${token}_${type}`;
+  return `calendar_viewer_${token}_${type}`;
 }
 
-// ─── Who Are You Gate ─────────────────────────────────────────────────────────
+// ─── Auth Gate ────────────────────────────────────────────────────────────────
 
-function WhoAreYouGate({ client, calendarType, onEnter }: {
+function AuthGate({ client, calendarType, onEnter }: {
   client: { name: string; logo_url: string | null };
   calendarType: 'social' | 'ads';
-  onEnter: (name: string, color: string) => void;
+  onEnter: (viewer: Viewer) => void;
 }) {
-  const [name, setName] = useState('');
-  const [color, setColor] = useState(GUEST_COLORS[0]);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) { setError('Ingresá tu nombre'); return; }
-    setError(null);
-    onEnter(name.trim(), color);
-  };
+  const [tab, setTab] = useState<'login' | 'guest'>('login');
+  // Login state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  // Guest state
+  const [guestName, setGuestName] = useState('');
+  const [guestColor, setGuestColor] = useState(GUEST_COLORS[0]);
+  const [guestError, setGuestError] = useState('');
 
   const calLabel = calendarType === 'ads' ? 'Piezas para ADS' : 'Calendario de Redes';
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) { setLoginError('Completá email y contraseña'); return; }
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      const { getSupabase } = await import('@/lib/supabase');
+      const supabase = getSupabase();
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error || !data.session) { setLoginError(error?.message || 'Credenciales incorrectas'); return; }
+      const session = data.session;
+      const userId = session.user.id;
+      // Fetch full name from users table
+      const { data: userData } = await supabase.from('users').select('full_name').eq('id', userId).single();
+      const name = userData?.full_name || data.session.user.email || 'Usuario';
+      onEnter({ type: 'user', name, color: GUEST_COLORS[0], authToken: session.access_token });
+    } catch {
+      setLoginError('Error al iniciar sesión');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleGuest = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guestName.trim()) { setGuestError('Ingresá tu nombre'); return; }
+    setGuestError('');
+    onEnter({ type: 'guest', name: guestName.trim(), color: guestColor });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#e0f2fe] to-[#f5f0ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] flex items-center justify-center p-6">
@@ -64,34 +99,74 @@ function WhoAreYouGate({ client, calendarType, onEnter }: {
         )}
         <div className="text-center">
           <h1 className="text-2xl font-bold">{calLabel} · {client.name}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Ingresá tu nombre para comentar y participar</p>
+          <p className="text-sm text-muted-foreground mt-1">Accedé para ver y comentar el calendario</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-medium">¿Quién sos?</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" className="h-11 rounded-xl" autoFocus />
-            {error && <p className="text-xs text-destructive">{error}</p>}
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium">Color</label>
-            <div className="flex gap-2 flex-wrap">
-              {GUEST_COLORS.map((c) => (
-                <button key={c} type="button" onClick={() => setColor(c)}
-                  className={cn('h-8 w-8 rounded-lg border-2 transition-all', color === c ? 'border-foreground scale-110' : 'border-gray-300 dark:border-gray-600')}
-                  style={{ backgroundColor: c }} />
-              ))}
+
+        {/* Tabs */}
+        <div className="flex rounded-xl border bg-muted/30 p-1">
+          <button type="button" onClick={() => setTab('login')}
+            className={cn('flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
+              tab === 'login' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            <LogIn className="h-4 w-4" /> Iniciar sesión
+          </button>
+          <button type="button" onClick={() => setTab('guest')}
+            className={cn('flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
+              tab === 'guest' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            <User className="h-4 w-4" /> Como invitado
+          </button>
+        </div>
+
+        {tab === 'login' ? (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Email</label>
+              <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" type="email" className="h-11 rounded-xl" autoFocus />
             </div>
-          </div>
-          <Button type="submit" variant="cta" size="cta" className="w-full gap-2">
-            <User className="h-4 w-4" /> Entrar al calendario
-          </Button>
-        </form>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Contraseña</label>
+              <div className="relative">
+                <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
+                  type={showPassword ? 'text' : 'password'} className="h-11 rounded-xl pr-10" />
+                <button type="button" onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            {loginError && <p className="text-xs text-destructive">{loginError}</p>}
+            <Button type="submit" variant="cta" size="cta" className="w-full gap-2" disabled={loginLoading}>
+              {loginLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
+              Ingresar
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleGuest} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium">¿Quién sos?</label>
+              <Input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Tu nombre" className="h-11 rounded-xl" autoFocus />
+              {guestError && <p className="text-xs text-destructive">{guestError}</p>}
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Color</label>
+              <div className="flex gap-2 flex-wrap">
+                {GUEST_COLORS.map(c => (
+                  <button key={c} type="button" onClick={() => setGuestColor(c)}
+                    className={cn('h-8 w-8 rounded-lg border-2 transition-all', guestColor === c ? 'border-foreground scale-110' : 'border-gray-300 dark:border-gray-600')}
+                    style={{ backgroundColor: c }} />
+                ))}
+              </div>
+            </div>
+            <Button type="submit" variant="cta" size="cta" className="w-full gap-2">
+              <User className="h-4 w-4" /> Entrar al calendario
+            </Button>
+          </form>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Ecommerce bands ─────────────────────────────────────────────────────────
+// ─── Ecommerce bands ──────────────────────────────────────────────────────────
 
 function EcommerceBands({ date, ecommerceDates }: { date: string; ecommerceDates: EcommerceDate[] }) {
   const active = ecommerceDates.filter(ed => date >= ed.start_date && date <= ed.end_date);
@@ -101,7 +176,7 @@ function EcommerceBands({ date, ecommerceDates }: { date: string; ecommerceDates
       {active.map(ed => (
         <div key={ed.id} style={{ backgroundColor: ed.color + '22', borderLeft: `2px solid ${ed.color}`, color: ed.color }}
           className="text-[8px] font-bold px-1 py-px rounded-r-sm truncate leading-tight">
-          {ed.start_date === date ? ed.name : ' '}
+          {ed.start_date === date ? ed.name : ' '}
         </div>
       ))}
     </div>
@@ -119,14 +194,15 @@ function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick
       <EcommerceBands date={dateStr} ecommerceDates={ecommerceDates} />
       <span className={cn('text-xs font-medium block mb-1 pl-0.5', isToday ? 'text-primary font-bold' : 'text-muted-foreground/60')}>{day}</span>
       <div className="space-y-1">
-        {ideas.map((idea) => {
+        {ideas.map(idea => {
           const ptConfig = POST_TYPE_CONFIG[idea.post_type];
           const PtIcon = ptConfig.icon;
           const isPublished = idea.status === 'posteado';
           return (
             <div key={idea.id} onClick={() => onIdeaClick(idea)}
               className={cn('flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-medium cursor-pointer transition-all hover:scale-[1.02]',
-                isPublished ? 'bg-green-500/15 border-green-400/40 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass, ptConfig.borderColorClass])}>
+                isPublished ? 'bg-green-500/15 border-green-400/40 text-green-600'
+                  : [ptConfig.bgColorClass, ptConfig.colorClass, ptConfig.borderColorClass])}>
               <PtIcon className="h-2.5 w-2.5 shrink-0" />
               <span className="truncate">{idea.eje_contenido || idea.title}</span>
             </div>
@@ -149,33 +225,29 @@ function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick }: {
   const monthEnd = endOfMonth(new Date(y, m - 1, 1));
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const firstDay = monthStart.getDay();
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
   const ideasByDate = new Map<string, SocialIdea[]>();
-  const monthIdeas = ideas.filter((i) => i.publish_date.substring(0, 7) === monthStr);
-  for (const idea of monthIdeas) {
+  for (const idea of ideas.filter(i => i.publish_date.substring(0, 7) === monthStr)) {
     const key = idea.publish_date;
     if (!ideasByDate.has(key)) ideasByDate.set(key, []);
     ideasByDate.get(key)!.push(idea);
   }
 
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-7 gap-1.5">
-        {dayNames.map((n) => (
-          <div key={n} className="text-center text-xs font-semibold text-muted-foreground py-2">{n}</div>
-        ))}
+        {dayNames.map(n => <div key={n} className="text-center text-xs font-semibold text-muted-foreground py-2">{n}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
-        {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
-        {days.map((day) => {
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
+        {days.map(day => {
           const dateStr = format(day, 'yyyy-MM-dd');
-          const dayIdeas = ideasByDate.get(dateStr) || [];
           const isToday = today.getFullYear() === y && today.getMonth() === m - 1 && today.getDate() === day.getDate();
           return (
-            <CalendarDay key={dateStr} dateStr={dateStr} day={day.getDate()} ideas={dayIdeas}
-              isToday={isToday} ecommerceDates={ecommerceDates} onIdeaClick={onIdeaClick} />
+            <CalendarDay key={dateStr} dateStr={dateStr} day={day.getDate()}
+              ideas={ideasByDate.get(dateStr) || []} isToday={isToday}
+              ecommerceDates={ecommerceDates} onIdeaClick={onIdeaClick} />
           );
         })}
       </div>
@@ -185,41 +257,52 @@ function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick }: {
 
 // ─── Idea modal ───────────────────────────────────────────────────────────────
 
-function IdeaModal({ idea, attachments, comments, guestConfig, calendarType, token, onClose, onStatusChange, onCommentAdded }: {
+function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, onClose, onCommentAdded }: {
   idea: SocialIdea;
   attachments: { url: string; name: string; type: string }[];
   comments: SocialComment[];
-  guestConfig: GuestConfig;
+  viewer: Viewer;
   calendarType: 'social' | 'ads';
   token: string;
   onClose: () => void;
-  onStatusChange: (status: IdeaStatus) => void;
   onCommentAdded: () => void;
 }) {
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
   const stConfig = STATUS_CONFIG[idea.status];
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    const content = newComment.trim();
+    if (!content) return;
     setSending(true);
+    setSendError('');
     try {
-      await fetch(`/api/calendar-links/${token}/actions`, {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (viewer.type === 'user' && viewer.authToken) {
+        headers['Authorization'] = `Bearer ${viewer.authToken}`;
+      }
+      const res = await fetch(`/api/calendar-links/${token}/actions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           idea_id: idea.id,
-          content: newComment.trim(),
-          guest_name: guestConfig.guest_name,
+          content,
+          guest_name: viewer.type === 'guest' ? viewer.name : null,
           action_type: 'comment',
           calendar_type: calendarType,
         }),
       });
+      if (!res.ok) {
+        const j = await res.json();
+        setSendError(j.error || 'Error al comentar');
+        return;
+      }
       setNewComment('');
       onCommentAdded();
-    } catch (e) {
-      console.error(e);
+    } catch {
+      setSendError('Error al enviar comentario');
     } finally {
       setSending(false);
     }
@@ -227,19 +310,28 @@ function IdeaModal({ idea, attachments, comments, guestConfig, calendarType, tok
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-background rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <Badge variant="outline" className={cn('text-[10px]', ptConfig.bgColorClass, ptConfig.colorClass)}>{ptConfig.label}</Badge>
-            <Badge variant="outline" className={cn('text-[10px]', stConfig.colorClass)}>{stConfig.label}</Badge>
+      <div className="bg-background rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="p-4 border-b flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
+              <Badge variant="outline" className={cn('text-[10px]', ptConfig.bgColorClass, ptConfig.colorClass)}>{ptConfig.label}</Badge>
+              <Badge variant="outline" className={cn('text-[10px]', stConfig.colorClass)}>{stConfig.label}</Badge>
+              {idea.publish_date && <span className="text-muted-foreground/60">{idea.publish_date}</span>}
+            </div>
+            <h2 className="text-lg font-bold">{idea.eje_contenido || idea.title}</h2>
           </div>
-          <h2 className="text-lg font-bold">{idea.eje_contenido || idea.title}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0">
+            <span className="sr-only">Cerrar</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
 
+        {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {idea.copy_text && (
             <div><h3 className="text-xs font-semibold text-muted-foreground mb-1">Copy</h3>
-              <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{idea.copy_text}</p></div>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{idea.copy_text}</p></div>
           )}
           {idea.brief && (
             <div><h3 className="text-xs font-semibold text-muted-foreground mb-1">Brief</h3>
@@ -259,59 +351,69 @@ function IdeaModal({ idea, attachments, comments, guestConfig, calendarType, tok
               <div className="flex flex-wrap gap-2">
                 {attachments.map((att, i) => (
                   <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-md bg-muted/30 px-2 py-1 text-xs text-foreground/80 hover:bg-muted/50 transition-colors">
-                    <span>🔗</span>{att.name || 'Link'}
+                    className="inline-flex items-center gap-1 rounded-md bg-muted/30 px-2 py-1 text-xs hover:bg-muted/50 transition-colors">
+                    🔗 {att.name || 'Link'}
                   </a>
                 ))}
               </div>
             </div>
           )}
 
+          {/* Comments */}
           <div>
-            <h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-1">
               <MessageCircle className="h-3 w-3" /> Comentarios ({comments.length})
             </h3>
             <div className="space-y-3">
               {comments.length === 0 ? (
                 <p className="text-xs text-muted-foreground/60">Sé el primero en comentar</p>
               ) : (
-                comments.map((comment) => (
-                  <div key={comment.id} className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-[10px] font-bold"
-                          style={{ backgroundColor: guestConfig.guest_color + '20', color: guestConfig.guest_color }}>
-                          {(comment.guest_name || comment.user?.full_name || '?')?.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs font-medium">{comment.guest_name || comment.user?.full_name || 'Invitado'}</span>
-                      <span className="text-[10px] text-muted-foreground/50">
-                        {new Date(comment.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                comments.map(comment => {
+                  const authorName = comment.guest_name || (comment.user as { full_name?: string })?.full_name || 'Usuario';
+                  return (
+                    <div key={comment.id} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6 shrink-0">
+                          <AvatarFallback className="text-[10px] font-bold"
+                            style={{ backgroundColor: viewer.color + '30', color: viewer.color }}>
+                            {authorName.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs font-medium">{authorName}</span>
+                        <span className="text-[10px] text-muted-foreground/50">
+                          {new Date(comment.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-foreground/80 leading-relaxed pl-8">{comment.content}</p>
                     </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed pl-8">{comment.content}</p>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
         </div>
 
-        <div className="p-4 border-t">
+        {/* Comment input */}
+        <div className="p-4 border-t space-y-2">
           <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
+            <Avatar className="h-7 w-7 shrink-0">
               <AvatarFallback className="text-xs font-bold"
-                style={{ backgroundColor: guestConfig.guest_color + '20', color: guestConfig.guest_color }}>
-                {guestConfig.guest_name?.charAt(0) || '?'}
+                style={{ backgroundColor: viewer.color + '30', color: viewer.color }}>
+                {viewer.name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <Input value={newComment} onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Escribí un comentario..." className="flex-1 h-9 text-sm"
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }} />
-            <Button size="sm" onClick={handleAddComment} disabled={sending || !newComment.trim()} className="h-9 w-9 p-0">
+            <Input
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              placeholder={`Comentar como ${viewer.name}...`}
+              className="flex-1 h-9 text-sm"
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
+            />
+            <Button size="sm" onClick={handleAddComment} disabled={sending || !newComment.trim()} className="h-9 w-9 p-0 shrink-0">
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
+          {sendError && <p className="text-xs text-destructive pl-9">{sendError}</p>}
         </div>
       </div>
     </div>
@@ -323,37 +425,75 @@ function IdeaModal({ idea, attachments, comments, guestConfig, calendarType, tok
 export default function CalendarLanding({ params }: { params: Promise<{ token: string }> }) {
   const [token, setToken] = useState<string | null>(null);
   const [calendarType, setCalendarType] = useState<'social' | 'ads'>('social');
+  const [authMode, setAuthMode] = useState<AuthMode>('loading');
+  const [viewer, setViewer] = useState<Viewer | null>(null);
   const [data, setData] = useState<CalendarData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [guestConfig, setGuestConfig] = useState<GuestConfig | null>(null);
   const [viewMonth, setViewMonth] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
 
+  // Resolve params
   useEffect(() => {
-    params.then((p) => setToken(p.token));
+    params.then(p => setToken(p.token));
   }, [params]);
 
+  // Determine calendar type from URL + check existing session
   useEffect(() => {
     if (!token) return;
+    const resolvedToken = token; // capture as non-null for async closures
     const type = new URLSearchParams(window.location.search).get('type') === 'ads' ? 'ads' : 'social';
     setCalendarType(type);
-    const stored = localStorage.getItem(getStorageKey(token, type));
-    if (stored) {
+
+    async function checkSession() {
       try {
-        const guest = JSON.parse(stored) as GuestConfig;
-        if (guest.guest_name?.trim()) { setGuestConfig(guest); }
-      } catch { /* */ }
+        const { getSupabase } = await import('@/lib/supabase');
+        const supabase = getSupabase();
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          // Already logged in — fetch profile
+          const { data: userData } = await supabase
+            .from('users')
+            .select('full_name')
+            .eq('id', session.user.id)
+            .single();
+          const name = userData?.full_name || session.user.email || 'Usuario';
+          const newViewer: Viewer = { type: 'user', name, color: GUEST_COLORS[0], authToken: session.access_token };
+          setViewer(newViewer);
+          // Also persist so modal has it
+          localStorage.setItem(getStorageKey(resolvedToken, type), JSON.stringify({ ...newViewer, authToken: undefined }));
+          setAuthMode('authenticated');
+          return;
+        }
+      } catch { /* ignore */ }
+
+      // Check localStorage for saved guest/viewer
+      try {
+        const stored = localStorage.getItem(getStorageKey(resolvedToken, type));
+        if (stored) {
+          const saved = JSON.parse(stored) as Viewer;
+          if (saved.name?.trim()) {
+            setViewer(saved);
+            setAuthMode('authenticated');
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+
+      setAuthMode('gate');
     }
+
+    checkSession();
   }, [token]);
 
   const fetchCalendar = useCallback(() => {
     if (!token) return;
-    setLoading(true);
+    setFetchLoading(true);
     setError(null);
     fetch(`/api/calendar-links/${token}?month=${viewMonth}&type=${calendarType}`)
-      .then((r) => r.json())
-      .then((json) => {
+      .then(r => r.json())
+      .then(json => {
         if (!json.client) throw new Error(json.error || 'Calendario no encontrado');
         setData(json);
         if (!viewMonth) {
@@ -365,16 +505,19 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           }
         }
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch(e => setError(e.message))
+      .finally(() => setFetchLoading(false));
   }, [token, viewMonth, calendarType]);
 
-  useEffect(() => { fetchCalendar(); }, [fetchCalendar]);
+  useEffect(() => {
+    if (authMode === 'authenticated') fetchCalendar();
+  }, [authMode, fetchCalendar]);
 
-  const handleGuestEnter = (name: string, color: string) => {
-    const config: GuestConfig = { guest_name: name, guest_color: color };
-    setGuestConfig(config);
-    localStorage.setItem(getStorageKey(token!, calendarType), JSON.stringify(config));
+  const handleViewerEnter = (v: Viewer) => {
+    setViewer(v);
+    // Save non-sensitive viewer info (no authToken)
+    localStorage.setItem(getStorageKey(token!, calendarType), JSON.stringify({ type: v.type, name: v.name, color: v.color }));
+    setAuthMode('authenticated');
   };
 
   const handlePrevMonth = () => {
@@ -391,24 +534,35 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
   const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  if (!token || (!data && loading)) {
+  // Loading initial auth check
+  if (authMode === 'loading' || !token) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#e0f2fe] to-[#f5f0ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Cargando...</div>
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (!data) {
+  // Show gate (need to fetch client name for the gate)
+  if (authMode === 'gate') {
+    // We need the client name for the gate header. Fetch it lazily.
+    return <GateWithClientFetch token={token} calendarType={calendarType} onEnter={handleViewerEnter} />;
+  }
+
+  if (!data && fetchLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#e0f2fe] to-[#f5f0ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center text-destructive p-6 text-center">
         <p>{error || 'Calendario no encontrado'}</p>
       </div>
     );
-  }
-
-  if (!guestConfig) {
-    return <WhoAreYouGate client={data.client} calendarType={calendarType} onEnter={handleGuestEnter} />;
   }
 
   const monthLabel = viewMonth ? `${monthNames[parseInt(viewMonth.split('-')[1]) - 1]} ${viewMonth.split('-')[0]}` : '';
@@ -434,22 +588,29 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
                   {isAds ? 'Piezas para ADS' : 'Calendario de Redes'} · {data.client.name}
                 </h1>
               </div>
-              <p className="text-sm text-muted-foreground">Hola, {guestConfig.guest_name} 👋</p>
+              {viewer && (
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Avatar className="h-5 w-5">
+                    <AvatarFallback className="text-[9px] font-bold" style={{ backgroundColor: viewer.color + '30', color: viewer.color }}>
+                      {viewer.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="text-sm text-muted-foreground">
+                    {viewer.type === 'user' ? `Conectado como ${viewer.name}` : `Hola, ${viewer.name} 👋`}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+            <Button variant="ghost" size="icon" onClick={handlePrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
             <span className="text-sm font-medium min-w-[140px] text-center">{monthLabel}</span>
-            <Button variant="ghost" size="icon" onClick={handleNextMonth}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <Button variant="ghost" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
           </div>
         </div>
 
-        {/* Ecommerce dates legend (ADS only) */}
+        {/* Ecommerce legend */}
         {isAds && data.ecommerce_dates.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {data.ecommerce_dates.map(ed => (
@@ -481,12 +642,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         <Card className="border-border/50 bg-card/50 backdrop-blur-xl">
           <CardContent className="p-4">
             {viewMonth && (
-              <CalendarGrid
-                monthStr={viewMonth}
-                ideas={data.ideas}
-                ecommerceDates={data.ecommerce_dates}
-                onIdeaClick={setSelectedIdea}
-              />
+              <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} />
             )}
           </CardContent>
         </Card>
@@ -502,19 +658,54 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
       </div>
 
       {/* Idea modal */}
-      {selectedIdea && (
+      {selectedIdea && viewer && (
         <IdeaModal
           idea={selectedIdea}
           attachments={data.attachments_by_idea[selectedIdea.id] || []}
           comments={data.comments_by_idea[selectedIdea.id] || []}
-          guestConfig={guestConfig}
+          viewer={viewer}
           calendarType={calendarType}
           token={token}
           onClose={() => setSelectedIdea(null)}
-          onStatusChange={(status) => setSelectedIdea({ ...selectedIdea, status })}
           onCommentAdded={fetchCalendar}
         />
       )}
     </div>
   );
+}
+
+// Fetches client data before showing the gate (needed for the gate header)
+function GateWithClientFetch({ token, calendarType, onEnter }: {
+  token: string;
+  calendarType: 'social' | 'ads';
+  onEnter: (v: Viewer) => void;
+}) {
+  const [client, setClient] = useState<{ name: string; logo_url: string | null } | null>(null);
+  const [fetchError, setFetchError] = useState('');
+
+  useEffect(() => {
+    fetch(`/api/calendar-links/${token}?type=${calendarType}`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.client) setClient(json.client);
+        else setFetchError(json.error || 'Calendario no encontrado');
+      })
+      .catch(() => setFetchError('Error al cargar'));
+  }, [token, calendarType]);
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-destructive p-6 text-center">
+        <p>{fetchError}</p>
+      </div>
+    );
+  }
+  if (!client) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#e0f2fe] to-[#f5f0ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  return <AuthGate client={client} calendarType={calendarType} onEnter={onEnter} />;
 }
