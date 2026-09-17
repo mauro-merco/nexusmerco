@@ -169,37 +169,39 @@ export default function DocumentosPage() {
     const owner = isOwner(currentDoc);
     return (
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1.5 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Volver
-            </Button>
-            <div className="h-5 w-px bg-border/50" />
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {owner ? (
-                <><User className="h-3.5 w-3.5" /> Mío</>
-              ) : (
-                <><Users className="h-3.5 w-3.5" /> Compartido conmigo</>
-              )}
-              {savedAt && (
-                <span className="flex items-center gap-1">
-                  <Save className="h-3 w-3 text-emerald-500" /> Guardado {formatDate(savedAt.toISOString())}
-                </span>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-4 w-4" /> Volver
+              </Button>
+              <div className="h-5 w-px bg-border/50" />
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {owner ? (
+                  <><User className="h-3.5 w-3.5" /> Mío</>
+                ) : (
+                  <><Users className="h-3.5 w-3.5" /> Compartido conmigo</>
+                )}
+                {savedAt && (
+                  <span className="flex items-center gap-1">
+                    <Save className="h-3 w-3 text-emerald-500" /> Guardado {formatDate(savedAt.toISOString())}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center text-primary border-primary/30 hover:bg-primary/10" onClick={() => setAiOpen(true)}>
+                <Sparkles className="h-3.5 w-3.5" /> Asistente IA
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center" onClick={() => setShareTarget(currentDoc)}>
+                <Share2 className="h-3.5 w-3.5" /> Compartir
+              </Button>
+              {owner && (
+                <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => setDeleteTarget(currentDoc)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                </Button>
               )}
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10" onClick={() => setAiOpen(true)}>
-              <Sparkles className="h-3.5 w-3.5" /> Asistente IA
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShareTarget(currentDoc)}>
-              <Share2 className="h-3.5 w-3.5" /> Compartir
-            </Button>
-            {owner && (
-              <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => setDeleteTarget(currentDoc)}>
-                <Trash2 className="h-3.5 w-3.5" /> Eliminar
-              </Button>
-            )}
           </div>
         </div>
 
@@ -261,13 +263,13 @@ export default function DocumentosPage() {
   // List view
   return (
     <div className="space-y-6">
-         <div className="flex items-center justify-between">
-         <div className="flex items-center gap-1 rounded-xl bg-muted/30 p-1 border border-border/50">
+         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+         <div className="flex items-center gap-1 rounded-xl bg-muted/30 p-1 border border-border/50 w-full sm:w-auto">
            <button
              type="button"
              onClick={() => setTab('docs')}
              className={cn(
-               'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
+               'flex flex-1 sm:flex-none sm:min-w-fit items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
                tab === 'docs'
                  ? 'bg-background shadow-sm text-foreground ring-1 ring-border/50'
                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -279,7 +281,7 @@ export default function DocumentosPage() {
              type="button"
              onClick={() => setTab('notes')}
              className={cn(
-               'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
+               'flex flex-1 sm:flex-none sm:min-w-fit items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
                tab === 'notes'
                  ? 'bg-background shadow-sm text-foreground ring-1 ring-border/50'
                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -289,7 +291,7 @@ export default function DocumentosPage() {
            </button>
          </div>
 
-         <Button onClick={tab === 'notes' ? startNewNote : handleNew} variant="cta" size="cta" className="gap-2 shrink-0">
+         <Button onClick={tab === 'notes' ? startNewNote : handleNew} variant="cta" size="cta" className="gap-2 shrink-0 w-full sm:w-auto">
            <Plus className="h-4 w-4" /> {tab === 'notes' ? 'Nueva nota' : 'Nuevo documento'}
          </Button>
        </div>
