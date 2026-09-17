@@ -21,10 +21,11 @@ import { AnalyticsTab } from '@/components/analytics-tab';
 import { FunnelSeoTab } from '@/components/funnel-seo-tab';
 import { ShareReportDialog } from '@/components/share-report-dialog';
 import { SocialCalendar } from '@/components/social-calendar';
+import { AdsCalendar } from '@/components/ads-calendar';
 import {
   Building2, Upload, BarChart3, Users, Plus,
   LayoutDashboard, Search, Megaphone, Globe, Activity, Share2,
-  ArrowLeft, HelpCircle, Sparkles, ChevronRight, Calendar, Settings, Pencil, Trash2, Loader2,
+  ArrowLeft, HelpCircle, Sparkles, ChevronRight, Calendar, Settings, Pencil, Trash2, Loader2, ShoppingBag,
 } from 'lucide-react';
 
 const TAB_TOOLTIPS: Record<string, string> = {
@@ -50,7 +51,7 @@ export default function DashboardPage() {
 
   const activeClients = clients.filter(c => c.status === 'active' || c.status === 'onboarding');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [clientView, setClientView] = useState<'menu' | 'analysis' | 'calendar' | null>(null);
+  const [clientView, setClientView] = useState<'menu' | 'analysis' | 'calendar' | 'ads' | null>(null);
   const selectedClient = clients.find(c => c.id === selectedClientId);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
@@ -97,9 +98,15 @@ export default function DashboardPage() {
     if (client) {
       const hasAnalysis = client.analysis_enabled;
       const hasCalendar = client.social_calendar_enabled;
-      if (hasAnalysis && !hasCalendar) setClientView('analysis');
-      else if (!hasAnalysis && hasCalendar) setClientView('calendar');
-      else setClientView('menu');
+      const hasAds = client.ads_calendar_enabled;
+      const moduleCount = [hasAnalysis, hasCalendar, hasAds].filter(Boolean).length;
+      if (moduleCount === 1) {
+        if (hasAnalysis) setClientView('analysis');
+        else if (hasCalendar) setClientView('calendar');
+        else setClientView('ads');
+      } else {
+        setClientView('menu');
+      }
     } else {
       setClientView('menu');
     }
@@ -245,10 +252,47 @@ export default function DashboardPage() {
     );
   }
 
+  // Client selected + ADS calendar view
+  if (selectedClient && clientView === 'ads') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1.5 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </Button>
+            <div className="h-5 w-px bg-border/50" />
+            {selectedClient.logo_url ? (
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={selectedClient.logo_url} alt={selectedClient.name} />
+                <AvatarFallback className="rounded-lg text-xs">{selectedClient.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+            ) : (
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                <Building2 className="h-4 w-4 text-primary" />
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-bold">{selectedClient.name}</p>
+              <p className="text-xs text-muted-foreground">Piezas para ADS</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setClientView('menu')} className="gap-1.5 text-xs">
+            <ArrowLeft className="h-3.5 w-3.5" /> Módulos
+          </Button>
+        </div>
+        <AdsCalendar clientId={selectedClientId!} clientName={selectedClient.name} />
+      </div>
+    );
+  }
+
   // Client selected + menu (intermediate step)
   if (selectedClient && clientView === 'menu') {
     const hasAnalysis = selectedClient.analysis_enabled;
     const hasCalendar = selectedClient.social_calendar_enabled;
+    const hasAds = selectedClient.ads_calendar_enabled;
+    const moduleCount = [hasAnalysis, hasCalendar, hasAds].filter(Boolean).length;
 
     return (
       <div className="space-y-6">
@@ -282,8 +326,10 @@ export default function DashboardPage() {
         </div>
 
         <div className={cn(
-          'grid gap-6 max-w-2xl mx-auto pt-8',
-          hasAnalysis && hasCalendar ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-md',
+          'grid gap-6 mx-auto pt-8',
+          moduleCount === 1 ? 'grid-cols-1 max-w-md' :
+          moduleCount === 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl' :
+          'grid-cols-1 sm:grid-cols-3 max-w-3xl',
         )}>
           {hasAnalysis && (
             <Card
@@ -328,6 +374,29 @@ export default function DashboardPage() {
                   <Badge variant="outline" className="text-[10px]">Reels</Badge>
                   <Badge variant="outline" className="text-[10px]">Carruseles</Badge>
                   <Badge variant="outline" className="text-[10px]">Comentarios</Badge>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2" />
+              </CardContent>
+            </Card>
+          )}
+
+          {hasAds && (
+            <Card
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl"
+              onClick={() => setClientView('ads')}
+            >
+              <CardContent className="p-8 flex flex-col items-center text-center gap-4">
+                <div className="rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 p-5 group-hover:scale-105 transition-transform">
+                  <ShoppingBag className="h-10 w-10 text-violet-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold">Piezas para ADS</p>
+                  <p className="text-sm text-muted-foreground mt-1">Calendário de piezas publicitarias con fechas ecommerce</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 justify-center mt-2">
+                  <Badge variant="outline" className="text-[10px]">Piezas</Badge>
+                  <Badge variant="outline" className="text-[10px]">Ecommerce</Badge>
+                  <Badge variant="outline" className="text-[10px]">Fechas</Badge>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2" />
               </CardContent>
