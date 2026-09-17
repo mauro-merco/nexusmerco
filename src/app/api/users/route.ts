@@ -9,6 +9,8 @@ const supabase = createClient(
 
 const APP_ID = 'nexus';
 
+const ALLOWED_DOMAINS = ['@mercodigital.com', '@mercouser.com'];
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -20,7 +22,11 @@ export async function GET(request: Request) {
       .eq('app_id', appFilter)
       .order('full_name', { ascending: true });
     if (error) throw error;
-    return NextResponse.json({ data: data || [] });
+
+    const filtered = (data || []).filter(u =>
+      ALLOWED_DOMAINS.some(d => u.email?.toLowerCase().endsWith(d))
+    );
+    return NextResponse.json({ data: filtered });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }

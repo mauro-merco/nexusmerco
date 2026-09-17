@@ -57,13 +57,15 @@ export async function createMentionNotifications(
   try {
     const { data: users } = await supabase
       .from('users')
-      .select('id, full_name, email');
+      .select('id, full_name, email')
+      .eq('app_id', 'nexus');
     if (!users || users.length === 0) return;
 
     const { data: actor } = await supabase
       .from('users')
       .select('full_name, email')
       .eq('id', fromUserId)
+      .eq('app_id', 'nexus')
       .single();
     const actorName = actor?.full_name || actor?.email || 'Alguien';
 
