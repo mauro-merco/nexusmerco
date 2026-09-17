@@ -248,6 +248,19 @@ function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: stri
               );
             })}
           </nav>
+
+          <div className="mx-2 my-1 h-px bg-border/40" />
+
+          <div className="flex flex-col gap-0.5 pb-2">
+            <RailItem
+              Icon={Settings}
+              label={_('nav.settings')}
+              href="/settings"
+              isActive={pathname === '/settings'}
+              onNavigate={onNavigate}
+            />
+            <RailItem Icon={LogOut} label={_('nav.logout')} onAction={logout} />
+          </div>
         </div>
 
         {canDown && (
@@ -266,24 +279,16 @@ function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: stri
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-1 border-t p-2">
+      <div className="shrink-0 flex items-center justify-center gap-2 border-t px-2 py-2">
         {user && (
-          <div className="bg-gradient-tech mb-1 flex h-10 w-10 rounded-full p-[2px]">
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-background text-sm font-bold text-foreground">
+          <div className="bg-gradient-tech flex h-8 w-8 shrink-0 rounded-full p-[2px]">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-background text-xs font-bold text-foreground">
               {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
             </div>
           </div>
         )}
         <LangToggle collapsed />
         <ThemeToggle collapsed />
-        <RailItem
-          Icon={Settings}
-          label={_('nav.settings')}
-          href="/settings"
-          isActive={pathname === '/settings'}
-          onNavigate={onNavigate}
-        />
-        <RailItem Icon={LogOut} label={_('nav.logout')} onAction={logout} />
       </div>
     </div>
   );
