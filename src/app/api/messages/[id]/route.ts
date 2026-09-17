@@ -28,27 +28,39 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const body = await request.json();
-    const { title, content, color, category, category_color, is_public } = body as { title?: string; content?: string; color?: string; category?: string; category_color?: string; is_public?: boolean };
 
-    const { data, error } = await supabase
-      .from('sticky_notes')
-      .update({
-        title,
-        content,
-        color,
-        category,
-        category_color,
-        is_public,
-        updated_at: new Date().toISOString(),
-      })
+    // Only the recipient can mark as read
+    const { data: existing } = await supabase
+      .from('messages')
+      .select('*')
       .eq('id', id)
-      .eq('user_id', userId)
-      .select()
       .single();
 
+    if (!existing) {
+      return NextResponse.json({ error: 'Mensaje no encontrado' }, { status: 404 });
+    }
+
+    if (existing.recipient_id !== userId) {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (body.read) {
+      updates.read = true;
+      updates.read_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
+      .from('messages')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
     if (error) throw error;
+
     return NextResponse.json({ data });
   } catch (e) {
+    console.error('PUT /api/messages/[id] error:', e);
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }
 }
@@ -62,15 +74,26 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     const { id } = await params;
 
-    const { error } = await supabase
-      .from('sticky_notes')
-      .delete()
+    const { data: existing } = await supabase
+      .from('messages')
+      .select('*')
       .eq('id', id)
-      .eq('user_id', userId);
+      .single();
 
+    if (!existing) {
+      return NextResponse.json({ error: 'Mensaje no encontrado' }, { status: 404 });
+    }
+
+    if (existing.sender_id !== userId && existing.recipient_id !== userId) {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
+    }
+
+    const { error } = await supabase.from('messages').delete().eq('id', id);
     if (error) throw error;
-    return NextResponse.json({ data: { deleted: true } });
+
+    return NextResponse.json({ ok: true });
   } catch (e) {
+    console.error('DELETE /api/messages/[id] error:', e);
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }
 }

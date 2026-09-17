@@ -53,7 +53,7 @@ export function useDocuments() {
     return json.data as NexusDocument;
   }, []);
 
-  const updateDocument = useCallback(async (id: string, data: Partial<Pick<NexusDocument, 'title' | 'content'>>) => {
+  const updateDocument = useCallback(async (id: string, data: Partial<Pick<NexusDocument, 'title' | 'content' | 'is_public'>>) => {
     const res = await fetch(`/api/documents/${id}`, {
       method: 'PUT',
       headers: authHeaders(),

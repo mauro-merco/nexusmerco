@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const supabase = getAdmin();
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, role, visible_modules, totp_enabled, client_id')
+      .select('id, email, full_name, avatar_url, role, visible_modules, totp_enabled, client_id, bio, headline, is_public')
       .eq('id', userId)
       .single();
 
@@ -48,6 +48,9 @@ export async function PUT(request: Request) {
     let userId: string;
     let fullName: string | undefined;
     let email: string | undefined;
+    let bio: string | undefined;
+    let headline: string | undefined;
+    let isPublic: boolean | undefined;
     let file: File | null = null;
 
     if (isMultipart) {
@@ -55,12 +58,19 @@ export async function PUT(request: Request) {
       userId = formData.get('userId') as string;
       fullName = (formData.get('full_name') as string) || undefined;
       email = (formData.get('email') as string) || undefined;
+      bio = (formData.get('bio') as string) || undefined;
+      headline = (formData.get('headline') as string) || undefined;
+      const pub = formData.get('is_public');
+      if (pub !== null) isPublic = pub === 'true' || pub === 'on' || pub === '1';
       file = formData.get('file') as File | null;
     } else {
       const body = await request.json();
       userId = body.userId;
       fullName = body.full_name;
       email = body.email;
+      bio = body.bio;
+      headline = body.headline;
+      isPublic = body.is_public;
     }
 
     if (!userId) {
@@ -72,6 +82,9 @@ export async function PUT(request: Request) {
 
     if (fullName !== undefined) updates.full_name = fullName;
     if (email !== undefined) updates.email = email;
+    if (bio !== undefined) updates.bio = bio;
+    if (headline !== undefined) updates.headline = headline;
+    if (isPublic !== undefined) updates.is_public = !!isPublic;
 
     if (file) {
       const ext = file.name.split('.').pop() || 'png';

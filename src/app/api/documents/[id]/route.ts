@@ -94,9 +94,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Sin permiso para editar' }, { status: 403 });
     }
 
+    // Only the owner can toggle public visibility
+    if (body.is_public !== undefined && !isOwner) {
+      return NextResponse.json({ error: 'Solo el propietario puede cambiar la visibilidad' }, { status: 403 });
+    }
+
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (body.title !== undefined) updates.title = body.title;
     if (body.content !== undefined) updates.content = body.content;
+    if (body.is_public !== undefined) updates.is_public = !!body.is_public;
 
     const { data, error } = await supabase
       .from('documents')

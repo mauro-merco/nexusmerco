@@ -1,12 +1,12 @@
 export type UserRole = 'admin' | 'operador' | 'client';
 
-export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos'] as const;
+export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes'] as const;
 export type ModuleId = typeof ALL_MODULES[number];
 
 export const DEFAULT_MODULES: Record<UserRole, ModuleId[]> = {
-  admin: ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos'],
-  operador: ['dashboard', 'wizard', 'tareas', 'analysis', 'insights', 'calendarios', 'documentos'],
-  client: ['dashboard', 'analysis', 'insights', 'calendarios', 'documentos'],
+  admin: ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes'],
+  operador: ['dashboard', 'wizard', 'tareas', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes'],
+  client: ['dashboard', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes'],
 };
 
 export interface User {
@@ -18,6 +18,9 @@ export interface User {
   visible_modules: ModuleId[];
   client_id?: string | null;
   totp_enabled?: boolean;
+  bio?: string;
+  headline?: string;
+  is_public?: boolean;
 }
 
 export interface Client {
@@ -243,6 +246,7 @@ export interface NexusDocument {
   owner_id: string;
   title: string;
   content: string;
+  is_public?: boolean;
   created_at: string;
   updated_at: string;
   owner?: User | null;
@@ -257,4 +261,36 @@ export interface DocumentShare {
   user_id: string;
   created_at: string;
   user?: User | null;
+}
+
+export interface StickyNote {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  color: string;
+  category: string;
+  category_color: string | null;
+  is_public?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Message {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string;
+  read: boolean;
+  read_at: string | null;
+  created_at: string;
+  sender?: User | null;
+  recipient?: User | null;
+}
+
+export interface PublicProfile {
+  user: User | null;
+  tasks: Task[];
+  documents: NexusDocument[];
+  notes: StickyNote[];
 }

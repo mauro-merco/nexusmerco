@@ -70,6 +70,9 @@ export const useAuthStore = create<AuthState>()(
                   visible_modules: json.data.visible_modules || [],
                   client_id: json.data.client_id || null,
                   totp_enabled: json.data.totp_enabled || false,
+                  bio: json.data.bio || '',
+                  headline: json.data.headline || '',
+                  is_public: json.data.is_public !== false,
                 };
                 set({ user, token: accessToken, isLoading: false });
                 return { success: true };
@@ -125,6 +128,9 @@ export const useAuthStore = create<AuthState>()(
                 visible_modules: profileJson.data.visible_modules || [],
                 client_id: profileJson.data.client_id || null,
                 totp_enabled: true,
+                bio: profileJson.data.bio || '',
+                headline: profileJson.data.headline || '',
+                is_public: profileJson.data.is_public !== false,
               };
               set({ user, pending2FA: false, pendingUserId: null, isLoading: false });
               return { success: true };
@@ -171,6 +177,9 @@ export const useAuthStore = create<AuthState>()(
                       visible_modules: json.data.visible_modules || [],
                       client_id: json.data.client_id || null,
                       totp_enabled: json.data.totp_enabled || false,
+                      bio: json.data.bio || '',
+                      headline: json.data.headline || '',
+                      is_public: json.data.is_public !== false,
                     },
                     token: accessToken,
                     isLoading: false,

@@ -20,7 +20,7 @@ import { StickyNotes } from '@/components/sticky-notes';
 import type { NexusDocument } from '@/lib/types';
 import {
   FileText, Plus, Share2, Trash2, ArrowLeft, Loader2, Search,
-  Clock, User, Save, Users, Sparkles, StickyNote,
+  Clock, User, Save, Users, Sparkles, StickyNote, Globe,
 } from 'lucide-react';
 
 function formatDate(iso: string) {
@@ -190,6 +190,29 @@ export default function DocumentosPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {owner && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const next = !currentDoc.is_public;
+                      setCurrentDoc({ ...currentDoc, is_public: next });
+                      await updateDocument(currentDoc.id, { is_public: next });
+                      refetch();
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : 'Error al cambiar visibilidad');
+                    }
+                  }}
+                  className={cn(
+                    'flex-1 sm:flex-none sm:min-w-fit items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors inline-flex',
+                    'border-primary/30 text-primary hover:bg-primary/10'
+                  )}
+                  title={currentDoc.is_public ? 'Ocultar del perfil público' : 'Mostrar en mi perfil público'}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  {currentDoc.is_public ? 'Público' : 'Privado'}
+                </button>
+              )}
               <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center text-primary border-primary/30 hover:bg-primary/10" onClick={() => setAiOpen(true)}>
                 <Sparkles className="h-3.5 w-3.5" /> Asistente IA
               </Button>
@@ -351,7 +374,9 @@ export default function DocumentosPage() {
                   <div className="rounded-lg bg-primary/10 p-2 shrink-0">
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
-                  {doc.is_shared_with_me ? (
+                  {doc.is_public ? (
+                    <Badge variant="outline" className="text-[10px] text-primary border-primary/30"><Globe className="h-3 w-3 mr-1" /> Público</Badge>
+                  ) : doc.is_shared_with_me ? (
                     <Badge variant="secondary" className="text-[10px]"><Users className="h-3 w-3 mr-1" /> Compartido</Badge>
                   ) : doc.shared_users && doc.shared_users.length > 0 ? (
                     <Badge variant="outline" className="text-[10px]"><Users className="h-3 w-3 mr-1" /> {doc.shared_users.length}</Badge>

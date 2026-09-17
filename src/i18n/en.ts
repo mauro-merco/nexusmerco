@@ -9,6 +9,7 @@ export const en = {
     insights: 'AI Insights',
     calendar: 'Client Calendar',
     documents: 'Documents',
+    messages: 'Messages',
     settings: 'Settings',
     logout: 'Logout',
     lightMode: 'Light Mode',

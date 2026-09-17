@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { title, content } = body;
+    const { title, content, is_public } = body;
 
     const { data, error } = await supabase
       .from('documents')
@@ -107,6 +107,7 @@ export async function POST(request: Request) {
         owner_id: userId,
         title: title || 'Sin título',
         content: content || '',
+        is_public: is_public || false,
       })
       .select()
       .single();

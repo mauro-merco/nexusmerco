@@ -9,6 +9,7 @@ export const es = {
     insights: 'Insights IA',
     calendar: 'Calendario de clientes',
     documents: 'Documentos',
+    messages: 'Mensajes',
     settings: 'Configuración',
     logout: 'Cerrar sesión',
     lightMode: 'Modo claro',

@@ -58,6 +58,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ### In Progress
 - (none)
 
+### Done (recent)
+- **Public user profiles** (`/u/[id]`): migration 00031 adds `users.bio/headline/is_public` (default true), `documents.is_public` + `sticky_notes.is_public` (both default false), and a `messages` table (sender_id/recipient_id→auth.users, read/read_at, indexes + realtime). Public GET `/api/profiles/[id]` returns user + tasks (assignee_id, joined with client names) + public docs + public notes; returns 404 if profile hidden. `/api/messages` (GET inbox → conversations grouped by other party with unread counts, POST send creates a `message` notification linking `/messages`) and `/api/messages/[id]` (PUT read, DELETE by participant). `/api/auth/profile` now reads/writes `bio`/`headline`/`is_public`. Documents API: only owner can toggle `is_public`; sticky notes API accepts `is_public`.
+- **UI**: `/messages` page (dashboard, sidebar item "Mensajes" with `mensajes` module added to ALL_MODULES/DEFAULT_MODULES + i18n es/en) with conversation list + thread + compose dialog (user search via `/api/users`) + 30s polling. `/u/[id]` public page (avatar gradient ring, headline/bio, stats tabs Tareas/Documentos/Notas, enviar-mensaje dialog, only-own-view indicators). Toggle "Público"/"Privado" button on docs editor (owner only) + "Pública" checkbox on sticky-note form + "Público" chip on public notes. Settings → ProfileTab now edits headline/bio + "Perfil público" switch + link to own profile. Profile menu gained "Ver mi perfil público". Notification bell handles `message` type (Mail icon). `useDocuments.updateDocument` accepts `is_public`.
+
 ### Known Issues
 - `--` summary rows now filtered from campaign data via `name.trim().startsWith('--')`
 - Admin check on user creation API now uses `jose.jwtVerify` instead of `supabase.auth.getUser` (fixes "Solo admins" error)

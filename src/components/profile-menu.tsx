@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
-import { Camera, LogOut, Settings, User, Loader2, X } from 'lucide-react';
+import { Camera, LogOut, Settings, User, Loader2, X, Globe } from 'lucide-react';
 import Link from 'next/link';
 
 export function ProfileMenu() {
@@ -147,6 +147,11 @@ export function ProfileMenu() {
               <Link href="/settings" onClick={() => setOpen(false)}>
                 <button className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted/50 transition-colors">
                   <Settings className="h-3.5 w-3.5 text-muted-foreground" /> Configuración
+                </button>
+              </Link>
+              <Link href={`/u/${user.id}`} onClick={() => setOpen(false)}>
+                <button className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted/50 transition-colors">
+                  <Globe className="h-3.5 w-3.5 text-muted-foreground" /> Ver mi perfil público
                 </button>
               </Link>
               <button

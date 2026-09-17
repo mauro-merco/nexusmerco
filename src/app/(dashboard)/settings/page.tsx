@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   insights: 'Insights IA',
   calendarios: 'Calendario de clientes',
   documentos: 'Documentos',
+  mensajes: 'Mensajes',
 };
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -86,6 +88,9 @@ function ProfileTab() {
   const { user } = useAuthStore();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [bio, setBio] = useState('');
+  const [headline, setHeadline] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -94,6 +99,9 @@ function ProfileTab() {
     if (user) {
       setFullName(user.full_name || '');
       setEmail(user.email || '');
+      setBio(user.bio || '');
+      setHeadline(user.headline || '');
+      setIsPublic(user.is_public !== false);
     }
   }, [user]);
 
@@ -106,12 +114,26 @@ function ProfileTab() {
       const res = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, full_name: fullName.trim(), email: email.trim() }),
+        body: JSON.stringify({
+          userId: user.id,
+          full_name: fullName.trim(),
+          email: email.trim(),
+          bio: bio.trim(),
+          headline: headline.trim(),
+          is_public: isPublic,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Error al guardar');
       useAuthStore.setState({
-        user: { ...user, full_name: json.data.full_name || fullName, email: json.data.email || email },
+        user: {
+          ...user,
+          full_name: json.data.full_name || fullName,
+          email: json.data.email || email,
+          bio: bio.trim(),
+          headline: headline.trim(),
+          is_public: isPublic,
+        },
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -133,6 +155,21 @@ function ProfileTab() {
           <Label>Email</Label>
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" />
         </div>
+        <div className="space-y-1.5">
+          <Label>Profesión o cargo</Label>
+          <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Ej: Performance Media Buyer" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Bio</Label>
+          <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Contá un poco sobre vos..." className="min-h-[80px] resize-none" />
+        </div>
+        <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <div className="space-y-0.5">
+            <span className="text-xs font-medium">Perfil público</span>
+            <p className="text-[10px] text-muted-foreground">Mostrar mis tareas, documentos y notas públicas en mi perfil</p>
+          </div>
+          <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="h-4 w-4 accent-primary" />
+        </label>
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
         <div className="flex items-center gap-2 pt-2">
           <Button onClick={handleSave} variant="cta" disabled={saving || !fullName.trim()}>
@@ -140,6 +177,9 @@ function ProfileTab() {
              saved ? <Check className="h-3.5 w-3.5 mr-1" /> : null}
             {saved ? 'Guardado' : 'Guardar'}
           </Button>
+          <a href={`/u/${user?.id}`} className="text-xs text-primary hover:underline">
+            Ver mi perfil público →
+          </a>
         </div>
       </div>
 

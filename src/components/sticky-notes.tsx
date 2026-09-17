@@ -25,7 +25,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, Trash2, GripVertical, Tag, Edit3, X, Check } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Tag, Edit3, X, Check, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NOTE_COLORS = [
@@ -56,6 +56,7 @@ interface StickyNote {
   color: string;
   category: string;
   category_color: string | null;
+  is_public?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -183,6 +184,11 @@ function SortableNote({
 
         {/* Content */}
         <div className={cn('mt-1', note.category && note.category_color ? 'mt-8' : 'mt-1')}>
+          {note.is_public && (
+            <span className="mb-1 inline-flex items-center gap-1 rounded-md bg-black/15 dark:bg-black/25 px-1.5 py-0.5 text-[9px] font-semibold" style={{ color: textColor }}>
+              <Globe className="h-2.5 w-2.5" /> Pública
+            </span>
+          )}
           {note.title && (
             <h3
               className="font-bold text-sm mb-1 line-clamp-2 drop-shadow-sm"
@@ -223,6 +229,7 @@ export function StickyNotes({
   const [color, setColor] = useState(NOTE_COLORS[0]);
   const [category, setCategory] = useState('');
   const [categoryColor, setCategoryColor] = useState(CATEGORY_COLORS[0]);
+  const [isPublic, setIsPublic] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
@@ -302,6 +309,7 @@ export function StickyNotes({
           color,
           category: category || '',
           category_color: category ? categoryColor : null,
+          is_public: isPublic,
         });
       } else {
         await apiRequest('/api/sticky-notes', 'POST', {
@@ -310,6 +318,7 @@ export function StickyNotes({
           color,
           category: category || '',
           category_color: category ? categoryColor : null,
+          is_public: isPublic,
         });
       }
       resetForm();
@@ -364,6 +373,7 @@ export function StickyNotes({
     setColor(note.color);
     setCategory(note.category || '');
     setCategoryColor(note.category_color || CATEGORY_COLORS[0]);
+    setIsPublic(!!note.is_public);
     setShowForm(true);
   }
 
@@ -378,6 +388,7 @@ export function StickyNotes({
     setColor(NOTE_COLORS[0]);
     setCategory('');
     setCategoryColor(CATEGORY_COLORS[0]);
+    setIsPublic(false);
     setEditingId(null);
     setShowForm(false);
   }
@@ -657,6 +668,16 @@ export function StickyNotes({
                 </div>
               )}
             </div>
+
+            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+              <span className="text-xs font-medium">Pública</span>
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+            </label>
 
             <div className="flex gap-2 pt-1">
               <Button

@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronUp,
   LayoutGrid,
+  Mail,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { label: 'insights', href: '/insights', icon: 'BrainCircuit', moduleId: 'insights', roles: ['admin', 'operador', 'client'] },
   { label: 'calendar', href: '/calendarios', icon: 'Calendar', moduleId: 'calendarios', roles: ['admin', 'operador', 'client'] },
   { label: 'documents', href: '/documentos', icon: 'FileText', moduleId: 'documentos', roles: ['admin', 'operador', 'client'] },
+  { label: 'messages', href: '/messages', icon: 'Mail', moduleId: 'mensajes', roles: ['admin', 'operador', 'client'] },
 ];
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -47,6 +49,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Calendar,
   FileText,
   Settings,
+  Mail,
 };
 
 function RailItem({
