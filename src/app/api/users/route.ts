@@ -59,6 +59,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
     }
 
+    const INTERNAL_DOMAIN = '@mercodigital.com';
+    const CLIENT_DOMAIN = '@mercouser.com';
+    const isInternal = newRole === 'admin' || newRole === 'operador';
+    const expectedDomain = isInternal ? INTERNAL_DOMAIN : CLIENT_DOMAIN;
+    if (!email.toLowerCase().endsWith(expectedDomain)) {
+      return NextResponse.json({
+        error: isInternal
+          ? `Los usuarios admin y operador deben tener email con dominio ${INTERNAL_DOMAIN}`
+          : `Los usuarios client deben tener email con dominio ${CLIENT_DOMAIN}`,
+      }, { status: 400 });
+    }
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,

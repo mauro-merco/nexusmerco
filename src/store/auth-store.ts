@@ -48,6 +48,14 @@ export const useAuthStore = create<AuthState>()(
             return { success: false, error: 'No se pudo autenticar el usuario' };
           }
 
+          const userEmail = authData.user.email?.toLowerCase() || '';
+          if (!userEmail.endsWith('@mercodigital.com') && !userEmail.endsWith('@mercouser.com')) {
+            const { getSupabase } = await import('@/lib/supabase');
+            await getSupabase().auth.signOut();
+            set({ isLoading: false });
+            return { success: false, error: 'Acceso denegado. Solo usuarios autorizados de Merco pueden iniciar sesión.' };
+          }
+
           const accessToken = authData.session?.access_token || '';
 
           try {
