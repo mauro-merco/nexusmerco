@@ -45,11 +45,17 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="relative h-12 shrink-0 border-b bg-background flex items-center justify-end px-4 gap-2">
+        <header className="relative h-12 shrink-0 border-b bg-background flex items-center justify-between px-4 gap-2">
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-          <NotificationBell />
-          <RemindersBell />
-          <ProfileMenu />
+          <a href="/dashboard" className="md:hidden flex items-center shrink-0" onClick={(e) => { e.preventDefault(); router.push('/dashboard'); }}>
+            <img src="/merco-light-mode.svg" alt="Nexus Marketing" className="h-6 dark:hidden" />
+            <img src="/merco-dark-mode.svg" alt="Nexus Marketing" className="h-6 hidden dark:block" />
+          </a>
+          <div className="flex items-center gap-2 ml-auto">
+            <NotificationBell />
+            <RemindersBell />
+            <ProfileMenu />
+          </div>
         </header>
         {/* Main content */}
         <main className="flex-1 overflow-y-auto bg-background p-4 pb-20 md:pb-4">
