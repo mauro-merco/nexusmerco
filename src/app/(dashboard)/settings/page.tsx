@@ -579,12 +579,15 @@ function CreateUserDialog({
 }) {
   const { token } = useAuthStore();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [emailLocal, setEmailLocal] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('operador');
   const [modules, setModules] = useState<ModuleId[]>(DEFAULT_MODULES.operador);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const emailDomain = role === 'client' ? '@mercouser.com' : '@mercodigital.com';
+  const fullEmail = `${emailLocal.trim()}${emailDomain}`;
 
   const toggleModule = (m: ModuleId) => {
     setModules(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
@@ -596,7 +599,7 @@ function CreateUserDialog({
   };
 
   const handleCreate = async () => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
+    if (!name.trim() || !emailLocal.trim() || !password.trim()) {
       setError('Completá todos los campos');
       return;
     }
@@ -617,7 +620,7 @@ function CreateUserDialog({
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
         body: JSON.stringify({
           full_name: name.trim(),
-          email: email.trim(),
+          email: fullEmail,
           password: password.trim(),
           role,
           visible_modules: modules,
@@ -629,7 +632,7 @@ function CreateUserDialog({
         throw new Error(`[${res.status}] ${json.error || 'Error al crear usuario'}${detail}`);
       }
       onCreate(json.data);
-      setName(''); setEmail(''); setPassword('');
+      setName(''); setEmailLocal(''); setPassword('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
     } finally {
@@ -656,7 +659,17 @@ function CreateUserDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Email</Label>
-            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="juan@mercodigital.com" />
+            <div className="flex h-9 rounded-md border border-input overflow-hidden focus-within:ring-2 focus-within:ring-ring/50 bg-transparent shadow-sm">
+              <input
+                value={emailLocal}
+                onChange={e => setEmailLocal(e.target.value.replace(/[@\s]/g, ''))}
+                placeholder="usuario"
+                className="flex-1 min-w-0 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
+              />
+              <span className="flex items-center bg-muted px-3 text-sm text-muted-foreground border-l border-input whitespace-nowrap select-none">
+                {emailDomain}
+              </span>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Contraseña</Label>
@@ -699,7 +712,7 @@ function CreateUserDialog({
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button size="sm" onClick={handleCreate} disabled={saving || !name.trim() || !email.trim() || !password.trim()}>
+          <Button size="sm" onClick={handleCreate} disabled={saving || !name.trim() || !emailLocal.trim() || !password.trim()}>
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
             Crear
           </Button>
