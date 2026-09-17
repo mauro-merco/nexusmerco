@@ -107,7 +107,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, logo_url, description, industry, campaign_types, plan, status, social_calendar_enabled, analysis_enabled } = body;
+    const { name, logo_url, description, industry, campaign_types, plan, status, social_calendar_enabled, ads_calendar_enabled, analysis_enabled } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'El nombre del cliente es obligatorio' }, { status: 400 });
@@ -124,6 +124,7 @@ export async function POST(request: Request) {
     };
     if (campaign_types !== undefined) insertData.campaign_types = campaign_types;
     if (social_calendar_enabled !== undefined) insertData.social_calendar_enabled = social_calendar_enabled;
+    if (ads_calendar_enabled !== undefined) insertData.ads_calendar_enabled = ads_calendar_enabled;
     if (analysis_enabled !== undefined) insertData.analysis_enabled = analysis_enabled;
 
     const { data, error } = await supabase
