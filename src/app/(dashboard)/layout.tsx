@@ -47,9 +47,9 @@ export default function DashboardLayout({
         {/* Top bar */}
         <header className="relative h-12 shrink-0 border-b bg-background flex items-center justify-between px-4 gap-2">
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-          <a href="/dashboard" className="md:hidden flex items-center shrink-0" onClick={(e) => { e.preventDefault(); router.push('/dashboard'); }}>
-            <img src="/merco-light-mode.svg" alt="Nexus Marketing" className="h-6 dark:hidden" />
-            <img src="/merco-dark-mode.svg" alt="Nexus Marketing" className="h-6 hidden dark:block" />
+          <a href="/dashboard" className="md:hidden flex items-center shrink-0 min-w-0" onClick={(e) => { e.preventDefault(); router.push('/dashboard'); }}>
+            <img src="/merco-light-mode.svg" alt="Nexus Marketing" className="h-5 w-auto max-w-[120px] object-contain dark:hidden" />
+            <img src="/merco-dark-mode.svg" alt="Nexus Marketing" className="h-5 w-auto max-w-[120px] object-contain hidden dark:block" />
           </a>
           <div className="flex items-center gap-2 ml-auto">
             <NotificationBell />
