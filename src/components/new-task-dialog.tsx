@@ -29,6 +29,7 @@ interface NewTaskDialogProps {
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
+    pieces_count?: number | null;
   }) => Promise<unknown>;
 }
 
@@ -39,6 +40,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
+  const [piecesCount, setPiecesCount] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +52,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
       setAssigneeIds([]);
       setPriority('medium');
       setDueDate('');
+      setPiecesCount('');
       setError(null);
     }
   }, [open]);
@@ -70,6 +73,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
         assignee_ids: assigneeIds,
         priority,
         due_date: dueDate || undefined,
+        pieces_count: piecesCount.trim() === '' ? null : Number(piecesCount),
       });
       onOpenChange(false);
     } catch (e) {
@@ -138,6 +142,12 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
             <div className="space-y-1.5">
               <Label>Fecha límite</Label>
               <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Piezas a diseñar</Label>
+              <input type="number" min="0" placeholder="Ej: 4" value={piecesCount}
+                onChange={e => setPiecesCount(e.target.value)}
                 className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
             </div>
           </div>

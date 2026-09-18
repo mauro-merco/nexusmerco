@@ -18,7 +18,7 @@ import type { Task, TaskStatus, TaskPriority, TaskComment } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES } from '@/lib/task-config';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
-  Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X,
+  Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X, Layers,
 } from 'lucide-react';
 
 interface TaskDetailModalProps {
@@ -42,6 +42,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(task.assignees?.map(a => a.id) || []);
   const [dueDate, setDueDate] = useState(task.due_date || '');
+  const [piecesCount, setPiecesCount] = useState(task.pieces_count != null ? String(task.pieces_count) : '');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -62,6 +63,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setPriority(task.priority);
     setAssigneeIds(task.assignees?.map(a => a.id) || []);
     setDueDate(task.due_date || '');
+    setPiecesCount(task.pieces_count != null ? String(task.pieces_count) : '');
     setEditing(false);
     setConfirmDelete(false);
     setSaveError(null);
@@ -78,6 +80,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         title, description, status, priority,
         assignee_ids: assigneeIds,
         due_date: dueDate || null,
+        pieces_count: piecesCount.trim() === '' ? null : Number(piecesCount),
         }),
       });
       const json = await res.json();
@@ -89,7 +92,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     } finally {
       setSaving(false);
     }
-  }, [task.id, title, description, status, priority, assigneeIds, dueDate, onTaskUpdated]);
+  }, [task.id, title, description, status, priority, assigneeIds, dueDate, piecesCount, onTaskUpdated]);
 
   const handleQuickStatus = useCallback(async (newStatus: TaskStatus) => {
     if (newStatus === status) return;
@@ -190,6 +193,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   setTitle(task.title); setDescription(task.description);
                   setStatus(task.status); setPriority(task.priority);
                   setAssigneeIds(task.assignees?.map(a => a.id) || []); setDueDate(task.due_date || '');
+                  setPiecesCount(task.pieces_count != null ? String(task.pieces_count) : '');
                 }}>Cancelar</Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}>
                   {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
@@ -254,6 +258,12 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     </div>
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Piezas a diseñar</Label>
+                    <input type="number" min="0" placeholder="Ej: 4" value={piecesCount}
+                      onChange={e => setPiecesCount(e.target.value)}
+                      className="w-full max-w-[160px] rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Asignar a {assigneeIds.length > 0 && <span className="text-muted-foreground font-normal">({assigneeIds.length} seleccionado{assigneeIds.length !== 1 ? 's' : ''})</span>}</Label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto rounded-md border border-input p-2">
                       {users.map(u => (
@@ -301,6 +311,11 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                         </span>
                       );
                     })()}
+                    {!!task.pieces_count && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-semibold text-violet-500">
+                        <Layers className="h-3 w-3" /> {task.pieces_count} pieza{task.pieces_count !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}

@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG } from '@/lib/task-config';
-import { Loader2, Calendar, KanbanSquare, CheckCircle2 } from 'lucide-react';
+import { Loader2, Calendar, KanbanSquare, CheckCircle2, Layers, ImageIcon } from 'lucide-react';
 
 export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: () => void; showClient?: boolean }) {
   const sConfig = TASK_STATUS_CONFIG[task.status];
@@ -39,6 +39,11 @@ export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: ()
               <Calendar className="h-3 w-3" /> {new Date(task.due_date + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
             </span>
           )}
+          {!!task.pieces_count && (
+            <span className="flex items-center gap-1 font-medium text-violet-500">
+              <Layers className="h-3 w-3" /> {task.pieces_count} pieza{task.pieces_count !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
       </div>
       {task.assignees.length > 0 && (
@@ -57,6 +62,47 @@ export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: ()
         </div>
       )}
     </button>
+  );
+}
+
+const MONTH_LABEL = (key: string) => {
+  const [year, month] = key.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+};
+
+function PiecesByMonth({ tasks }: { tasks: Task[] }) {
+  const byMonth: Record<string, number> = {};
+  for (const t of tasks) {
+    if (!t.pieces_count) continue;
+    const dateStr = t.completed_at || t.due_date || t.created_at;
+    const d = new Date(dateStr);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    byMonth[key] = (byMonth[key] || 0) + t.pieces_count;
+  }
+  const entries = Object.entries(byMonth).sort((a, b) => b[0].localeCompare(a[0]));
+  const max = Math.max(1, ...entries.map(([, v]) => v));
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+        <ImageIcon className="h-3.5 w-3.5" /> Piezas diseñadas por mes
+      </p>
+      {entries.length === 0 ? (
+        <p className="text-sm text-muted-foreground/60 italic py-4">Todavía no hay piezas registradas en tareas finalizadas.</p>
+      ) : (
+        <div className="space-y-2.5 rounded-xl border bg-card p-4">
+          {entries.map(([key, count]) => (
+            <div key={key} className="flex items-center gap-3">
+              <span className="w-32 shrink-0 text-xs text-muted-foreground capitalize">{MONTH_LABEL(key)}</span>
+              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full bg-gradient-tech rounded-full transition-all" style={{ width: `${(count / max) * 100}%` }} />
+              </div>
+              <span className="w-16 shrink-0 text-right text-xs font-semibold">{count} pieza{count !== 1 ? 's' : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -113,6 +159,8 @@ export function ClientTasksTab({ clientId }: { clientId: string }) {
           </div>
         )}
       </div>
+
+      <PiecesByMonth tasks={historyTasks} />
     </div>
   );
 }

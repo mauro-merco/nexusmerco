@@ -186,6 +186,8 @@ export interface Task {
   author_id: string | null;
   priority: TaskPriority;
   due_date: string | null;
+  pieces_count: number | null;
+  completed_at: string | null;
   position: number;
   created_at: string;
   updated_at: string;

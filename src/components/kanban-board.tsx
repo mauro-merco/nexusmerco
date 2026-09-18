@@ -11,7 +11,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES } from '@/lib/task-config';
-import { GripVertical, MessageSquare, Paperclip, Calendar, User } from 'lucide-react';
+import { GripVertical, MessageSquare, Paperclip, Calendar, User, Layers } from 'lucide-react';
 
 function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -88,6 +88,11 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
           {(task.attachment_count || 0) > 0 && (
             <span className="flex items-center gap-0.5">
               <Paperclip className="h-3 w-3" /> {task.attachment_count}
+            </span>
+          )}
+          {!!task.pieces_count && (
+            <span className="flex items-center gap-0.5 text-violet-500">
+              <Layers className="h-3 w-3" /> {task.pieces_count}
             </span>
           )}
         </div>
