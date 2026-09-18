@@ -51,15 +51,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public']) {
       if (body[key] !== undefined) updates[key] = body[key];
     }
-    if (body.pieces_count !== undefined) {
-      updates.pieces_count = body.pieces_count === null || body.pieces_count === '' ? null : Number(body.pieces_count);
+    for (const key of ['pieces_stories', 'pieces_feed', 'pieces_reels']) {
+      if (body[key] !== undefined) {
+        updates[key] = body[key] === null || body[key] === '' ? null : Number(body[key]);
+      }
     }
 
     if (body.status !== undefined) {
       const { data: prevTask } = await supabase.from('tasks').select('status').eq('id', id).single();
       if (body.status !== prevTask?.status) {
-        if (body.status === 'aprobado') updates.completed_at = new Date().toISOString();
-        else if (prevTask?.status === 'aprobado') updates.completed_at = null;
+        if (body.status === 'cerrada') updates.completed_at = new Date().toISOString();
+        else if (prevTask?.status === 'cerrada') updates.completed_at = null;
       }
     }
 

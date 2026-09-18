@@ -68,8 +68,8 @@ export default function TeamPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {users.map(u => {
           const userTasks = tasksByUser(u.id);
-          const activeCount = userTasks.filter(t => t.status !== 'aprobado').length;
-          const doneCount = userTasks.filter(t => t.status === 'aprobado').length;
+          const activeCount = userTasks.filter(t => t.status !== 'cerrada').length;
+          const doneCount = userTasks.filter(t => t.status === 'cerrada').length;
           return (
             <Card
               key={u.id}

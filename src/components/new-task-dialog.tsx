@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import type { TaskStatus, TaskPriority } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES } from '@/lib/task-config';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES } from '@/lib/task-config';
 import { Loader2 } from 'lucide-react';
 
 interface UserRecord { id: string; full_name: string; email: string; avatar_url: string; }
@@ -29,7 +29,9 @@ interface NewTaskDialogProps {
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
-    pieces_count?: number | null;
+    pieces_stories?: number | null;
+    pieces_feed?: number | null;
+    pieces_reels?: number | null;
   }) => Promise<unknown>;
 }
 
@@ -40,7 +42,9 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
-  const [piecesCount, setPiecesCount] = useState('');
+  const [piecesStories, setPiecesStories] = useState('');
+  const [piecesFeed, setPiecesFeed] = useState('');
+  const [piecesReels, setPiecesReels] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +56,9 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
       setAssigneeIds([]);
       setPriority('medium');
       setDueDate('');
-      setPiecesCount('');
+      setPiecesStories('');
+      setPiecesFeed('');
+      setPiecesReels('');
       setError(null);
     }
   }, [open]);
@@ -73,7 +79,9 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
         assignee_ids: assigneeIds,
         priority,
         due_date: dueDate || undefined,
-        pieces_count: piecesCount.trim() === '' ? null : Number(piecesCount),
+        pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
+        pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
+        pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
       });
       onOpenChange(false);
     } catch (e) {
@@ -138,17 +146,30 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Fecha límite</Label>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Piezas a diseñar</Label>
-              <input type="number" min="0" placeholder="Ej: 4" value={piecesCount}
-                onChange={e => setPiecesCount(e.target.value)}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+          <div className="space-y-1.5">
+            <Label>Fecha límite</Label>
+            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+              className="w-full max-w-[220px] rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Piezas a diseñar</Label>
+            <div className="grid grid-cols-3 gap-3">
+              {PIECE_TYPES.map(pt => {
+                const Icon = pt.icon;
+                const value = pt.field === 'pieces_stories' ? piecesStories : pt.field === 'pieces_feed' ? piecesFeed : piecesReels;
+                const setValue = pt.field === 'pieces_stories' ? setPiecesStories : pt.field === 'pieces_feed' ? setPiecesFeed : setPiecesReels;
+                return (
+                  <div key={pt.field} className="space-y-1">
+                    <span className={cn('flex items-center gap-1 text-[11px] font-medium', pt.colorClass)}>
+                      <Icon className="h-3 w-3" /> {pt.label}
+                    </span>
+                    <input type="number" min="0" placeholder="0" value={value}
+                      onChange={e => setValue(e.target.value)}
+                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                  </div>
+                );
+              })}
             </div>
           </div>
 

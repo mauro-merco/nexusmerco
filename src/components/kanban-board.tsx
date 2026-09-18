@@ -10,7 +10,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES } from '@/lib/task-config';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, taskPieceTotal } from '@/lib/task-config';
 import { GripVertical, MessageSquare, Paperclip, Calendar, User, Layers } from 'lucide-react';
 
 function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
@@ -90,9 +90,9 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
               <Paperclip className="h-3 w-3" /> {task.attachment_count}
             </span>
           )}
-          {!!task.pieces_count && (
+          {taskPieceTotal(task) > 0 && (
             <span className="flex items-center gap-0.5 text-violet-500">
-              <Layers className="h-3 w-3" /> {task.pieces_count}
+              <Layers className="h-3 w-3" /> {taskPieceTotal(task)}
             </span>
           )}
         </div>

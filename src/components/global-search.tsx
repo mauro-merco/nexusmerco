@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import {
-  CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
+  Command, CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
 } from '@/components/ui/command';
 import { Search, Building2, User, FileText, KanbanSquare, Loader2 } from 'lucide-react';
 
@@ -102,38 +102,40 @@ export function GlobalSearch() {
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen} title="Buscar" description="Buscá clientes, usuarios, documentos y tareas">
-        <CommandInput placeholder="Buscar clientes, usuarios, documentos, tareas..." value={query} onValueChange={setQuery} />
-        <CommandList>
-          {loading && (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          {!loading && query.trim().length >= 2 && results.length === 0 && (
-            <CommandEmpty>Sin resultados para &quot;{query}&quot;</CommandEmpty>
-          )}
-          {!loading && query.trim().length < 2 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">Escribí al menos 2 caracteres...</p>
-          )}
-          {!loading && groups.map(type => {
-            const items = results.filter(r => r.type === type);
-            if (items.length === 0) return null;
-            const Icon = GROUP_ICONS[type];
-            return (
-              <CommandGroup key={type} heading={GROUP_LABELS[type]}>
-                {items.map(item => (
-                  <CommandItem key={`${item.type}-${item.id}`} value={`${item.type}-${item.id}-${item.label}`} onSelect={() => handleSelect(item.href)}>
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex flex-col min-w-0">
-                      <span className="truncate">{item.label}</span>
-                      <span className="truncate text-[11px] text-muted-foreground">{item.sublabel}</span>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            );
-          })}
-        </CommandList>
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Buscar clientes, usuarios, documentos, tareas..." value={query} onValueChange={setQuery} />
+          <CommandList>
+            {loading && (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {!loading && query.trim().length >= 2 && results.length === 0 && (
+              <CommandEmpty>Sin resultados para &quot;{query}&quot;</CommandEmpty>
+            )}
+            {!loading && query.trim().length < 2 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">Escribí al menos 2 caracteres...</p>
+            )}
+            {!loading && groups.map(type => {
+              const items = results.filter(r => r.type === type);
+              if (items.length === 0) return null;
+              const Icon = GROUP_ICONS[type];
+              return (
+                <CommandGroup key={type} heading={GROUP_LABELS[type]}>
+                  {items.map(item => (
+                    <CommandItem key={`${item.type}-${item.id}`} value={`${item.type}-${item.id}-${item.label}`} onSelect={() => handleSelect(item.href)}>
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate">{item.label}</span>
+                        <span className="truncate text-[11px] text-muted-foreground">{item.sublabel}</span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              );
+            })}
+          </CommandList>
+        </Command>
       </CommandDialog>
     </>
   );

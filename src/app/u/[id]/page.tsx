@@ -223,12 +223,12 @@ export default function PublicProfilePage() {
                   <span
                     className={cn(
                       'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                      t.status === 'aprobado'
+                      t.status === 'cerrada'
                         ? 'bg-emerald-500/10 text-emerald-500'
                         : 'bg-muted/60 text-muted-foreground'
                     )}
                   >
-                    {t.status === 'aprobado' ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                    {t.status === 'cerrada' ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{t.title}</p>

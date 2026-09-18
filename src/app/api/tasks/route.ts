@@ -99,7 +99,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { client_id, title, description, status, assignee_ids, author_id, priority, due_date, pieces_count } = body;
+    const { client_id, title, description, status, assignee_ids, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels } = body;
+    const toCount = (v: unknown) => v === undefined || v === null || v === '' ? null : Number(v);
 
     if (!client_id || !title) {
       return NextResponse.json({ error: 'client_id and title required' }, { status: 400 });
@@ -122,8 +123,10 @@ export async function POST(request: Request) {
         author_id: author_id || null,
         priority: priority || 'medium',
         due_date: due_date || null,
-        pieces_count: pieces_count === undefined || pieces_count === null || pieces_count === '' ? null : Number(pieces_count),
-        completed_at: initialStatus === 'aprobado' ? new Date().toISOString() : null,
+        pieces_stories: toCount(pieces_stories),
+        pieces_feed: toCount(pieces_feed),
+        pieces_reels: toCount(pieces_reels),
+        completed_at: initialStatus === 'cerrada' ? new Date().toISOString() : null,
         position: count || 0,
       })
       .select()

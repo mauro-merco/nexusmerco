@@ -33,7 +33,9 @@ export function useTasks(clientId: string | null) {
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
-    pieces_count?: number | null;
+    pieces_stories?: number | null;
+    pieces_feed?: number | null;
+    pieces_reels?: number | null;
   }) => {
     const res = await fetch('/api/tasks', {
       method: 'POST',
@@ -53,7 +55,9 @@ export function useTasks(clientId: string | null) {
     assignee_ids: string[];
     priority: TaskPriority;
     due_date: string | null;
-    pieces_count: number | null;
+    pieces_stories: number | null;
+    pieces_feed: number | null;
+    pieces_reels: number | null;
     position: number;
   }>) => {
     const res = await fetch(`/api/tasks/${id}`, {

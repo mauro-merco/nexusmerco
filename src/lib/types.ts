@@ -174,7 +174,7 @@ export interface SocialAnnotation {
   created_at: string;
 }
 
-export type TaskStatus = 'en_espera' | 'en_revision' | 'aprobado' | 'problemas';
+export type TaskStatus = 'en_espera' | 'en_revision' | 'aprobado' | 'problemas' | 'cerrada';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Task {
@@ -186,7 +186,11 @@ export interface Task {
   author_id: string | null;
   priority: TaskPriority;
   due_date: string | null;
+  /** @deprecated superseded by pieces_stories/pieces_feed/pieces_reels; kept for tasks created before the breakdown existed */
   pieces_count: number | null;
+  pieces_stories: number | null;
+  pieces_feed: number | null;
+  pieces_reels: number | null;
   completed_at: string | null;
   position: number;
   share_token: string;

@@ -5,7 +5,7 @@ import { useTasks } from '@/lib/hooks/use-tasks';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG } from '@/lib/task-config';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, PIECE_TYPES, taskPieceTotal } from '@/lib/task-config';
 import { Loader2, Calendar, KanbanSquare, CheckCircle2, Layers, ImageIcon } from 'lucide-react';
 
 export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: () => void; showClient?: boolean }) {
@@ -39,9 +39,9 @@ export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: ()
               <Calendar className="h-3 w-3" /> {new Date(task.due_date + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
             </span>
           )}
-          {!!task.pieces_count && (
+          {taskPieceTotal(task) > 0 && (
             <span className="flex items-center gap-1 font-medium text-violet-500">
-              <Layers className="h-3 w-3" /> {task.pieces_count} pieza{task.pieces_count !== 1 ? 's' : ''}
+              <Layers className="h-3 w-3" /> {taskPieceTotal(task)} pieza{taskPieceTotal(task) !== 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -70,34 +70,56 @@ const MONTH_LABEL = (key: string) => {
   return new Date(year, month - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
 };
 
+const PIECE_BAR_COLOR: Record<string, string> = {
+  pieces_stories: 'bg-cyan-400',
+  pieces_feed: 'bg-orange-400',
+  pieces_reels: 'bg-pink-400',
+};
+
 export function PiecesByMonth({ tasks }: { tasks: Task[] }) {
-  const byMonth: Record<string, number> = {};
+  const byMonth: Record<string, { total: number; stories: number; feed: number; reels: number }> = {};
   for (const t of tasks) {
-    if (!t.pieces_count) continue;
+    const total = taskPieceTotal(t);
+    if (!total) continue;
     const dateStr = t.completed_at || t.due_date || t.created_at;
     const d = new Date(dateStr);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    byMonth[key] = (byMonth[key] || 0) + t.pieces_count;
+    if (!byMonth[key]) byMonth[key] = { total: 0, stories: 0, feed: 0, reels: 0 };
+    byMonth[key].total += total;
+    byMonth[key].stories += t.pieces_stories || 0;
+    byMonth[key].feed += t.pieces_feed || 0;
+    byMonth[key].reels += t.pieces_reels || 0;
   }
   const entries = Object.entries(byMonth).sort((a, b) => b[0].localeCompare(a[0]));
-  const max = Math.max(1, ...entries.map(([, v]) => v));
+  const max = Math.max(1, ...entries.map(([, v]) => v.total));
 
   return (
     <div className="space-y-3">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
-        <ImageIcon className="h-3.5 w-3.5" /> Piezas diseñadas por mes
-      </p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+          <ImageIcon className="h-3.5 w-3.5" /> Piezas diseñadas por mes
+        </p>
+        <div className="flex items-center gap-3">
+          {PIECE_TYPES.map(pt => (
+            <span key={pt.field} className={cn('flex items-center gap-1 text-[10px] font-medium', pt.colorClass)}>
+              <span className={cn('w-2 h-2 rounded-full', pt.dotColor)} /> {pt.label}
+            </span>
+          ))}
+        </div>
+      </div>
       {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground/60 italic py-4">Todavía no hay piezas registradas en tareas finalizadas.</p>
+        <p className="text-sm text-muted-foreground/60 italic py-4">Todavía no hay piezas registradas en tareas cerradas.</p>
       ) : (
-        <div className="space-y-2.5 rounded-xl border bg-card p-4">
-          {entries.map(([key, count]) => (
+        <div className="space-y-3 rounded-xl border bg-card p-4">
+          {entries.map(([key, v]) => (
             <div key={key} className="flex items-center gap-3">
               <span className="w-32 shrink-0 text-xs text-muted-foreground capitalize">{MONTH_LABEL(key)}</span>
-              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full bg-gradient-tech rounded-full transition-all" style={{ width: `${(count / max) * 100}%` }} />
+              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden flex">
+                {v.stories > 0 && <div className={cn('h-full', PIECE_BAR_COLOR.pieces_stories)} style={{ width: `${(v.stories / max) * 100}%` }} />}
+                {v.feed > 0 && <div className={cn('h-full', PIECE_BAR_COLOR.pieces_feed)} style={{ width: `${(v.feed / max) * 100}%` }} />}
+                {v.reels > 0 && <div className={cn('h-full', PIECE_BAR_COLOR.pieces_reels)} style={{ width: `${(v.reels / max) * 100}%` }} />}
               </div>
-              <span className="w-16 shrink-0 text-right text-xs font-semibold">{count} pieza{count !== 1 ? 's' : ''}</span>
+              <span className="w-16 shrink-0 text-right text-xs font-semibold">{v.total} pieza{v.total !== 1 ? 's' : ''}</span>
             </div>
           ))}
         </div>
@@ -110,8 +132,8 @@ export function ClientTasksTab({ clientId }: { clientId: string }) {
   const router = useRouter();
   const { tasks, loading } = useTasks(clientId);
 
-  const activeTasks = tasks.filter(t => t.status !== 'aprobado');
-  const historyTasks = tasks.filter(t => t.status === 'aprobado');
+  const activeTasks = tasks.filter(t => t.status !== 'cerrada');
+  const historyTasks = tasks.filter(t => t.status === 'cerrada');
 
   const openTask = (id: string) => router.push(`/operations?task=${id}`);
 

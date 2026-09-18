@@ -15,7 +15,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MentionedText, MentionInput } from '@/components/mention';
 import type { Task, TaskStatus, TaskPriority, TaskComment } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES } from '@/lib/task-config';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal } from '@/lib/task-config';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
   Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X, Layers,
@@ -43,7 +43,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(task.assignees?.map(a => a.id) || []);
   const [dueDate, setDueDate] = useState(task.due_date || '');
-  const [piecesCount, setPiecesCount] = useState(task.pieces_count != null ? String(task.pieces_count) : '');
+  const [piecesStories, setPiecesStories] = useState(task.pieces_stories != null ? String(task.pieces_stories) : '');
+  const [piecesFeed, setPiecesFeed] = useState(task.pieces_feed != null ? String(task.pieces_feed) : '');
+  const [piecesReels, setPiecesReels] = useState(task.pieces_reels != null ? String(task.pieces_reels) : '');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -67,7 +69,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setPriority(task.priority);
     setAssigneeIds(task.assignees?.map(a => a.id) || []);
     setDueDate(task.due_date || '');
-    setPiecesCount(task.pieces_count != null ? String(task.pieces_count) : '');
+    setPiecesStories(task.pieces_stories != null ? String(task.pieces_stories) : '');
+    setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
+    setPiecesReels(task.pieces_reels != null ? String(task.pieces_reels) : '');
     setEditing(false);
     setConfirmDelete(false);
     setSaveError(null);
@@ -86,7 +90,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         title, description, status, priority,
         assignee_ids: assigneeIds,
         due_date: dueDate || null,
-        pieces_count: piecesCount.trim() === '' ? null : Number(piecesCount),
+        pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
+        pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
+        pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
         }),
       });
       const json = await res.json();
@@ -98,7 +104,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     } finally {
       setSaving(false);
     }
-  }, [task.id, title, description, status, priority, assigneeIds, dueDate, piecesCount, onTaskUpdated]);
+  }, [task.id, title, description, status, priority, assigneeIds, dueDate, piecesStories, piecesFeed, piecesReels, onTaskUpdated]);
 
   const handleQuickStatus = useCallback(async (newStatus: TaskStatus) => {
     if (newStatus === status) return;
@@ -271,7 +277,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   setTitle(task.title); setDescription(task.description);
                   setStatus(task.status); setPriority(task.priority);
                   setAssigneeIds(task.assignees?.map(a => a.id) || []); setDueDate(task.due_date || '');
-                  setPiecesCount(task.pieces_count != null ? String(task.pieces_count) : '');
+                  setPiecesStories(task.pieces_stories != null ? String(task.pieces_stories) : '');
+                  setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
+                  setPiecesReels(task.pieces_reels != null ? String(task.pieces_reels) : '');
                 }}>Cancelar</Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}>
                   {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
@@ -337,9 +345,23 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   </div>
                   <div className="space-y-1.5">
                     <Label>Piezas a diseñar</Label>
-                    <input type="number" min="0" placeholder="Ej: 4" value={piecesCount}
-                      onChange={e => setPiecesCount(e.target.value)}
-                      className="w-full max-w-[160px] rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                    <div className="grid grid-cols-3 gap-3 max-w-md">
+                      {PIECE_TYPES.map(pt => {
+                        const Icon = pt.icon;
+                        const value = pt.field === 'pieces_stories' ? piecesStories : pt.field === 'pieces_feed' ? piecesFeed : piecesReels;
+                        const setValue = pt.field === 'pieces_stories' ? setPiecesStories : pt.field === 'pieces_feed' ? setPiecesFeed : setPiecesReels;
+                        return (
+                          <div key={pt.field} className="space-y-1">
+                            <span className={cn('flex items-center gap-1 text-[11px] font-medium', pt.colorClass)}>
+                              <Icon className="h-3 w-3" /> {pt.label}
+                            </span>
+                            <input type="number" min="0" placeholder="0" value={value}
+                              onChange={e => setValue(e.target.value)}
+                              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Asignar a {assigneeIds.length > 0 && <span className="text-muted-foreground font-normal">({assigneeIds.length} seleccionado{assigneeIds.length !== 1 ? 's' : ''})</span>}</Label>
@@ -389,12 +411,26 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                         </span>
                       );
                     })()}
-                    {!!task.pieces_count && (
+                    {taskPieceTotal(task) > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-semibold text-violet-500">
-                        <Layers className="h-3 w-3" /> {task.pieces_count} pieza{task.pieces_count !== 1 ? 's' : ''}
+                        <Layers className="h-3 w-3" /> {taskPieceTotal(task)} pieza{taskPieceTotal(task) !== 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
+                  {(task.pieces_stories || task.pieces_feed || task.pieces_reels) ? (
+                    <div className="flex items-center gap-3 text-xs flex-wrap">
+                      {PIECE_TYPES.map(pt => {
+                        const count = task[pt.field];
+                        if (!count) return null;
+                        const Icon = pt.icon;
+                        return (
+                          <span key={pt.field} className={cn('flex items-center gap-1 font-medium', pt.colorClass)}>
+                            <Icon className="h-3 w-3" /> {count} {pt.label.toLowerCase()}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               )}
 

@@ -19,8 +19,8 @@ export function UserTasksModal({ user, tasks, open, onOpenChange }: UserTasksMod
   const router = useRouter();
   if (!user) return null;
 
-  const activeTasks = tasks.filter(t => t.status !== 'aprobado');
-  const historyTasks = tasks.filter(t => t.status === 'aprobado');
+  const activeTasks = tasks.filter(t => t.status !== 'cerrada');
+  const historyTasks = tasks.filter(t => t.status === 'cerrada');
 
   const openTask = (id: string) => {
     onOpenChange(false);

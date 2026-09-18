@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { PiecesByMonth } from '@/components/client-tasks-tab';
+import { TeamActivity } from '@/components/team-activity';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ClientWall } from '@/components/client-wall';
 import { TASK_STATUS_CONFIG } from '@/lib/task-config';
@@ -36,8 +36,8 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
     );
   }
 
-  const activeTasks = tasks.filter(t => t.status !== 'aprobado');
-  const historyTasks = tasks.filter(t => t.status === 'aprobado');
+  const activeTasks = tasks.filter(t => t.status !== 'cerrada');
+  const historyTasks = tasks.filter(t => t.status === 'cerrada');
 
   const teamMap = new Map<string, { user: User; count: number }>();
   for (const t of activeTasks) {
@@ -149,7 +149,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
             )}
           </div>
 
-          <PiecesByMonth tasks={historyTasks} />
+          <TeamActivity tasks={tasks} />
         </CardContent>
       </Card>
 
