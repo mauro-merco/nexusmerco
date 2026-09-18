@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useAuthStore } from '@/store/auth-store';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import { ShareReportDialog } from '@/components/share-report-dialog';
 import { SocialCalendar } from '@/components/social-calendar';
 import { AdsCalendar } from '@/components/ads-calendar';
 import { ClientTasksTab } from '@/components/client-tasks-tab';
+import { ClientProfileSummary } from '@/components/client-profile-summary';
 import {
   Building2, Upload, BarChart3, Users, Plus,
   LayoutDashboard, Search, Megaphone, Globe, Activity, Share2,
@@ -47,6 +48,7 @@ const statusBadge: Record<string, { label: string; variant: 'default' | 'seconda
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { clients, loading, refetch } = useClients();
   const isAdminOrTeam = user?.role === 'admin' || user?.role === 'operador';
   const canView = user?.role === 'admin' || user?.role === 'operador' || user?.role === 'client';
@@ -80,8 +82,8 @@ export default function DashboardPage() {
 
   // Deep link from global search: ?client=<id>
   useEffect(() => {
-    const clientParam = new URLSearchParams(window.location.search).get('client');
-    if (!clientParam || selectedClientId || clients.length === 0) return;
+    const clientParam = searchParams.get('client');
+    if (!clientParam || clientParam === selectedClientId || clients.length === 0) return;
     const client = clients.find(c => c.id === clientParam);
     if (!client) return;
     setSelectedClientId(clientParam);
@@ -96,7 +98,7 @@ export default function DashboardPage() {
     } else {
       setClientView('menu');
     }
-  }, [clients, selectedClientId]);
+  }, [clients, selectedClientId, searchParams]);
 
   if (!canView) {
     return (
@@ -327,7 +329,6 @@ export default function DashboardPage() {
     const hasAnalysis = selectedClient.analysis_enabled;
     const hasCalendar = selectedClient.social_calendar_enabled;
     const hasAds = selectedClient.ads_calendar_enabled;
-    const moduleCount = [hasAnalysis, hasCalendar, hasAds].filter(Boolean).length;
 
     return (
       <div className="space-y-6">
@@ -360,80 +361,91 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className={cn(
-          'grid gap-6 mx-auto pt-8',
-          moduleCount === 1 ? 'grid-cols-1 max-w-md' :
-          moduleCount === 2 ? 'grid-cols-1 sm:grid-cols-2 max-w-2xl' :
-          'grid-cols-1 sm:grid-cols-3 max-w-3xl',
-        )}>
+        {isAdminOrTeam && <ClientProfileSummary clientId={selectedClient.id} />}
+
+        {!hasAnalysis && !hasCalendar && !hasAds && (
+          <Card className="border-dashed bg-card/30">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+              <Building2 className="h-8 w-8 opacity-30" />
+              <p className="text-sm">Este cliente no tiene módulos habilitados todavía.</p>
+              {isAdminOrTeam && (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs mt-1" onClick={() => router.push(`/clients/${selectedClient.id}/edit`)}>
+                  <Settings className="h-3.5 w-3.5" /> Habilitar módulos
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="space-y-4">
           {hasAnalysis && (
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl w-full"
               onClick={() => setClientView('analysis')}
             >
-              <CardContent className="p-8 flex flex-col items-center text-center gap-4">
-                <div className="rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/10 p-5 group-hover:scale-105 transition-transform">
-                  <BarChart3 className="h-10 w-10 text-blue-500" />
+              <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/10 p-5 shrink-0 self-start sm:self-center group-hover:scale-105 transition-transform">
+                  <BarChart3 className="h-8 w-8 text-blue-500" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-lg font-bold">Centro de Análisis</p>
                   <p className="text-sm text-muted-foreground mt-1">Métricas, campañas, tráfico, embudo y SEO</p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <Badge variant="outline" className="text-[10px]">Resumen</Badge>
+                    <Badge variant="outline" className="text-[10px]">Google Ads</Badge>
+                    <Badge variant="outline" className="text-[10px]">Meta Ads</Badge>
+                    <Badge variant="outline" className="text-[10px]">Canales</Badge>
+                    <Badge variant="outline" className="text-[10px]">Embudo</Badge>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 justify-center mt-2">
-                  <Badge variant="outline" className="text-[10px]">Resumen</Badge>
-                  <Badge variant="outline" className="text-[10px]">Google Ads</Badge>
-                  <Badge variant="outline" className="text-[10px]">Meta Ads</Badge>
-                  <Badge variant="outline" className="text-[10px]">Canales</Badge>
-                  <Badge variant="outline" className="text-[10px]">Embudo</Badge>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0 self-center hidden sm:block" />
               </CardContent>
             </Card>
           )}
 
           {hasCalendar && (
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl w-full"
               onClick={() => setClientView('calendar')}
             >
-              <CardContent className="p-8 flex flex-col items-center text-center gap-4">
-                <div className="rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 p-5 group-hover:scale-105 transition-transform">
-                  <Calendar className="h-10 w-10 text-emerald-500" />
+              <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 p-5 shrink-0 self-start sm:self-center group-hover:scale-105 transition-transform">
+                  <Calendar className="h-8 w-8 text-emerald-500" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-lg font-bold">Calendario de Redes</p>
                   <p className="text-sm text-muted-foreground mt-1">Planificá publicaciones, historias, reels y carruseles</p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <Badge variant="outline" className="text-[10px]">Historias</Badge>
+                    <Badge variant="outline" className="text-[10px]">Reels</Badge>
+                    <Badge variant="outline" className="text-[10px]">Carruseles</Badge>
+                    <Badge variant="outline" className="text-[10px]">Comentarios</Badge>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 justify-center mt-2">
-                  <Badge variant="outline" className="text-[10px]">Historias</Badge>
-                  <Badge variant="outline" className="text-[10px]">Reels</Badge>
-                  <Badge variant="outline" className="text-[10px]">Carruseles</Badge>
-                  <Badge variant="outline" className="text-[10px]">Comentarios</Badge>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0 self-center hidden sm:block" />
               </CardContent>
             </Card>
           )}
 
           {hasAds && (
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl w-full"
               onClick={() => setClientView('ads')}
             >
-              <CardContent className="p-8 flex flex-col items-center text-center gap-4">
-                <div className="rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 p-5 group-hover:scale-105 transition-transform">
-                  <ShoppingBag className="h-10 w-10 text-violet-500" />
+              <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 p-5 shrink-0 self-start sm:self-center group-hover:scale-105 transition-transform">
+                  <ShoppingBag className="h-8 w-8 text-violet-500" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-lg font-bold">Piezas para ADS</p>
                   <p className="text-sm text-muted-foreground mt-1">Calendário de piezas publicitarias con fechas ecommerce</p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <Badge variant="outline" className="text-[10px]">Piezas</Badge>
+                    <Badge variant="outline" className="text-[10px]">Ecommerce</Badge>
+                    <Badge variant="outline" className="text-[10px]">Fechas</Badge>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 justify-center mt-2">
-                  <Badge variant="outline" className="text-[10px]">Piezas</Badge>
-                  <Badge variant="outline" className="text-[10px]">Ecommerce</Badge>
-                  <Badge variant="outline" className="text-[10px]">Fechas</Badge>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0 self-center hidden sm:block" />
               </CardContent>
             </Card>
           )}

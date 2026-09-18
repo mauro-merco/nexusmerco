@@ -70,7 +70,7 @@ const MONTH_LABEL = (key: string) => {
   return new Date(year, month - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
 };
 
-function PiecesByMonth({ tasks }: { tasks: Task[] }) {
+export function PiecesByMonth({ tasks }: { tasks: Task[] }) {
   const byMonth: Record<string, number> = {};
   for (const t of tasks) {
     if (!t.pieces_count) continue;

@@ -247,6 +247,7 @@ export interface Reminder {
 export interface NexusDocument {
   id: string;
   owner_id: string;
+  client_id?: string | null;
   title: string;
   content: string;
   is_public?: boolean;
@@ -256,6 +257,15 @@ export interface NexusDocument {
   shared_users?: User[];
   is_shared_with_me?: boolean;
   can_edit?: boolean;
+}
+
+export interface ClientWallMessage {
+  id: string;
+  client_id: string;
+  user_id: string | null;
+  content: string;
+  created_at: string;
+  user?: User | null;
 }
 
 export interface DocumentShare {

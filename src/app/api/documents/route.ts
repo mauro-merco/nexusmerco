@@ -26,6 +26,36 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const clientId = searchParams.get('client_id');
+
+    if (clientId) {
+      const { data: caller } = await supabase.from('users').select('role').eq('id', userId).single();
+      if (caller?.role !== 'admin' && caller?.role !== 'operador') {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+      }
+
+      const { data: docs } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('updated_at', { ascending: false });
+
+      const ownerIds = [...new Set((docs || []).map(d => d.owner_id))];
+      const { data: owners } = ownerIds.length > 0
+        ? await supabase.from('users').select('id, full_name, avatar_url, email, role').in('id', ownerIds)
+        : { data: [] };
+      const ownersMap = Object.fromEntries((owners || []).map(u => [u.id, u]));
+
+      const enriched = (docs || []).map(d => ({
+        ...d,
+        owner: ownersMap[d.owner_id] || null,
+        can_edit: d.owner_id === userId,
+      }));
+
+      return NextResponse.json({ data: enriched });
+    }
+
     // Documents I own
     const { data: owned } = await supabase
       .from('documents')
@@ -99,7 +129,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { title, content, is_public } = body;
+    const { title, content, is_public, client_id } = body;
 
     const { data, error } = await supabase
       .from('documents')
@@ -108,6 +138,7 @@ export async function POST(request: Request) {
         title: title || 'Sin título',
         content: content || '',
         is_public: is_public || false,
+        client_id: client_id || null,
       })
       .select()
       .single();
