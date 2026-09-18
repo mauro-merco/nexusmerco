@@ -252,6 +252,7 @@ export interface NexusDocument {
   id: string;
   owner_id: string;
   client_id?: string | null;
+  client?: Client | null;
   title: string;
   content: string;
   is_public?: boolean;

@@ -34,11 +34,11 @@ export function useDocuments() {
 
   useEffect(() => { fetchDocuments(); }, [fetchDocuments]);
 
-  const createDocument = useCallback(async (title?: string, content?: string) => {
+  const createDocument = useCallback(async (title?: string, content?: string, clientId?: string | null) => {
     const res = await fetch('/api/documents', {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify({ title, content, client_id: clientId || null }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error);
@@ -53,7 +53,7 @@ export function useDocuments() {
     return json.data as NexusDocument;
   }, []);
 
-  const updateDocument = useCallback(async (id: string, data: Partial<Pick<NexusDocument, 'title' | 'content' | 'is_public'>>) => {
+  const updateDocument = useCallback(async (id: string, data: Partial<Pick<NexusDocument, 'title' | 'content' | 'is_public' | 'client_id'>>) => {
     const res = await fetch(`/api/documents/${id}`, {
       method: 'PUT',
       headers: authHeaders(),

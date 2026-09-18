@@ -36,15 +36,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (error) throw error;
     if (!doc) return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404 });
 
-    // Check access: owner, shared, or admin/operador
+    // Check access: owner, shared, admin/operador, or any @mercodigital.com member (client docs)
     const [{ data: shareRows }, { data: dbUser }] = await Promise.all([
       supabase.from('document_shares').select('user_id').eq('document_id', id),
-      supabase.from('users').select('role').eq('id', userId).single(),
+      supabase.from('users').select('role, email').eq('id', userId).single(),
     ]);
+
+    const isTeamDomain = !!dbUser?.email && dbUser.email.toLowerCase().endsWith('@mercodigital.com');
 
     const canAccess = doc.owner_id === userId
       || (shareRows || []).some(s => s.user_id === userId)
-      || (dbUser?.role === 'admin' || dbUser?.role === 'operador');
+      || (dbUser?.role === 'admin' || dbUser?.role === 'operador')
+      || (!!doc.client_id && isTeamDomain);
 
     if (!canAccess) {
       return NextResponse.json({ error: 'Sin acceso a este documento' }, { status: 403 });
@@ -57,8 +60,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       : { data: [] };
     const usersMap = Object.fromEntries((users || []).map(u => [u.id, u]));
 
+    let clientInfo = null;
+    if (doc.client_id) {
+      const { data: c } = await supabase.from('clients').select('id, name, logo_url').eq('id', doc.client_id).single();
+      if (c) clientInfo = c;
+    }
+
     const enriched = {
       ...doc,
+      client: clientInfo,
       owner: usersMap[doc.owner_id] || null,
       shared_users: (shareRows || []).map(s => usersMap[s.user_id]).filter(Boolean),
       is_shared_with_me: doc.owner_id !== userId && (shareRows || []).some(s => s.user_id === userId),

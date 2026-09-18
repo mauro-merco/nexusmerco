@@ -29,9 +29,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get('client_id');
 
+    const { data: caller } = await supabase.from('users').select('role, email').eq('id', userId).single();
+    const isAdminOrOperador = caller?.role === 'admin' || caller?.role === 'operador';
+    const isTeamDomain = !!caller?.email && caller.email.toLowerCase().endsWith('@mercodigital.com');
+
     if (clientId) {
-      const { data: caller } = await supabase.from('users').select('role').eq('id', userId).single();
-      if (caller?.role !== 'admin' && caller?.role !== 'operador') {
+      if (!isAdminOrOperador && !isTeamDomain) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
       }
 
@@ -41,46 +44,44 @@ export async function GET(request: Request) {
         .eq('client_id', clientId)
         .order('updated_at', { ascending: false });
 
-      const ownerIds = [...new Set((docs || []).map(d => d.owner_id))];
-      const { data: owners } = ownerIds.length > 0
-        ? await supabase.from('users').select('id, full_name, avatar_url, email, role').in('id', ownerIds)
-        : { data: [] };
-      const ownersMap = Object.fromEntries((owners || []).map(u => [u.id, u]));
-
-      const enriched = (docs || []).map(d => ({
+      return NextResponse.json({ data: (docs || []).map(d => ({
         ...d,
-        owner: ownersMap[d.owner_id] || null,
         can_edit: d.owner_id === userId,
-      }));
-
-      return NextResponse.json({ data: enriched });
+      })) });
     }
 
-    // Documents I own
-    const { data: owned } = await supabase
-      .from('documents')
-      .select('*')
-      .eq('owner_id', userId)
-      .order('updated_at', { ascending: false });
+    // Documents I own / shared with me
+    const [{ data: owned }, { data: sharedRows }] = await Promise.all([
+      supabase.from('documents').select('*').eq('owner_id', userId).order('updated_at', { ascending: false }),
+      supabase.from('document_shares').select('document_id').eq('user_id', userId),
+    ]);
 
-    // Documents shared with me
-    const { data: sharedRows } = await supabase
-      .from('document_shares')
-      .select('document_id')
-      .eq('user_id', userId);
+    const byId = new Map<string, any>();
+    for (const d of owned || []) byId.set(d.id, { ...d, is_shared_with_me: false });
 
     const sharedDocIds = (sharedRows || []).map(r => r.document_id);
-    let sharedDocs: any[] = [];
     if (sharedDocIds.length > 0) {
       const { data } = await supabase
         .from('documents')
         .select('*')
         .in('id', sharedDocIds)
         .order('updated_at', { ascending: false });
-      sharedDocs = (data || []).map(d => ({ ...d, is_shared_with_me: true }));
+      for (const d of data || []) byId.set(d.id, { ...d, is_shared_with_me: true });
     }
 
-    const allDocs = [...(owned || []).map(d => ({ ...d, is_shared_with_me: false })), ...sharedDocs];
+    // Team members (@mercodigital.com) can also see every client-linked document
+    if (isTeamDomain) {
+      const { data: clientDocs } = await supabase
+        .from('documents')
+        .select('*')
+        .not('client_id', 'is', null)
+        .order('updated_at', { ascending: false });
+      for (const d of clientDocs || []) {
+        if (!byId.has(d.id)) byId.set(d.id, { ...d, is_shared_with_me: false, is_client_doc: true });
+      }
+    }
+
+    const allDocs = [...byId.values()];
 
     // Fetch owners
     const ownerIds = [...new Set(allDocs.map(d => d.owner_id))];
@@ -107,8 +108,16 @@ export async function GET(request: Request) {
       : { data: [] };
     const sharedUsersMap = Object.fromEntries((sharedUsers || []).map(u => [u.id, u]));
 
+    // Fetch clients for linked documents
+    const clientIds = [...new Set(allDocs.map(d => d.client_id).filter(Boolean))];
+    const { data: clients } = clientIds.length > 0
+      ? await supabase.from('clients').select('id, name, logo_url').in('id', clientIds)
+      : { data: [] };
+    const clientsMap = Object.fromEntries((clients || []).map(c => [c.id, c]));
+
     const enriched = allDocs.map(d => ({
       ...d,
+      client: d.client_id ? clientsMap[d.client_id] || null : null,
       owner: ownersMap[d.owner_id] || null,
       shared_users: (shareMap[d.id] || []).map(uid => sharedUsersMap[uid]).filter(Boolean),
       can_edit: d.owner_id === userId || d.is_shared_with_me,

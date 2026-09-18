@@ -13,14 +13,16 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { useDocuments } from '@/lib/hooks/use-documents';
+import { useClients } from '@/lib/hooks/use-clients';
 import { DocumentEditor } from '@/components/document-editor';
 import { DocumentShareDialog } from '@/components/document-share-dialog';
 import { DocumentAiDialog, type AiInsertMode } from '@/components/document-ai-dialog';
 import { StickyNotes } from '@/components/sticky-notes';
+import { Label } from '@/components/ui/label';
 import type { NexusDocument } from '@/lib/types';
 import {
   FileText, Plus, Share2, Trash2, ArrowLeft, Loader2, Search,
-  Clock, User, Save, Users, Sparkles, StickyNote, Globe,
+  Clock, User, Save, Users, Sparkles, StickyNote, Globe, Building2, Eye,
 } from 'lucide-react';
 
 function formatDate(iso: string) {
@@ -35,6 +37,7 @@ function formatDate(iso: string) {
 export default function DocumentosPage() {
   const { user } = useAuthStore();
   const { documents, loading, createDocument, getDocument, updateDocument, deleteDocument, refetch } = useDocuments();
+  const { clients: clientOptions } = useClients();
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'list' | 'editor'>('list');
   const [tab, setTab] = useState<'docs' | 'notes'>('docs');
@@ -48,6 +51,8 @@ export default function DocumentosPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [newDocOpen, setNewDocOpen] = useState(false);
+  const [newDocClientId, setNewDocClientId] = useState('');
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isOwner = (doc: NexusDocument | null) => !!doc && doc.owner_id === user?.id;
@@ -69,14 +74,33 @@ export default function DocumentosPage() {
     }
   }, [getDocument]);
 
-  const handleNew = useCallback(async () => {
+  const handleNew = useCallback(() => {
+    setNewDocClientId('');
+    setNewDocOpen(true);
+  }, []);
+
+  const handleCreateDoc = useCallback(async () => {
     try {
-      const doc = await createDocument('Sin título', '');
+      const doc = await createDocument('Sin título', '', newDocClientId || null);
+      setNewDocOpen(false);
       await openEditor(doc);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al crear documento');
     }
-  }, [createDocument, openEditor]);
+  }, [createDocument, openEditor, newDocClientId]);
+
+  const handleClientChange = useCallback(async (clientId: string) => {
+    if (!currentDoc) return;
+    const next = clientId || null;
+    setCurrentDoc(prev => prev ? { ...prev, client_id: next } : prev);
+    try {
+      await updateDocument(currentDoc.id, { client_id: next });
+      setSavedAt(new Date());
+      refetch();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al vincular cliente');
+    }
+  }, [currentDoc, updateDocument, refetch]);
 
   const [triggerStartNew, setTriggerStartNew] = useState(false);
 
@@ -102,6 +126,7 @@ export default function DocumentosPage() {
   // Autosave (debounced)
   useEffect(() => {
     if (!currentDoc) return;
+    if (currentDoc.can_edit === false) return;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(() => {
       saveDoc(title, content);
@@ -109,7 +134,7 @@ export default function DocumentosPage() {
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
-  }, [title, content, currentDoc?.id]);
+  }, [title, content, currentDoc?.id, currentDoc?.can_edit]);
 
   // Deep link: open a specific shared document (?doc=<id>)
   useEffect(() => {
@@ -167,6 +192,7 @@ export default function DocumentosPage() {
   // Editor view
   if (view === 'editor' && currentDoc) {
     const owner = isOwner(currentDoc);
+    const canEdit = currentDoc.can_edit ?? owner;
     return (
       <div className="space-y-4">
         <div className="flex flex-col gap-3">
@@ -213,18 +239,43 @@ export default function DocumentosPage() {
                   {currentDoc.is_public ? 'Público' : 'Privado'}
                 </button>
               )}
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center text-primary border-primary/30 hover:bg-primary/10" onClick={() => setAiOpen(true)}>
-                <Sparkles className="h-3.5 w-3.5" /> Asistente IA
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center" onClick={() => setShareTarget(currentDoc)}>
-                <Share2 className="h-3.5 w-3.5" /> Compartir
-              </Button>
+              {canEdit && (
+                <>
+                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center text-primary border-primary/30 hover:bg-primary/10" onClick={() => setAiOpen(true)}>
+                    <Sparkles className="h-3.5 w-3.5" /> Asistente IA
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center" onClick={() => setShareTarget(currentDoc)}>
+                    <Share2 className="h-3.5 w-3.5" /> Compartir
+                  </Button>
+                </>
+              )}
               {owner && (
                 <Button variant="outline" size="sm" className="flex-1 sm:flex-none sm:min-w-fit gap-1.5 justify-center text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => setDeleteTarget(currentDoc)}>
                   <Trash2 className="h-3.5 w-3.5" /> Eliminar
                 </Button>
               )}
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+            {owner ? (
+              <select
+                value={currentDoc.client_id || ''}
+                onChange={(e) => handleClientChange(e.target.value)}
+                className="h-8 max-w-[200px] rounded-md border border-input bg-transparent px-2 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Sin cliente</option>
+                {clientOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            ) : (
+              <span className="font-medium text-foreground/80">{currentDoc.client?.name || 'Sin cliente'}</span>
+            )}
+            {!canEdit && (
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <Eye className="h-3 w-3" /> Solo lectura
+              </span>
+            )}
           </div>
         </div>
 
@@ -233,13 +284,13 @@ export default function DocumentosPage() {
           onChange={(e) => setTitle(e.target.value)}
           className="text-2xl font-bold h-auto py-2 px-0 border-0 shadow-none focus-visible:ring-0"
           placeholder="Título del documento..."
-          readOnly={false}
+          readOnly={!canEdit}
         />
 
         <DocumentEditor
           initialContent={content}
           onChange={setContent}
-          readOnly={false}
+          readOnly={!canEdit}
         />
 
         {saving && (
@@ -374,13 +425,20 @@ export default function DocumentosPage() {
                   <div className="rounded-lg bg-primary/10 p-2 shrink-0">
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
-                  {doc.is_public ? (
-                    <Badge variant="outline" className="text-[10px] text-primary border-primary/30"><Globe className="h-3 w-3 mr-1" /> Público</Badge>
-                  ) : doc.is_shared_with_me ? (
-                    <Badge variant="secondary" className="text-[10px]"><Users className="h-3 w-3 mr-1" /> Compartido</Badge>
-                  ) : doc.shared_users && doc.shared_users.length > 0 ? (
-                    <Badge variant="outline" className="text-[10px]"><Users className="h-3 w-3 mr-1" /> {doc.shared_users.length}</Badge>
-                  ) : null}
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {doc.client && (
+                      <Badge variant="outline" className="text-[10px] text-cyan-600 border-cyan-500/30 dark:text-cyan-400">
+                        <Building2 className="h-3 w-3 mr-1" /> {doc.client.name}
+                      </Badge>
+                    )}
+                    {doc.is_public ? (
+                      <Badge variant="outline" className="text-[10px] text-primary border-primary/30"><Globe className="h-3 w-3 mr-1" /> Público</Badge>
+                    ) : doc.is_shared_with_me ? (
+                      <Badge variant="secondary" className="text-[10px]"><Users className="h-3 w-3 mr-1" /> Compartido</Badge>
+                    ) : doc.shared_users && doc.shared_users.length > 0 ? (
+                      <Badge variant="outline" className="text-[10px]"><Users className="h-3 w-3 mr-1" /> {doc.shared_users.length}</Badge>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="min-w-0">
@@ -427,6 +485,32 @@ export default function DocumentosPage() {
        />
        </>
      )}
+
+     <Dialog open={newDocOpen} onOpenChange={setNewDocOpen}>
+       <DialogContent className="max-w-sm">
+         <DialogHeader>
+           <DialogTitle>Nuevo documento</DialogTitle>
+           <DialogDescription>
+             Elegí a qué cliente va a pertenecer este documento (opcional). Los documentos de un cliente están visibles para todo el equipo.
+           </DialogDescription>
+         </DialogHeader>
+         <div className="space-y-1.5">
+           <Label>Cliente</Label>
+           <select
+             value={newDocClientId}
+             onChange={(e) => setNewDocClientId(e.target.value)}
+             className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+           >
+             <option value="">Sin cliente (documento personal)</option>
+             {clientOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+           </select>
+         </div>
+         <DialogFooter>
+           <Button variant="outline" onClick={() => setNewDocOpen(false)}>Cancelar</Button>
+           <Button variant="cta" size="cta" onClick={handleCreateDoc}>Crear</Button>
+         </DialogFooter>
+       </DialogContent>
+     </Dialog>
     </div>
   );
 }
