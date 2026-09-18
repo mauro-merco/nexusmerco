@@ -98,8 +98,8 @@ export async function POST(request: Request) {
     if (!newAuthUser.user) throw new Error('No se pudo crear el usuario');
 
     const modules = visible_modules || (
-      newRole === 'admin' ? ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights'] :
-      newRole === 'operador' ? ['dashboard', 'wizard', 'tareas', 'analysis', 'insights'] :
+      newRole === 'admin' ? ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights'] :
+      newRole === 'operador' ? ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'insights'] :
       ['dashboard', 'analysis', 'insights']
     );
 

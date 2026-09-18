@@ -1,11 +1,11 @@
 export type UserRole = 'admin' | 'operador' | 'client';
 
-export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes'] as const;
+export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes'] as const;
 export type ModuleId = typeof ALL_MODULES[number];
 
 export const DEFAULT_MODULES: Record<UserRole, ModuleId[]> = {
-  admin: ['dashboard', 'wizard', 'tareas', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes'],
-  operador: ['dashboard', 'wizard', 'tareas', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes'],
+  admin: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes'],
+  operador: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes'],
   client: ['dashboard', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes'],
 };
 
@@ -183,14 +183,13 @@ export interface Task {
   title: string;
   description: string;
   status: TaskStatus;
-  assignee_id: string | null;
   author_id: string | null;
   priority: TaskPriority;
   due_date: string | null;
   position: number;
   created_at: string;
   updated_at: string;
-  assignee?: User | null;
+  assignees: User[];
   author?: User | null;
   client?: Client | null;
   comment_count?: number;

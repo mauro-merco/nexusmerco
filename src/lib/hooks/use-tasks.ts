@@ -29,7 +29,7 @@ export function useTasks(clientId: string | null) {
     title: string;
     description?: string;
     status?: TaskStatus;
-    assignee_id?: string;
+    assignee_ids?: string[];
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
@@ -49,7 +49,7 @@ export function useTasks(clientId: string | null) {
     title: string;
     description: string;
     status: TaskStatus;
-    assignee_id: string | null;
+    assignee_ids: string[];
     priority: TaskPriority;
     due_date: string | null;
     position: number;

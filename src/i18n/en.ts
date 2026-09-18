@@ -3,6 +3,7 @@ export const en = {
     dashboard: 'Dashboard',
     wizard: 'Weekly Wizard',
     operations: 'Tasks',
+    team: 'Team',
     clients: 'Client Hub',
     analysis: 'Analysis',
     integrations: 'Integrations',

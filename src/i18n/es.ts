@@ -3,6 +3,7 @@ export const es = {
     dashboard: 'Centro de Control',
     wizard: 'Asistente Semanal',
     operations: 'Tareas',
+    team: 'Equipo',
     clients: 'Clientes',
     analysis: 'Análisis',
     integrations: 'Integraciones',

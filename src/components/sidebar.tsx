@@ -24,6 +24,7 @@ import {
   ChevronUp,
   LayoutGrid,
   Mail,
+  Users2,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { label: 'dashboard', href: '/dashboard', icon: 'LayoutDashboard', moduleId: 'dashboard', roles: ['admin', 'operador', 'client'] },
   { label: 'wizard', href: '/wizard', icon: 'Wand2', moduleId: 'wizard', roles: ['admin', 'operador'] },
   { label: 'operations', href: '/operations', icon: 'KanbanSquare', moduleId: 'tareas', roles: ['admin', 'operador'] },
+  { label: 'team', href: '/team', icon: 'Users2', moduleId: 'equipo', roles: ['admin', 'operador'] },
   { label: 'analysis', href: '/analysis', icon: 'BarChart3', moduleId: 'analysis', roles: ['admin', 'operador', 'client'] },
   { label: 'integrations', href: '/integrations', icon: 'Cable', moduleId: 'integrations', roles: ['admin', 'operador'] },
   { label: 'insights', href: '/insights', icon: 'BrainCircuit', moduleId: 'insights', roles: ['admin', 'operador', 'client'] },
@@ -50,6 +52,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
   Settings,
   Mail,
+  Users2,
 };
 
 function RailItem({

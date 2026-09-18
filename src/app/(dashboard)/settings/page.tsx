@@ -28,6 +28,7 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   dashboard: 'Centro de Control',
   wizard: 'Asistente Semanal',
   tareas: 'Tareas',
+  equipo: 'Equipo',
   analysis: 'Análisis',
   integrations: 'Integraciones',
   insights: 'Insights IA',

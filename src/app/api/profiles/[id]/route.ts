@@ -29,12 +29,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     }
 
     // Tasks assigned to this user (with client + assignee info)
-    const { data: tasks } = await supabase
-      .from('tasks')
-      .select('id, client_id, title, description, status, priority, due_date, position, assignee_id, author_id, created_at, updated_at')
-      .eq('assignee_id', id)
-      .order('position', { ascending: true })
-      .order('created_at', { ascending: true });
+    const { data: assignedRows } = await supabase.from('task_assignees').select('task_id').eq('user_id', id);
+    const assignedTaskIds = (assignedRows || []).map(r => r.task_id);
+    const { data: tasks } = assignedTaskIds.length > 0
+      ? await supabase
+          .from('tasks')
+          .select('id, client_id, title, description, status, priority, due_date, position, author_id, created_at, updated_at')
+          .in('id', assignedTaskIds)
+          .order('position', { ascending: true })
+          .order('created_at', { ascending: true })
+      : { data: [] };
 
     const clientIds = [...new Set((tasks || []).map(t => t.client_id).filter(Boolean))];
     const { data: clients } = clientIds.length > 0

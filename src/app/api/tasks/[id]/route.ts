@@ -12,7 +12,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { data: task, error } = await supabase.from('tasks').select('*').eq('id', id).single();
     if (error) throw error;
 
-    const userIds = [task.assignee_id, task.author_id].filter(Boolean);
+    const { data: assigneeRows } = await supabase.from('task_assignees').select('user_id').eq('task_id', id);
+    const assigneeIds = (assigneeRows || []).map(r => r.user_id);
+
+    const userIds = [...new Set([...assigneeIds, task.author_id].filter(Boolean))];
     const { data: users } = userIds.length > 0
       ? await supabase.from('users').select('id, full_name, avatar_url, email, role').in('id', userIds)
       : { data: [] };
@@ -27,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({
       data: {
         ...task,
-        assignee: task.assignee_id ? usersMap[task.assignee_id] || null : null,
+        assignees: assigneeIds.map(uid => usersMap[uid]).filter(Boolean),
         author: task.author_id ? usersMap[task.author_id] || null : null,
         client: client || null,
         comment_count: comment_count || 0,
@@ -45,30 +48,48 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const body = await request.json();
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-    for (const key of ['title', 'description', 'status', 'assignee_id', 'author_id', 'priority', 'due_date', 'position']) {
+    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position']) {
       if (body[key] !== undefined) updates[key] = body[key];
     }
-
-    const { data: oldTask } = await supabase.from('tasks').select('assignee_id, title, author_id').eq('id', id).single();
 
     const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).select().single();
     if (error) throw error;
 
-    if (body.assignee_id && oldTask && body.assignee_id !== oldTask.assignee_id) {
-      const { data: actor } = oldTask.author_id
-        ? await supabase.from('users').select('full_name, email').eq('id', oldTask.author_id).single()
-        : { data: null };
-      await supabase.from('notifications').insert({
-        user_id: body.assignee_id,
-        type: 'task_assigned',
-        title: 'Te asignaron una tarea',
-        message: `${actor?.full_name || actor?.email || 'Alguien'} te asignó: ${data.title}`,
-        task_id: id,
-        link: `/operations?task=${id}`,
-      });
+    if (Array.isArray(body.assignee_ids)) {
+      const newIds: string[] = body.assignee_ids.filter(Boolean);
+      const { data: existingRows } = await supabase.from('task_assignees').select('user_id').eq('task_id', id);
+      const existingIds = (existingRows || []).map(r => r.user_id);
+
+      const toAdd = newIds.filter(uid => !existingIds.includes(uid));
+      const toRemove = existingIds.filter(uid => !newIds.includes(uid));
+
+      if (toRemove.length > 0) {
+        await supabase.from('task_assignees').delete().eq('task_id', id).in('user_id', toRemove);
+      }
+      if (toAdd.length > 0) {
+        await supabase.from('task_assignees').insert(toAdd.map(user_id => ({ task_id: id, user_id })));
+
+        const { data: actor } = data.author_id
+          ? await supabase.from('users').select('full_name, email').eq('id', data.author_id).single()
+          : { data: null };
+        await supabase.from('notifications').insert(toAdd.map(user_id => ({
+          user_id,
+          type: 'task_assigned',
+          title: 'Te asignaron una tarea',
+          message: `${actor?.full_name || actor?.email || 'Alguien'} te asignó: ${data.title}`,
+          task_id: id,
+          link: `/operations?task=${id}`,
+        })));
+      }
     }
 
-    return NextResponse.json({ data });
+    const { data: assigneeRows } = await supabase.from('task_assignees').select('user_id').eq('task_id', id);
+    const assigneeIds = (assigneeRows || []).map(r => r.user_id);
+    const { data: assignees } = assigneeIds.length > 0
+      ? await supabase.from('users').select('id, full_name, avatar_url, email, role').in('id', assigneeIds)
+      : { data: [] };
+
+    return NextResponse.json({ data: { ...data, assignees: assignees || [] } });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }

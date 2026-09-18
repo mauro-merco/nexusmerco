@@ -70,10 +70,12 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
               </span>
             );
           })()}
-          {task.assignee && (
-            <span className="flex items-center gap-0.5">
-              <User className="h-3 w-3" />
-              {task.assignee.full_name}
+          {task.assignees && task.assignees.length > 0 && (
+            <span className="flex items-center gap-0.5 truncate max-w-[140px]">
+              <User className="h-3 w-3 shrink-0" />
+              {task.assignees.length > 2
+                ? `${task.assignees.slice(0, 2).map(a => a.full_name.split(' ')[0]).join(', ')} +${task.assignees.length - 2}`
+                : task.assignees.map(a => a.full_name.split(' ')[0]).join(', ')}
             </span>
           )}
         </div>

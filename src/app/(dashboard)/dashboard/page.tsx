@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,10 +22,11 @@ import { FunnelSeoTab } from '@/components/funnel-seo-tab';
 import { ShareReportDialog } from '@/components/share-report-dialog';
 import { SocialCalendar } from '@/components/social-calendar';
 import { AdsCalendar } from '@/components/ads-calendar';
+import { ClientTasksTab } from '@/components/client-tasks-tab';
 import {
   Building2, Upload, BarChart3, Users, Plus,
   LayoutDashboard, Search, Megaphone, Globe, Activity, Share2,
-  ArrowLeft, HelpCircle, Sparkles, ChevronRight, Calendar, Settings, Pencil, Trash2, Loader2, ShoppingBag,
+  ArrowLeft, HelpCircle, Sparkles, ChevronRight, Calendar, Settings, Pencil, Trash2, Loader2, ShoppingBag, KanbanSquare,
 } from 'lucide-react';
 
 const TAB_TOOLTIPS: Record<string, string> = {
@@ -34,6 +35,7 @@ const TAB_TOOLTIPS: Record<string, string> = {
   meta: 'Rendimiento de campañas de Meta Ads (Facebook e Instagram): inversión, alcance, resultados y conjuntos de anuncios.',
   analytics: 'Tráfico del sitio web por canal: sesiones, engagement, revenue y distribución por fuente de tráfico.',
   funnel: 'Embudo de conversión y métricas SEO: adquisición, comportamiento, conversiones y rendimiento orgánico.',
+  tasks: 'Tareas en curso e historial de tareas finalizadas para este cliente.',
 };
 
 const statusBadge: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | undefined }> = {
@@ -75,6 +77,26 @@ export default function DashboardPage() {
       setDeleting(false);
     }
   }, [deleteTarget, confirmEnabled, refetch]);
+
+  // Deep link from global search: ?client=<id>
+  useEffect(() => {
+    const clientParam = new URLSearchParams(window.location.search).get('client');
+    if (!clientParam || selectedClientId || clients.length === 0) return;
+    const client = clients.find(c => c.id === clientParam);
+    if (!client) return;
+    setSelectedClientId(clientParam);
+    const hasAnalysis = client.analysis_enabled;
+    const hasCalendar = client.social_calendar_enabled;
+    const hasAds = client.ads_calendar_enabled;
+    const moduleCount = [hasAnalysis, hasCalendar, hasAds].filter(Boolean).length;
+    if (moduleCount === 1) {
+      if (hasAnalysis) setClientView('analysis');
+      else if (hasCalendar) setClientView('calendar');
+      else setClientView('ads');
+    } else {
+      setClientView('menu');
+    }
+  }, [clients, selectedClientId]);
 
   if (!canView) {
     return (
@@ -154,7 +176,7 @@ export default function DashboardPage() {
           </div>
 
           <Tabs defaultValue="executive" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 max-w-3xl">
+            <TabsList className={cn('grid w-full max-w-3xl', isAdminOrTeam ? 'grid-cols-6' : 'grid-cols-5')}>
               <Tooltip>
                 <TooltipTrigger render={<TabsTrigger value="executive" className="gap-1.5" />}>
                   <LayoutDashboard className="h-3.5 w-3.5" /> Resumen General
@@ -185,6 +207,14 @@ export default function DashboardPage() {
                 </TooltipTrigger>
                 <TooltipContent side="bottom">{TAB_TOOLTIPS.funnel}</TooltipContent>
               </Tooltip>
+              {isAdminOrTeam && (
+                <Tooltip>
+                  <TooltipTrigger render={<TabsTrigger value="tasks" className="gap-1.5" />}>
+                    <KanbanSquare className="h-3.5 w-3.5" /> Tareas
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{TAB_TOOLTIPS.tasks}</TooltipContent>
+                </Tooltip>
+              )}
             </TabsList>
             <TabsContent value="executive" className="mt-4">
               <ExecutiveDashboard clientId={selectedClientId!} clientName={selectedClient.name} />
@@ -192,6 +222,11 @@ export default function DashboardPage() {
             <TabsContent value="google" className="mt-4">
               <GoogleAdsTab clientId={selectedClientId!} clientName={selectedClient.name} />
             </TabsContent>
+            {isAdminOrTeam && (
+              <TabsContent value="tasks" className="mt-4">
+                <ClientTasksTab clientId={selectedClientId!} />
+              </TabsContent>
+            )}
             <TabsContent value="meta" className="mt-4">
               <MetaAdsTab clientId={selectedClientId!} clientName={selectedClient.name} />
             </TabsContent>

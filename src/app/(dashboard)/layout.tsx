@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { AIWidget } from '@/components/ai-widget';
+import { GlobalSearch } from '@/components/global-search';
 import { NotificationBell } from '@/components/notification-bell';
 import { NotificationToasts } from '@/components/notification-toasts';
 import { RemindersBell } from '@/components/reminders-bell';
@@ -51,7 +52,10 @@ export default function DashboardLayout({
             <img src="/merco-light-mode.svg" alt="Nexus Marketing" className="h-5 w-auto max-w-[120px] object-contain dark:hidden" />
             <img src="/merco-dark-mode.svg" alt="Nexus Marketing" className="h-5 w-auto max-w-[120px] object-contain hidden dark:block" />
           </a>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex-1 flex justify-center px-2">
+            <GlobalSearch />
+          </div>
+          <div className="flex items-center gap-2">
             <NotificationBell />
             <RemindersBell />
             <ProfileMenu />

@@ -8,10 +8,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import type { TaskStatus, TaskPriority } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES } from '@/lib/task-config';
-import { Loader2, User } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface UserRecord { id: string; full_name: string; email: string; avatar_url: string; }
 
@@ -24,7 +25,7 @@ interface NewTaskDialogProps {
     title: string;
     description?: string;
     status?: TaskStatus;
-    assignee_id?: string;
+    assignee_ids?: string[];
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
@@ -35,7 +36,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('en_espera');
-  const [assigneeId, setAssigneeId] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
@@ -46,12 +47,16 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
       setTitle('');
       setDescription('');
       setStatus('en_espera');
-      setAssigneeId('');
+      setAssigneeIds([]);
       setPriority('medium');
       setDueDate('');
       setError(null);
     }
   }, [open]);
+
+  const toggleAssignee = (id: string) => {
+    setAssigneeIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   const handleSave = async () => {
     if (!title.trim()) { setError('Ingresá un título'); return; }
@@ -62,7 +67,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
         title: title.trim(),
         description: description.trim(),
         status,
-        assignee_id: assigneeId || undefined,
+        assignee_ids: assigneeIds,
         priority,
         due_date: dueDate || undefined,
       });
@@ -131,22 +136,25 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Asignar a</Label>
-              <select
-                value={assigneeId}
-                onChange={e => setAssigneeId(e.target.value)}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-              >
-                <option value="">Sin asignar</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
               <Label>Fecha límite</Label>
               <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
                 className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Asignar a {assigneeIds.length > 0 && <span className="text-muted-foreground font-normal">({assigneeIds.length} seleccionado{assigneeIds.length !== 1 ? 's' : ''})</span>}</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto rounded-md border border-input p-2">
+              {users.length === 0 && <p className="text-xs text-muted-foreground col-span-full py-2 text-center">Sin usuarios disponibles</p>}
+              {users.map(u => (
+                <label key={u.id} className={cn(
+                  'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer transition-colors',
+                  assigneeIds.includes(u.id) ? 'border-primary/50 bg-primary/5' : 'border-border text-muted-foreground',
+                )}>
+                  <Checkbox checked={assigneeIds.includes(u.id)} onCheckedChange={() => toggleAssignee(u.id)} />
+                  <span className="truncate">{u.full_name || u.email}</span>
+                </label>
+              ))}
             </div>
           </div>
 

@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { useTaskComments, useTaskAttachments } from '@/lib/hooks/use-tasks';
 import { useAuthStore } from '@/store/auth-store';
@@ -39,7 +40,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [description, setDescription] = useState(task.description);
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
-  const [assigneeId, setAssigneeId] = useState(task.assignee_id || '');
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(task.assignees?.map(a => a.id) || []);
   const [dueDate, setDueDate] = useState(task.due_date || '');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -59,7 +60,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setDescription(task.description);
     setStatus(task.status);
     setPriority(task.priority);
-    setAssigneeId(task.assignee_id || '');
+    setAssigneeIds(task.assignees?.map(a => a.id) || []);
     setDueDate(task.due_date || '');
     setEditing(false);
     setConfirmDelete(false);
@@ -75,7 +76,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
         title, description, status, priority,
-        assignee_id: assigneeId || null,
+        assignee_ids: assigneeIds,
         due_date: dueDate || null,
         }),
       });
@@ -88,7 +89,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     } finally {
       setSaving(false);
     }
-  }, [task.id, title, description, status, priority, assigneeId, dueDate, onTaskUpdated]);
+  }, [task.id, title, description, status, priority, assigneeIds, dueDate, onTaskUpdated]);
 
   const handleQuickStatus = useCallback(async (newStatus: TaskStatus) => {
     if (newStatus === status) return;
@@ -170,9 +171,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   </span>
                 );
               })()}
-              {task.assignee && (
+              {task.assignees && task.assignees.length > 0 && (
                 <span className="flex items-center gap-1">
-                  <User className="h-3 w-3" /> {task.assignee.full_name}
+                  <User className="h-3 w-3" /> {task.assignees.map(a => a.full_name).join(', ')}
                 </span>
               )}
             </DialogDescription>
@@ -188,7 +189,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   setEditing(false); setSaveError(null);
                   setTitle(task.title); setDescription(task.description);
                   setStatus(task.status); setPriority(task.priority);
-                  setAssigneeId(task.assignee_id || ''); setDueDate(task.due_date || '');
+                  setAssigneeIds(task.assignees?.map(a => a.id) || []); setDueDate(task.due_date || '');
                 }}>Cancelar</Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}>
                   {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
@@ -247,18 +248,24 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Asignar a</Label>
-                      <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)}
-                        className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm">
-                        <option value="">Sin asignar</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
-                      </select>
+                      <Label>Fecha límite</Label>
+                      <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                        className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Fecha límite</Label>
-                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                    <Label>Asignar a {assigneeIds.length > 0 && <span className="text-muted-foreground font-normal">({assigneeIds.length} seleccionado{assigneeIds.length !== 1 ? 's' : ''})</span>}</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto rounded-md border border-input p-2">
+                      {users.map(u => (
+                        <label key={u.id} className={cn(
+                          'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer transition-colors',
+                          assigneeIds.includes(u.id) ? 'border-primary/50 bg-primary/5' : 'border-border text-muted-foreground',
+                        )}>
+                          <Checkbox checked={assigneeIds.includes(u.id)} onCheckedChange={() => setAssigneeIds(prev => prev.includes(u.id) ? prev.filter(x => x !== u.id) : [...prev, u.id])} />
+                          <span className="truncate">{u.full_name || u.email}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
