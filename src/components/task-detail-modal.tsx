@@ -19,6 +19,7 @@ import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIE
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
   Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X, Layers,
+  Share2, Copy, Globe, Lock,
 } from 'lucide-react';
 
 interface TaskDetailModalProps {
@@ -46,6 +47,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [togglingPublic, setTogglingPublic] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [newComment, setNewComment] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
@@ -67,6 +71,8 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setEditing(false);
     setConfirmDelete(false);
     setSaveError(null);
+    setShareOpen(false);
+    setCopied(false);
   }, [task]);
 
   const handleSave = useCallback(async () => {
@@ -141,6 +147,31 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     } finally { setConfirmDelete(false); }
   }, [task.id, confirmDelete, onTaskDeleted, onOpenChange]);
 
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/t/${task.share_token}` : '';
+
+  const handleTogglePublic = useCallback(async () => {
+    setTogglingPublic(true);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_public: !task.is_public }),
+      });
+      const json = await res.json();
+      if (res.ok) onTaskUpdated(json.data);
+    } finally {
+      setTogglingPublic(false);
+    }
+  }, [task.id, task.is_public, onTaskUpdated]);
+
+  const handleCopyLink = useCallback(() => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [shareUrl]);
+
   const sConfig = TASK_STATUS_CONFIG[status];
 
   return (
@@ -182,6 +213,53 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             </DialogDescription>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <div className="relative">
+              <Button variant="ghost" size="sm" onClick={() => setShareOpen(v => !v)} className="gap-1.5">
+                <Share2 className="h-3.5 w-3.5" />
+              </Button>
+              {shareOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border bg-popover shadow-xl z-50 p-3 space-y-3" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold flex items-center gap-1.5">
+                        <Share2 className="h-3.5 w-3.5" /> Compartir tarea
+                      </span>
+                      <button onClick={() => setShareOpen(false)} className="text-muted-foreground hover:text-foreground">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleTogglePublic}
+                      disabled={togglingPublic}
+                      className="w-full flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left hover:bg-muted/40 transition-colors"
+                    >
+                      <span className="flex items-center gap-2 text-xs">
+                        {task.is_public ? <Globe className="h-3.5 w-3.5 text-emerald-500" /> : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                        <span>
+                          <span className="font-medium">{task.is_public ? 'Pública' : 'Privada'}</span>
+                          <span className="block text-[10px] text-muted-foreground">
+                            {task.is_public ? 'Cualquiera con el link puede verla' : 'Solo usuarios @mercodigital.com'}
+                          </span>
+                        </span>
+                      </span>
+                      {togglingPublic ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : (
+                        <span className="text-[10px] text-primary shrink-0">Cambiar</span>
+                      )}
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <Input value={shareUrl} readOnly className="h-8 text-xs" onFocus={e => e.target.select()} />
+                      <Button size="sm" onClick={handleCopyLink} className="h-8 shrink-0 gap-1">
+                        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             {!editing ? (
               <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
                 <Edit3 className="h-3.5 w-3.5" />

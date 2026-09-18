@@ -189,6 +189,8 @@ export interface Task {
   pieces_count: number | null;
   completed_at: string | null;
   position: number;
+  share_token: string;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
   assignees: User[];

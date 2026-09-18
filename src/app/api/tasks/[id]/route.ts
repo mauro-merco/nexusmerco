@@ -48,7 +48,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const body = await request.json();
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position']) {
+    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public']) {
       if (body[key] !== undefined) updates[key] = body[key];
     }
     if (body.pieces_count !== undefined) {
