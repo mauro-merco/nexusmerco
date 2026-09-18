@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG } from '@/lib/task-config';
 import type { Task } from '@/lib/types';
-import { Loader2, LogIn, Eye, EyeOff, Lock, Calendar, User, Paperclip, MessageSquare, Link as LinkIcon } from 'lucide-react';
+import { Loader2, LogIn, Eye, EyeOff, Lock, Calendar, User, Paperclip, MessageSquare, Link as LinkIcon, ArrowLeft } from 'lucide-react';
 
 interface PublicTaskComment {
   id: string;
@@ -45,12 +45,24 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
 
   const load = useCallback(async (t: string) => {
     setState({ status: 'loading' });
+    // The app's source of truth for "am I logged in" is the persisted Zustand
+    // store (nexus-auth), not the raw Supabase session — e.g. 2FA accounts sign
+    // out of Supabase right after login but stay "logged in" via this token.
     let authToken: string | null = null;
     try {
-      const { getSupabase } = await import('@/lib/supabase');
-      const { data: { session } } = await getSupabase().auth.getSession();
-      authToken = session?.access_token || null;
+      const nexusRaw = localStorage.getItem('nexus-auth');
+      if (nexusRaw) {
+        const nexus = JSON.parse(nexusRaw);
+        authToken = nexus?.state?.token || null;
+      }
     } catch { /* ignore */ }
+    if (!authToken) {
+      try {
+        const { getSupabase } = await import('@/lib/supabase');
+        const { data: { session } } = await getSupabase().auth.getSession();
+        authToken = session?.access_token || null;
+      } catch { /* ignore */ }
+    }
 
     const headers: Record<string, string> = {};
     if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
@@ -83,16 +95,27 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
   }
 
   if (state.status === 'not_found') {
-    return <div className={cn(bg, 'flex items-center justify-center p-6 text-center')}><p className="text-muted-foreground">Tarea no encontrada. El link puede haber cambiado o la tarea fue eliminada.</p></div>;
+    return (
+      <div className={cn(bg, 'flex items-center justify-center p-6 text-center')}>
+        <BackToApp />
+        <p className="text-muted-foreground">Tarea no encontrada. El link puede haber cambiado o la tarea fue eliminada.</p>
+      </div>
+    );
   }
 
   if (state.status === 'needs_login') {
-    return <LoginGate onLoggedIn={() => load(token)} />;
+    return (
+      <>
+        <BackToApp />
+        <LoginGate onLoggedIn={() => load(token)} />
+      </>
+    );
   }
 
   if (state.status === 'forbidden') {
     return (
       <div className={cn(bg, 'flex items-center justify-center p-6')}>
+        <BackToApp />
         <Card className="max-w-sm w-full border-border/50 bg-card/50 backdrop-blur-xl">
           <CardContent className="p-6 text-center space-y-3">
             <Lock className="h-8 w-8 mx-auto text-muted-foreground" />
@@ -101,6 +124,7 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
             <Button variant="outline" size="sm" onClick={async () => {
               const { getSupabase } = await import('@/lib/supabase');
               await getSupabase().auth.signOut();
+              localStorage.removeItem('nexus-auth');
               load(token);
             }}>Iniciar sesión con otra cuenta</Button>
           </CardContent>
@@ -112,9 +136,16 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
   if (state.status === 'private_interactive') {
     return (
       <div className={bg}>
+        <BackToApp />
         {modalClosed ? (
-          <div className="flex items-center justify-center min-h-screen p-6">
-            <Button onClick={() => { setModalOpen(true); setModalClosed(false); }}>Ver tarea</Button>
+          <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6">
+            <p className="text-sm text-muted-foreground">Cerraste la tarea.</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => { setModalOpen(true); setModalClosed(false); }}>Ver tarea de nuevo</Button>
+              <Button onClick={() => { window.location.href = '/dashboard'; }} className="gap-1.5">
+                <ArrowLeft className="h-3.5 w-3.5" /> Volver a la app
+              </Button>
+            </div>
           </div>
         ) : (
           <TaskDetailModal
@@ -138,6 +169,7 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
 
   return (
     <div className={bg}>
+      <BackToApp />
       <div className="max-w-3xl mx-auto p-4 md:p-8">
         <Card className="border-border/50 bg-card/50 backdrop-blur-xl">
           <CardContent className="p-6 space-y-5">
@@ -211,6 +243,21 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function BackToApp() {
+  return (
+    <div className="fixed top-4 left-4 z-[60]">
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5 shadow-md bg-background/80 backdrop-blur"
+        onClick={() => { window.location.href = '/dashboard'; }}
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Volver a la app
+      </Button>
     </div>
   );
 }
