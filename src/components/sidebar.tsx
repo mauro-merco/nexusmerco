@@ -236,7 +236,7 @@ function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: stri
         <div
           ref={scrollRef}
           onScroll={updateScroll}
-          className="no-scrollbar h-full overflow-y-auto"
+          className="sidebar-scroll h-full overflow-y-auto overflow-x-hidden"
         >
           <nav className="flex flex-col gap-0.5 py-2">
             {visibleItems.map((item) => {
