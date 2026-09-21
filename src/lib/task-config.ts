@@ -1,5 +1,5 @@
 import type { TaskStatus, TaskPriority, TaskRole, Task } from '@/lib/types';
-import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck, Share2, Megaphone, Globe, ShoppingCart, Target } from 'lucide-react';
+import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck, Share2, Megaphone, Globe, ShoppingCart, Target, Play } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: LucideIcon; colorClass: string; bgColorClass: string; dotColor: string }> = {
@@ -9,6 +9,13 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: Lucid
     colorClass: 'text-slate-600',
     bgColorClass: 'bg-slate-100 dark:bg-slate-800',
     dotColor: 'bg-slate-400',
+  },
+  ejecutando: {
+    label: 'Ejecutando',
+    icon: Play,
+    colorClass: 'text-amber-600',
+    bgColorClass: 'bg-amber-50 dark:bg-amber-950',
+    dotColor: 'bg-amber-500',
   },
   en_revision: {
     label: 'En revisión',
@@ -58,7 +65,7 @@ export const TASK_PRIORITY_CONFIG: Record<TaskPriority, { label: string; colorCl
   urgent: { label: 'Urgente', colorClass: 'text-red-500', dotColor: 'bg-red-500' },
 };
 
-export const TASK_STATUSES: TaskStatus[] = ['en_espera', 'en_revision', 'aprobado', 'problemas', 'cerrada'];
+export const TASK_STATUSES: TaskStatus[] = ['en_espera', 'ejecutando', 'en_revision', 'aprobado', 'problemas', 'cerrada'];
 export const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
 export const TASK_ROLE_CONFIG: Record<TaskRole, {

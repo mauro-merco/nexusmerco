@@ -181,7 +181,7 @@ export interface SocialAnnotation {
   created_at: string;
 }
 
-export type TaskStatus = 'en_espera' | 'en_revision' | 'aprobado' | 'problemas' | 'cerrada';
+export type TaskStatus = 'en_espera' | 'ejecutando' | 'en_revision' | 'aprobado' | 'problemas' | 'cerrada';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskRole = WorkRole;
 
