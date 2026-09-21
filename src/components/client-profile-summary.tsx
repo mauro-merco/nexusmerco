@@ -12,10 +12,64 @@ import { TeamActivity } from '@/components/team-activity';
 import { WorkStatistics } from '@/components/work-statistics';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ClientWall } from '@/components/client-wall';
-import { TASK_STATUS_CONFIG } from '@/lib/task-config';
+import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/task-config';
 import { cn } from '@/lib/utils';
 import type { User, Task, NexusDocument } from '@/lib/types';
-import { KanbanSquare, CheckCircle2, Users2, Loader2, ChevronRight, FileText, Plus } from 'lucide-react';
+import { KanbanSquare, CheckCircle2, Users2, Loader2, ChevronRight, FileText, Plus, Calendar } from 'lucide-react';
+
+function TaskRowInline({ task, onOpen, closed }: { task: Task; onOpen: () => void; closed?: boolean }) {
+  const sConfig = TASK_STATUS_CONFIG[task.status];
+  const SIcon = sConfig.icon;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group w-full flex items-center justify-between gap-2 rounded-lg border p-2.5 text-left hover:bg-muted/40 hover:border-primary/30 transition-colors"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <Badge variant="outline" className={cn('text-[10px] gap-1 shrink-0', sConfig.bgColorClass, sConfig.colorClass)}>
+          <SIcon className="h-3 w-3" /> {sConfig.label}
+        </Badge>
+        <span className="text-sm font-medium truncate">{task.title}</span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {task.assignees.length > 0 && (
+          <div className="flex -space-x-1.5">
+            {task.assignees.slice(0, 3).map(a => (
+              <span
+                key={`${a.id}-${a.task_role || ''}`}
+                title={`${a.full_name || a.email}${a.task_role ? ` · ${TASK_ROLE_CONFIG[a.task_role]?.shortLabel || a.task_role}` : ''}`}
+              >
+                <Avatar className="h-5 w-5 border border-background">
+                  <AvatarImage src={a.avatar_url} />
+                  <AvatarFallback className="text-[8px]">{a.full_name?.charAt(0) || '?'}</AvatarFallback>
+                </Avatar>
+              </span>
+            ))}
+            {task.assignees.length > 3 && (
+              <div className="h-5 w-5 rounded-full border border-background bg-muted flex items-center justify-center text-[8px] font-semibold">
+                +{task.assignees.length - 3}
+              </div>
+            )}
+          </div>
+        )}
+        {closed ? (
+          task.completed_at ? (
+            <span className="text-[10px] text-muted-foreground">
+              {new Date(task.completed_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+            </span>
+          ) : null
+        ) : task.due_date ? (
+          <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            {new Date(task.due_date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+          </span>
+        ) : null}
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary/70 transition-colors" />
+      </div>
+    </button>
+  );
+}
 
 export function ClientProfileSummary({ clientId }: { clientId: string }) {
   const router = useRouter();
@@ -91,14 +145,20 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {team.map(({ user, count }) => (
-                  <div key={user.id} className="flex items-center gap-2 rounded-full border bg-background/40 pl-1 pr-3 py-1">
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => router.push(`/u/${user.id}`)}
+                    title={`Ver perfil de ${user.full_name}`}
+                    className="flex items-center gap-2 rounded-full border bg-background/40 pl-1 pr-3 py-1 hover:bg-muted/50 hover:border-primary/30 transition-colors"
+                  >
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={user.avatar_url} />
                       <AvatarFallback className="text-[10px] font-semibold">{user.full_name?.charAt(0) || '?'}</AvatarFallback>
                     </Avatar>
                     <span className="text-xs font-medium">{user.full_name}</span>
                     <span className="text-[10px] text-muted-foreground">({count})</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -112,40 +172,27 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
               <p className="text-sm text-muted-foreground/60 italic">Sin tareas activas</p>
             ) : (
               <div className="space-y-1.5">
-                {activeTasks.map(t => {
-                  const sConfig = TASK_STATUS_CONFIG[t.status];
-                  const SIcon = sConfig.icon;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setSelectedTask(t)}
-                      className="w-full flex items-center justify-between gap-2 rounded-lg border p-2.5 text-left hover:bg-muted/40 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Badge variant="outline" className={cn('text-[10px] gap-1 shrink-0', sConfig.bgColorClass, sConfig.colorClass)}>
-                          <SIcon className="h-3 w-3" /> {sConfig.label}
-                        </Badge>
-                        <span className="text-sm font-medium truncate">{t.title}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex -space-x-1.5">
-                          {t.assignees.slice(0, 3).map(a => (
-                            <Avatar key={a.id} className="h-5 w-5 border border-background">
-                              <AvatarImage src={a.avatar_url} />
-                              <AvatarFallback className="text-[8px]">{a.full_name?.charAt(0) || '?'}</AvatarFallback>
-                            </Avatar>
-                          ))}
-                        </div>
-                        {t.due_date && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(t.due_date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                {activeTasks.map(t => <TaskRowInline key={t.id} task={t} onOpen={() => setSelectedTask(t)} />)}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Historial ({historyTasks.length})
+            </p>
+            {historyTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground/60 italic">Todavía no hay tareas finalizadas.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+                {historyTasks.map(t => (
+                  <TaskRowInline
+                    key={t.id}
+                    task={t}
+                    closed
+                    onOpen={() => router.push(`/operations?task=${t.id}`)}
+                  />
+                ))}
               </div>
             )}
           </div>

@@ -93,95 +93,99 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl sm:aspect-[16/9] aspect-[9/16] max-h-[85dvh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-none sm:w-[90vw] sm:h-[90vh] aspect-[9/16] sm:aspect-auto max-h-[85dvh] sm:max-h-none overflow-hidden flex flex-col">
         <DialogTitle>Nueva Tarea</DialogTitle>
         <DialogDescription>Creá una nueva tarea para el tablero Kanban</DialogDescription>
 
-        <div className="space-y-4 py-2 overflow-y-auto min-h-0 flex-1">
-          <div className="space-y-1.5">
-            <Label>Título *</Label>
-            <Input placeholder="Título de la tarea..." value={title} onChange={e => setTitle(e.target.value)} />
-          </div>
+        <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4 py-2">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Título *</Label>
+              <Input placeholder="Título de la tarea..." value={title} onChange={e => setTitle(e.target.value)} />
+            </div>
 
-          <div className="space-y-1.5">
-            <Label>Descripción</Label>
-            <textarea
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] resize-none"
-              placeholder="Descripción de la tarea..."
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
-          </div>
+            <div className="space-y-1.5">
+              <Label>Descripción</Label>
+              <textarea
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] resize-none"
+                placeholder="Descripción de la tarea..."
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+              />
+            </div>
 
-          <div className="space-y-1.5">
-            <Label>Estado</Label>
-            <div className="flex gap-2 flex-wrap">
-              {TASK_STATUSES.map(key => {
-                const s = TASK_STATUS_CONFIG[key];
-                const Icon = s.icon;
-                return (
-                  <button key={key} type="button" onClick={() => setStatus(key)}
-                    className={cn('flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-                      status === key ? [s.bgColorClass, s.colorClass] : 'border-border text-muted-foreground hover:border-border/60')}>
-                    <Icon className="h-4 w-4" /> {s.label}
-                  </button>
-                );
-              })}
+            <div className="space-y-1.5">
+              <Label>Estado</Label>
+              <div className="flex gap-2 flex-wrap">
+                {TASK_STATUSES.map(key => {
+                  const s = TASK_STATUS_CONFIG[key];
+                  const Icon = s.icon;
+                  return (
+                    <button key={key} type="button" onClick={() => setStatus(key)}
+                      className={cn('flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                        status === key ? [s.bgColorClass, s.colorClass] : 'border-border text-muted-foreground hover:border-border/60')}>
+                      <Icon className="h-4 w-4" /> {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Prioridad</Label>
+              <div className="flex gap-2 flex-wrap">
+                {TASK_PRIORITIES.map(key => {
+                  const p = TASK_PRIORITY_CONFIG[key];
+                  return (
+                    <button key={key} type="button" onClick={() => setPriority(key)}
+                      className={cn('flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                        priority === key ? 'border-current bg-current/10 ' + p.colorClass : 'border-border text-muted-foreground hover:border-border/60')}>
+                      <span className={cn('w-2.5 h-2.5 rounded-full', p.dotColor)} /> {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Fecha límite</Label>
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                className="w-full max-w-[220px] rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Piezas a diseñar</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {PIECE_TYPES.map(pt => {
+                  const Icon = pt.icon;
+                  const value = pt.field === 'pieces_stories' ? piecesStories : pt.field === 'pieces_feed' ? piecesFeed : piecesReels;
+                  const setValue = pt.field === 'pieces_stories' ? setPiecesStories : pt.field === 'pieces_feed' ? setPiecesFeed : setPiecesReels;
+                  return (
+                    <div key={pt.field} className="space-y-1">
+                      <span className={cn('flex items-center gap-1 text-[11px] font-medium', pt.colorClass)}>
+                        <Icon className="h-3 w-3" /> {pt.label}
+                      </span>
+                      <input type="number" min="0" placeholder="0" value={value}
+                        onChange={e => setValue(e.target.value)}
+                        className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Prioridad</Label>
-            <div className="flex gap-2 flex-wrap">
-              {TASK_PRIORITIES.map(key => {
-                const p = TASK_PRIORITY_CONFIG[key];
-                return (
-                  <button key={key} type="button" onClick={() => setPriority(key)}
-                    className={cn('flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-                      priority === key ? 'border-current bg-current/10 ' + p.colorClass : 'border-border text-muted-foreground hover:border-border/60')}>
-                    <span className={cn('w-2.5 h-2.5 rounded-full', p.dotColor)} /> {p.label}
-                  </button>
-                );
-              })}
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>
+                Equipo y roles {totalPeople(roles) > 0 && <span className="text-muted-foreground font-normal">({totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''})</span>}
+              </Label>
+              <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
             </div>
           </div>
-
-          <div className="space-y-1.5">
-            <Label>Fecha límite</Label>
-            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-              className="w-full max-w-[220px] rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Piezas a diseñar</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {PIECE_TYPES.map(pt => {
-                const Icon = pt.icon;
-                const value = pt.field === 'pieces_stories' ? piecesStories : pt.field === 'pieces_feed' ? piecesFeed : piecesReels;
-                const setValue = pt.field === 'pieces_stories' ? setPiecesStories : pt.field === 'pieces_feed' ? setPiecesFeed : setPiecesReels;
-                return (
-                  <div key={pt.field} className="space-y-1">
-                    <span className={cn('flex items-center gap-1 text-[11px] font-medium', pt.colorClass)}>
-                      <Icon className="h-3 w-3" /> {pt.label}
-                    </span>
-                    <input type="number" min="0" placeholder="0" value={value}
-                      onChange={e => setValue(e.target.value)}
-                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>
-              Equipo y roles {totalPeople(roles) > 0 && <span className="text-muted-foreground font-normal">({totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''})</span>}
-            </Label>
-            <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
-          </div>
-
-          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
+
+        {error && <p className="text-xs text-destructive">{error}</p>}
 
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
