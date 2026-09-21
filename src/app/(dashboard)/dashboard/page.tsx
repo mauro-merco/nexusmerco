@@ -87,17 +87,7 @@ export default function DashboardPage() {
     const client = clients.find(c => c.id === clientParam);
     if (!client) return;
     setSelectedClientId(clientParam);
-    const hasAnalysis = client.analysis_enabled;
-    const hasCalendar = client.social_calendar_enabled;
-    const hasAds = client.ads_calendar_enabled;
-    const moduleCount = [hasAnalysis, hasCalendar, hasAds].filter(Boolean).length;
-    if (moduleCount === 1) {
-      if (hasAnalysis) setClientView('analysis');
-      else if (hasCalendar) setClientView('calendar');
-      else setClientView('ads');
-    } else {
-      setClientView('menu');
-    }
+    setClientView('menu');
   }, [clients, selectedClientId, searchParams]);
 
   if (!canView) {
@@ -118,22 +108,7 @@ export default function DashboardPage() {
 
   const handleSelectClient = (id: string) => {
     setSelectedClientId(id);
-    const client = clients.find(c => c.id === id);
-    if (client) {
-      const hasAnalysis = client.analysis_enabled;
-      const hasCalendar = client.social_calendar_enabled;
-      const hasAds = client.ads_calendar_enabled;
-      const moduleCount = [hasAnalysis, hasCalendar, hasAds].filter(Boolean).length;
-      if (moduleCount === 1) {
-        if (hasAnalysis) setClientView('analysis');
-        else if (hasCalendar) setClientView('calendar');
-        else setClientView('ads');
-      } else {
-        setClientView('menu');
-      }
-    } else {
-      setClientView('menu');
-    }
+    setClientView('menu');
   };
 
   // Client selected + analysis view
