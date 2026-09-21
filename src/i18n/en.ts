@@ -12,6 +12,7 @@ export const en = {
     documents: 'Documents',
     messages: 'Messages',
     suggestions: 'Suggestions',
+    apps: 'Apps',
     settings: 'Settings',
     logout: 'Logout',
     lightMode: 'Light Mode',

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
@@ -20,12 +20,11 @@ import {
   FileText,
   LogOut,
   Settings,
-  ChevronDown,
-  ChevronUp,
   LayoutGrid,
   Mail,
   Users2,
   Lightbulb,
+  ChevronLeft,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -57,78 +56,6 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Users2,
   Lightbulb,
 };
-
-function RailItem({
-  Icon,
-  label,
-  href,
-  isActive,
-  onNavigate,
-  onAction,
-}: {
-  Icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  href?: string;
-  isActive?: boolean;
-  onNavigate?: (href: string, label: string) => void;
-  onAction?: () => void;
-}) {
-  const inner = (
-    <span
-      data-active={isActive ? 'true' : undefined}
-      className={cn(
-        'group relative flex w-full flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition-all duration-300',
-        isActive ? 'bg-gradient-tech-soft' : 'hover:bg-white/[0.03]'
-      )}
-    >
-      {isActive && (
-        <span className="bg-gradient-tech absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full" />
-      )}
-
-      <span
-        className={cn(
-          'relative flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300',
-          isActive
-            ? 'bg-gradient-tech glow-tech scale-105 text-white'
-            : 'bg-muted/40 text-muted-foreground group-hover:scale-110 group-hover:-rotate-6 group-hover:text-primary group-hover:shadow-[0_0_18px_rgba(34,211,238,0.3)]'
-        )}
-      >
-        <span className="bg-gradient-tech pointer-events-none absolute -inset-1 rounded-xl opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-40" />
-        <Icon className="relative h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
-      </span>
-
-      <span
-        className={cn(
-          'line-clamp-2 w-full text-center text-[10px] font-medium leading-tight transition-colors duration-300',
-          isActive ? 'text-gradient-tech font-bold' : 'text-muted-foreground group-hover:text-foreground'
-        )}
-      >
-        {label}
-      </span>
-    </span>
-  );
-
-  if (href && onNavigate) {
-    return (
-      <Link
-        href={href}
-        onClick={(e) => {
-          e.preventDefault();
-          onNavigate(href, label);
-        }}
-        className="block w-full"
-      >
-        {inner}
-      </Link>
-    );
-  }
-
-  return (
-    <button type="button" onClick={onAction} className="w-full cursor-pointer">
-      {inner}
-    </button>
-  );
-}
 
 function TransitionOverlay({ label }: { label: string }) {
   return (
@@ -183,39 +110,12 @@ function TransitionOverlay({ label }: { label: string }) {
   );
 }
 
-function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: string) => void }) {
+function AppsDock({ onNavigate }: { onNavigate: (href: string, label: string) => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const _ = useT();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canUp, setCanUp] = useState(false);
-  const [canDown, setCanDown] = useState(false);
-
-  const updateScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanUp(el.scrollTop > 4);
-    setCanDown(el.scrollTop + el.clientHeight < el.scrollHeight - 4);
-  }, []);
-
-  useEffect(() => {
-    updateScroll();
-    window.addEventListener('resize', updateScroll);
-    return () => window.removeEventListener('resize', updateScroll);
-  }, [updateScroll]);
-
-  // Keep the active item visible inside the rail
-  useEffect(() => {
-    const el = scrollRef.current;
-    const active = el?.querySelector('[data-active="true"]');
-    active?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [pathname]);
-
-  const scrollBy = (dir: 1 | -1) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({ top: dir * (el.clientHeight - 48), behavior: 'smooth' });
-  };
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const visibleItems = navItems.filter(
     (item) =>
@@ -224,79 +124,153 @@ function SidebarContent({ onNavigate }: { onNavigate: (href: string, label: stri
         DEFAULT_MODULES[user.role]?.includes(item.moduleId))
   );
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  const handleOpen = (href: string, label: string) => {
+    setOpen(false);
+    onNavigate(href, label);
+  };
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+
   return (
-    <div className="flex h-full flex-col gap-2">
-      <div className="flex h-14 shrink-0 items-center justify-center border-b">
-        <div className="bg-gradient-tech glow-tech flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-300 hover:rotate-6 hover:scale-110">
-          <span className="text-sm font-bold text-primary-foreground">M</span>
-        </div>
-      </div>
-
-      <div className="relative min-h-0 flex-1 px-1.5">
-        <div
-          ref={scrollRef}
-          onScroll={updateScroll}
-          className="sidebar-scroll h-full overflow-y-auto overflow-x-hidden"
+    <>
+      {/* Launcher button */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-label="Aplicaciones"
+        className="fixed bottom-6 left-6 z-50 hidden md:flex flex-col items-center gap-1.5 group transition-all duration-300 hover:scale-105 active:scale-95"
+      >
+        <span
+          className={cn(
+            'bg-gradient-tech glow-tech relative flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg transition-all duration-500 group-hover:-rotate-6 group-hover:scale-110',
+            open && 'rotate-[20deg] scale-105'
+          )}
         >
-          <nav className="flex flex-col gap-0.5 py-2">
-            {visibleItems.map((item) => {
-              const Icon = iconMap[item.icon];
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-              return (
-                <RailItem
-                  key={item.href}
-                  Icon={Icon}
-                  label={_(`nav.${item.label}`)}
-                  href={item.href}
-                  isActive={isActive}
-                  onNavigate={onNavigate}
-                />
-              );
-            })}
-          </nav>
+          <span className="bg-gradient-tech pointer-events-none absolute -inset-1 rounded-2xl opacity-40 blur-lg transition-opacity duration-300 group-hover:opacity-70" />
+          <LayoutGrid className="relative h-6 w-6 transition-transform duration-500 group-hover:rotate-180" />
+        </span>
+        <span className={cn('text-[10px] font-semibold transition-colors', open ? 'text-gradient-tech' : 'text-muted-foreground group-hover:text-foreground')}>
+          {_('nav.apps')}
+        </span>
+      </button>
 
-          <div className="mx-2 my-1 h-px bg-border/40" />
-
-          <div className="flex flex-col gap-0.5 pb-2">
-            <RailItem
-              Icon={Settings}
-              label={_('nav.settings')}
-              href="/settings"
-              isActive={pathname === '/settings'}
-              onNavigate={onNavigate}
-            />
-            <RailItem Icon={LogOut} label={_('nav.logout')} onAction={logout} />
-          </div>
-        </div>
-
-        {canDown && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-sidebar via-sidebar/80 to-transparent" />
-        )}
-
-        {(canDown || (canUp && !canDown)) && (
-          <button
-            type="button"
-            onClick={() => scrollBy(canDown ? 1 : -1)}
-            aria-label={canDown ? 'Bajar' : 'Subir'}
-            className="bg-gradient-tech glow-tech absolute bottom-1 left-1/2 z-10 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 animate-[transition-fade_0.3s_ease-out]"
+      {open && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-[transition-fade_0.2s_ease-out]"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            ref={panelRef}
+            className="absolute bottom-24 left-6 flex max-h-[72vh] w-[21rem] flex-col overflow-hidden rounded-3xl border bg-popover/95 backdrop-blur-xl shadow-2xl animate-[apps-pop_0.35s_cubic-bezier(0.22,1,0.36,1)_both] origin-bottom-left"
           >
-            {canDown ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-          </button>
-        )}
-      </div>
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b px-5 py-4">
+              <div className="bg-gradient-tech glow-tech flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl">
+                <span className="text-sm font-bold text-white">M</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-gradient-tech truncate">Nexus Marketing</p>
+                <p className="text-[10px] text-muted-foreground truncate">{user?.role === 'admin' ? 'Admin' : user?.role === 'operador' ? 'Operador' : 'Cliente'}</p>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </div>
 
-      <div className="shrink-0 flex items-center justify-center gap-2 border-t px-2 py-2">
-        {user && (
-          <div className="bg-gradient-tech flex h-8 w-8 shrink-0 rounded-full p-[2px]">
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-background text-xs font-bold text-foreground">
-              {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+            {/* Grid */}
+            <div className="sidebar-scroll flex-1 overflow-y-auto px-3 py-3">
+              <div className="grid grid-cols-4 gap-1.5">
+                {visibleItems.map((item, i) => {
+                  const Icon = iconMap[item.icon];
+                  const active = isActive(item.href);
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={() => handleOpen(item.href, _(`nav.${item.label}`))}
+                      style={{ animationDelay: `${0.03 * i}s`, animationDuration: '0.35s', animationFillMode: 'both' }}
+                      className="group flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all active:scale-95 animate-[apps-item_cubic-bezier(0.22,1,0.36,1)]"
+                    >
+                      <span
+                        className={cn(
+                          'relative flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300',
+                          active
+                            ? 'bg-gradient-tech glow-tech scale-105 text-white'
+                            : 'bg-muted/50 text-muted-foreground group-hover:scale-110 group-hover:-rotate-6 group-hover:text-primary group-hover:shadow-[0_0_18px_rgba(34,211,238,0.3)]'
+                        )}
+                      >
+                        <span className={cn('bg-gradient-tech pointer-events-none absolute -inset-1 rounded-2xl opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-40', active && 'opacity-40')} />
+                        <Icon className="relative h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                      </span>
+                      <span
+                        className={cn(
+                          'text-[10px] font-medium leading-tight text-center line-clamp-2',
+                          active ? 'text-gradient-tech font-bold' : 'text-muted-foreground group-hover:text-foreground'
+                        )}
+                      >
+                        {_(`nav.${item.label}`)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t px-3 py-2.5 flex items-center justify-between gap-2">
+              {user && (
+                <div className="flex items-center gap-2 min-w-0">
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover border border-border" />
+                  ) : (
+                    <div className="bg-gradient-tech flex h-7 w-7 shrink-0 items-center justify-center rounded-full p-[2px]">
+                      <div className="flex h-full w-full items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground">
+                        {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+                      </div>
+                    </div>
+                  )}
+                  <span className="text-[11px] font-semibold truncate max-w-[7rem]">{user.full_name || user.email}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <LangToggle collapsed />
+                <ThemeToggle collapsed />
+                <button
+                  type="button"
+                  onClick={() => handleOpen('/settings', _('nav.settings'))}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-muted/60 transition-colors active:scale-95"
+                  aria-label={_('nav.settings')}
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-red-500 hover:bg-red-500/10 hover:text-red-400 transition-colors active:scale-95"
+                  aria-label={_('nav.logout')}
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
-        )}
-        <LangToggle collapsed />
-        <ThemeToggle collapsed />
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -459,12 +433,7 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="border-r bg-sidebar hidden w-28 md:flex md:flex-col">
-        <div className="relative flex flex-1 flex-col">
-          <SidebarContent onNavigate={handleNavigate} />
-        </div>
-      </aside>
-
+      <AppsDock onNavigate={handleNavigate} />
       <MobileBottomNav onNavigate={handleNavigate} />
 
       {transition && <TransitionOverlay label={transition.label} />}

@@ -363,6 +363,34 @@
   }
 }
 
+@keyframes apps-pop {
+  0% {
+    transform: scale(0.85) translateY(14px);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.02) translateY(-2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes apps-item {
+  0% {
+    transform: translateY(10px) scale(0.95);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-1px) scale(1);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
 @layer components {
   .ring-spin-tech {
     background: conic-gradient(from 0deg, #06b6d4, #6366f1, #a855f7, #ec4899, #06b6d4);
