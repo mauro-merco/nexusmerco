@@ -72,8 +72,9 @@ export async function POST(request: Request) {
     try {
       const { added } = await syncIdeaAssignees(supabase, 'ads_idea_assignees', data.id, assignees);
       if (added.length > 0) {
-        await supabase.from('notifications').insert(added.filter(a => a.user_id !== author_id).map(a => ({
-          user_id: a.user_id,
+        const notifyIds = [...new Set(added.map(a => a.user_id).filter(id => id !== author_id))];
+        await supabase.from('notifications').insert(notifyIds.map(user_id => ({
+          user_id,
           type: 'calendar_piece_assigned',
           title: 'Te asignaron una pieza ADS',
           message: `Fuiste asignado en: ${title}`,

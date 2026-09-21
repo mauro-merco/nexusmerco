@@ -67,7 +67,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const clientsMap = Object.fromEntries((clients || []).map(c => [c.id, c]));
 
     // Everyone involved in those tasks, with their role
-    const myRolesByTask = Object.fromEntries((myRows || []).map(r => [r.task_id, r.role]));
+    const myRolesByTask: Record<string, string[]> = {};
+    for (const row of myRows || []) {
+      if (!myRolesByTask[row.task_id]) myRolesByTask[row.task_id] = [];
+      if (!myRolesByTask[row.task_id].includes(row.role)) myRolesByTask[row.task_id].push(row.role);
+    }
     const { data: assigneeRows } = assignedTaskIds.length > 0
       ? await supabase.from('task_assignees').select('task_id, user_id, role').in('task_id', assignedTaskIds)
       : { data: [] as { task_id: string; user_id: string; role: string }[] };
@@ -88,11 +92,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const allTasks = (tasks || []).map(t => ({
       ...t,
       client: clientsMap[t.client_id] || null,
-      my_role: myRolesByTask[t.id] || null,
+       my_role: myRolesByTask[t.id]?.[0] || null,
+      my_roles: myRolesByTask[t.id] || [],
       assignees: assigneesByTask[t.id] || [],
     }));
     const allWorkItems = workIdeas
-      .map(item => ({ ...item, client: clientsMap[item.client_id] || null }))
+      .map(item => {
+        const rows = item.source === 'social' ? socialRows : adsRows;
+        const roles = (rows || []).filter(row => row.idea_id === item.id).map(row => row.role);
+        return { ...item, my_role: roles[0], my_roles: roles, client: clientsMap[item.client_id] || null };
+      })
       .sort((a, b) => (b.completed_at || b.publish_date || b.created_at).localeCompare(a.completed_at || a.publish_date || a.created_at));
 
     // Public documents owned by this user

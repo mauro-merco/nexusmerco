@@ -212,6 +212,8 @@ export interface Task {
   assignees: TaskAssignee[];
   /** Role this user holds in the task (set when the task comes from a profile query). */
   my_role?: TaskRole | null;
+  /** All roles this user holds in the task. */
+  my_roles?: TaskRole[];
   author?: User | null;
   client?: Client | null;
   comment_count?: number;
@@ -342,6 +344,7 @@ export interface ProfileWorkItem {
   completed_at: string | null;
   created_at: string;
   my_role: WorkRole;
+  my_roles: WorkRole[];
 }
 
 export interface WorkStatsItem {

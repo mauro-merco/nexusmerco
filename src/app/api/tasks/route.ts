@@ -164,7 +164,7 @@ export async function POST(request: Request) {
         const { data: author } = await supabase.from('users').select('full_name, email').eq('id', author_id).single();
         if (author) authorName = author.full_name || author.email || 'Alguien';
       }
-      const notifyIds = assigneeRoles.map(a => a.user_id).filter(id => id !== author_id);
+      const notifyIds = [...new Set(assigneeRoles.map(a => a.user_id).filter(id => id !== author_id))];
       if (notifyIds.length > 0) {
         await supabase.from('notifications').insert(notifyIds.map(user_id => ({
           user_id,

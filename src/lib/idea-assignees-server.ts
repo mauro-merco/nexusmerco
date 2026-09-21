@@ -9,14 +9,14 @@ export const WORK_ROLES: WorkRole[] = ['lead', 'executor', 'reviewer'];
 
 export function normalizeWorkAssignees(value: unknown): { user_id: string; role: WorkRole }[] {
   if (!Array.isArray(value)) return [];
-  const byUser = new Map<string, WorkRole>();
+  const assignments = new Map<string, { user_id: string; role: WorkRole }>();
   for (const item of value) {
     if (!item || typeof item !== 'object') continue;
     const id = 'id' in item && typeof item.id === 'string' ? item.id : '';
     const role = 'role' in item && WORK_ROLES.includes(item.role as WorkRole) ? item.role as WorkRole : null;
-    if (id && role && !byUser.has(id)) byUser.set(id, role);
+    if (id && role) assignments.set(`${id}:${role}`, { user_id: id, role });
   }
-  return [...byUser].map(([user_id, role]) => ({ user_id, role }));
+  return [...assignments.values()];
 }
 
 export function hasEveryWorkRole(assignments: { role: WorkRole }[]) {
@@ -69,23 +69,13 @@ export async function syncIdeaAssignees(
   if (readError) throw readError;
 
   const existing = existingRows || [];
-  const desiredIds = desired.map(row => row.user_id);
-  const existingIds = existing.map((row: any) => row.user_id);
-  const existingByUser = Object.fromEntries(existing.map((row: any) => [row.user_id, row.role]));
-  const toRemove = existingIds.filter((id: string) => !desiredIds.includes(id));
-  const toAdd = desired.filter(row => !existingByUser[row.user_id]);
-  const toUpdate = desired.filter(row => existingByUser[row.user_id] && existingByUser[row.user_id] !== row.role);
+  const existingKeys = new Set(existing.map((row: any) => `${row.user_id}:${row.role}`));
+  const toAdd = desired.filter(row => !existingKeys.has(`${row.user_id}:${row.role}`));
 
-  if (toRemove.length > 0) {
-    const { error } = await supabase.from(table).delete().eq('idea_id', ideaId).in('user_id', toRemove);
-    if (error) throw error;
-  }
-  for (const row of toUpdate) {
-    const { error } = await supabase.from(table).update({ role: row.role }).eq('idea_id', ideaId).eq('user_id', row.user_id);
-    if (error) throw error;
-  }
-  if (toAdd.length > 0) {
-    const { error } = await supabase.from(table).insert(toAdd.map(row => ({ idea_id: ideaId, ...row })));
+  const { error: deleteError } = await supabase.from(table).delete().eq('idea_id', ideaId);
+  if (deleteError) throw deleteError;
+  if (desired.length > 0) {
+    const { error } = await supabase.from(table).insert(desired.map(row => ({ idea_id: ideaId, ...row })));
     if (error) throw error;
   }
 

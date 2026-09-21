@@ -61,11 +61,15 @@ export default function TeamPage() {
     const roleTotals: Record<TaskRole, number> = { lead: 0, executor: 0, reviewer: 0 };
 
     for (const t of tasks) {
+      const countedUsers = new Set<string>();
       for (const a of t.assignees) {
         const ud = byUser.get(a.id);
         if (!ud) continue;
-        ud.total += 1;
-        if (t.status === 'cerrada') ud.done += 1; else ud.active += 1;
+        if (!countedUsers.has(a.id)) {
+          countedUsers.add(a.id);
+          ud.total += 1;
+          if (t.status === 'cerrada') ud.done += 1; else ud.active += 1;
+        }
         const r: TaskRole | undefined = a.task_role;
         if (r && roleTotals[r] !== undefined) {
           ud.roles[r] += 1;

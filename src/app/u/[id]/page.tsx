@@ -122,9 +122,10 @@ export default function PublicProfilePage() {
   const activeWork = workItems.filter(item => item.status !== 'posteado');
   const completedWork = workItems.filter(item => item.status === 'posteado');
 
-  const tasksByRole = (role: TaskRole) => tasksList.filter(t => t.my_role === role);
-  const roleTotal = (role: TaskRole) => tasksByRole(role).length + workItems.filter(item => item.my_role === role).length;
-  const roleActive = (role: TaskRole) => tasksByRole(role).filter(t => t.status !== 'cerrada').length + workItems.filter(item => item.my_role === role && item.status !== 'posteado').length;
+  const tasksByRole = (role: TaskRole) => tasksList.filter(t => (t.my_roles || (t.my_role ? [t.my_role] : [])).includes(role));
+  const workByRole = (role: TaskRole) => workItems.filter(item => (item.my_roles || [item.my_role]).includes(role));
+  const roleTotal = (role: TaskRole) => tasksByRole(role).length + workByRole(role).length;
+  const roleActive = (role: TaskRole) => tasksByRole(role).filter(t => t.status !== 'cerrada').length + workByRole(role).filter(item => item.status !== 'posteado').length;
   const sortActiveFirst = (list: typeof tasksList) =>
     [...list].sort((a, b) => (a.status === 'cerrada' ? 1 : 0) - (b.status === 'cerrada' ? 1 : 0));
 
@@ -344,9 +345,7 @@ export default function PublicProfilePage() {
                  <p className="text-center py-10 text-sm text-muted-foreground">Sin trabajos asignados</p>
               )}
               {sortActiveFirst(tasksList).map((t) => {
-                const roleCfg = t.my_role ? TASK_ROLE_CONFIG[t.my_role] : null;
-                const roleIcon = roleCfg ? roleCfg.icon : null;
-                const RoleIcon = roleIcon || Clock;
+                const taskRoles = t.my_roles || (t.my_role ? [t.my_role] : []);
                 return (
                   <div key={t.id} className="flex items-start gap-3 rounded-xl border bg-card p-3.5 shadow-sm">
                     <span
@@ -363,11 +362,11 @@ export default function PublicProfilePage() {
                       <p className="truncate text-sm font-semibold">{t.title}</p>
                       {t.description && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{t.description}</p>}
                       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                        {t.my_role && roleCfg && (
-                          <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', roleCfg.bgColorClass, roleCfg.colorClass)}>
-                            <RoleIcon className="h-3 w-3" /> {roleCfg.shortLabel}
-                          </span>
-                        )}
+                        {taskRoles.map(role => {
+                          const cfg = TASK_ROLE_CONFIG[role];
+                          const Icon = cfg.icon;
+                          return <span key={role} className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', cfg.bgColorClass, cfg.colorClass)}><Icon className="h-3 w-3" /> {cfg.shortLabel}</span>;
+                        })}
                         {t.client?.name && <Badge variant="secondary" className="text-[10px]">{t.client.name}</Badge>}
                         <Badge variant="outline" className={cn('text-[10px] capitalize', TASK_STATUS_CONFIG[t.status].colorClass)}>{t.status.replace(/_/g, ' ')}</Badge>
                         <Badge variant="outline" className="text-[10px] capitalize">{t.priority}</Badge>
@@ -385,8 +384,6 @@ export default function PublicProfilePage() {
                  <div className="pt-3 space-y-2">
                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Piezas de Redes y ADS</p>
                    {workItems.map(item => {
-                     const roleCfg = TASK_ROLE_CONFIG[item.my_role];
-                     const RoleIcon = roleCfg.icon;
                      return (
                        <div key={`${item.source}-${item.id}`} className="flex items-start gap-3 rounded-xl border bg-card p-3.5 shadow-sm">
                          <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', item.status === 'posteado' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-violet-500/10 text-violet-500')}>
@@ -395,9 +392,11 @@ export default function PublicProfilePage() {
                          <div className="min-w-0 flex-1">
                            <p className="truncate text-sm font-semibold">{item.title}</p>
                            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                             <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', roleCfg.bgColorClass, roleCfg.colorClass)}>
-                               <RoleIcon className="h-3 w-3" /> {roleCfg.shortLabel}
-                             </span>
+                             {(item.my_roles || [item.my_role]).map(role => {
+                               const cfg = TASK_ROLE_CONFIG[role];
+                               const Icon = cfg.icon;
+                               return <span key={role} className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', cfg.bgColorClass, cfg.colorClass)}><Icon className="h-3 w-3" /> {cfg.shortLabel}</span>;
+                             })}
                              <Badge variant="secondary" className="text-[10px]">{item.source === 'ads' ? 'ADS' : 'Redes'}</Badge>
                              {item.client?.name && <Badge variant="outline" className="text-[10px]">{item.client.name}</Badge>}
                              <Badge variant="outline" className="text-[10px] capitalize">{item.status.replace(/_/g, ' ')}</Badge>

@@ -48,16 +48,8 @@ interface TaskRolesPickerProps {
 }
 
 export function TaskRolesPicker({ roles, onChange, users }: TaskRolesPickerProps) {
-  const usedByUser: Record<string, TaskRole | undefined> = {};
-  for (const r of TASK_ROLES) for (const id of roles[r]) usedByUser[id] = r;
-
   const toggle = (role: TaskRole, id: string) => {
     const next: TaskRolesState = { ...roles, [role]: roles[role].includes(id) ? roles[role].filter(x => x !== id) : [...roles[role], id] };
-    // A user can have only one role per task
-    for (const other of TASK_ROLES) {
-      if (other === role) continue;
-      next[other] = next[other].filter(x => x !== id);
-    }
     onChange(next);
   };
 
@@ -82,16 +74,13 @@ export function TaskRolesPicker({ roles, onChange, users }: TaskRolesPickerProps
               {users.length === 0 && <p className="text-[11px] text-muted-foreground">Sin usuarios</p>}
               {users.map(u => {
                 const isOn = selected.includes(u.id);
-                const usedElsewhere = !!usedByUser[u.id] && usedByUser[u.id] !== roleKey;
                 return (
                   <label key={u.id} className={cn(
                     'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs cursor-pointer transition-colors',
                     isOn ? cn(cfg.bgColorClass, 'border-transparent') : 'border-transparent hover:bg-muted/50',
-                    usedElsewhere && 'opacity-40',
                   )}>
                     <Checkbox
                       checked={isOn}
-                      disabled={usedElsewhere}
                       onCheckedChange={() => toggle(roleKey, u.id)}
                     />
                     <span className="truncate">{u.full_name || u.email}</span>

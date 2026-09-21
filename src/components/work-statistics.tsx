@@ -99,11 +99,11 @@ export function WorkStatistics({ clientId, userId }: { clientId?: string; userId
             <p className="text-xs font-semibold mb-2">{section.title} ({section.items.length})</p>
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {section.items.slice(0, 20).map(item => {
-                const own = userId ? item.assignees.find(assignee => assignee.id === userId) : null;
+                const ownRoles = userId ? item.assignees.filter(assignee => assignee.id === userId).map(assignee => assignee.work_role) : [];
                 return (
                   <div key={`${item.source}-${item.id}`} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-2">
                     <div className="min-w-0"><p className="truncate text-xs font-medium">{item.title}</p><p className="text-[9px] uppercase text-muted-foreground">{item.source === 'task' ? 'Tarea' : item.source === 'social' ? 'Redes' : 'ADS'}</p></div>
-                    {own && <span className={cn('text-[9px] font-semibold', TASK_ROLE_CONFIG[own.work_role].colorClass)}>{TASK_ROLE_CONFIG[own.work_role].shortLabel}</span>}
+                    {ownRoles.length > 0 && <div className="flex flex-wrap justify-end gap-1">{ownRoles.map(role => <span key={role} className={cn('text-[9px] font-semibold', TASK_ROLE_CONFIG[role].colorClass)}>{TASK_ROLE_CONFIG[role].shortLabel}</span>)}</div>}
                   </div>
                 );
               })}

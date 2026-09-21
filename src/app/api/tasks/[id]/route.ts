@@ -74,38 +74,30 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const assigneesProvided = Array.isArray(body.assignees);
     if (assigneesProvided) {
-      const desired = (body.assignees as { id?: string; role?: string }[])
+      const desiredRaw = (body.assignees as { id?: string; role?: string }[])
         .filter(a => a?.id && roleList.includes(a.role || ''))
         .map(a => ({ user_id: a.id!, role: a.role! }));
-      const desiredIds = desired.map(a => a.user_id);
+      const desired = [...new Map(desiredRaw.map(a => [`${a.user_id}:${a.role}`, a])).values()];
 
       const { data: existingRows } = await supabase.from('task_assignees').select('user_id, role').eq('task_id', id);
       const existing = existingRows || [];
-      const existingIds = existing.map(r => r.user_id);
-      const existingByUser = Object.fromEntries(existing.map(r => [r.user_id, r.role]));
+      const existingKeys = new Set(existing.map(r => `${r.user_id}:${r.role}`));
+      const toAdd = desired.filter(a => !existingKeys.has(`${a.user_id}:${a.role}`));
 
-      const toRemove = existingIds.filter(uid => !desiredIds.includes(uid));
-      const upsert = desired.filter(a => existingByUser[a.user_id] !== a.role);
-      const toAdd = upsert.filter(a => !existingByUser[a.user_id]);
-      const toUpdateRole = upsert.filter(a => existingByUser[a.user_id]);
-
-      if (toRemove.length > 0) {
-        await supabase.from('task_assignees').delete().eq('task_id', id).in('user_id', toRemove);
-      }
-      if (toUpdateRole.length > 0) {
-        for (const a of toUpdateRole) {
-          await supabase.from('task_assignees').update({ role: a.role }).eq('task_id', id).eq('user_id', a.user_id);
-        }
+      const { error: deleteError } = await supabase.from('task_assignees').delete().eq('task_id', id);
+      if (deleteError) throw deleteError;
+      if (desired.length > 0) {
+        const { error: insertError } = await supabase.from('task_assignees').insert(desired.map(a => ({ task_id: id, user_id: a.user_id, role: a.role })));
+        if (insertError) throw insertError;
       }
       if (toAdd.length > 0) {
-        await supabase.from('task_assignees').insert(toAdd.map(a => ({ task_id: id, user_id: a.user_id, role: a.role })));
-
         const actor = data.author_id
           ? (await supabase.from('users').select('full_name, email').eq('id', data.author_id).single()).data
           : null;
         const actorName = actor?.full_name || actor?.email || 'Alguien';
-        await supabase.from('notifications').insert(toAdd.map(a => ({
-          user_id: a.user_id,
+        const notifyIds = [...new Set(toAdd.map(a => a.user_id))];
+        await supabase.from('notifications').insert(notifyIds.map(user_id => ({
+          user_id,
           type: 'task_assigned',
           title: 'Te asignaron una tarea',
           message: `${actorName} te asignó: ${data.title}`,

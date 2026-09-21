@@ -26,8 +26,9 @@ export function UserTasksModal({ user, tasks, open, onOpenChange }: UserTasksMod
   const roleCounts = (): Record<TaskRole, number> => {
     const out: Record<TaskRole, number> = { lead: 0, executor: 0, reviewer: 0 };
     for (const t of tasks) {
-      const a = t.assignees.find(x => x.id === user.id);
-      if (a && a.task_role && out[a.task_role] !== undefined) out[a.task_role] += 1;
+      for (const role of TASK_ROLES) {
+        if (t.assignees.some(assignee => assignee.id === user.id && assignee.task_role === role)) out[role] += 1;
+      }
     }
     return out;
   };

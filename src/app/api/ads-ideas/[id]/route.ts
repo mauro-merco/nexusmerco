@@ -44,8 +44,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (Array.isArray(body.assignees)) {
       const { added } = await syncIdeaAssignees(supabase, 'ads_idea_assignees', id, body.assignees);
       if (added.length > 0) {
-        await supabase.from('notifications').insert(added.map(a => ({
-          user_id: a.user_id,
+        const notifyIds = [...new Set(added.map(a => a.user_id))];
+        await supabase.from('notifications').insert(notifyIds.map(user_id => ({
+          user_id,
           type: 'calendar_piece_assigned',
           title: 'Te asignaron una pieza ADS',
           message: `Fuiste asignado en: ${data.title}`,
