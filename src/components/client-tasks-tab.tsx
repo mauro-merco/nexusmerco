@@ -5,7 +5,7 @@ import { useTasks } from '@/lib/hooks/use-tasks';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, PIECE_TYPES, taskPieceTotal } from '@/lib/task-config';
+import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, PIECE_TYPES, taskPieceTotal } from '@/lib/task-config';
 import { Loader2, Calendar, KanbanSquare, CheckCircle2, Layers, ImageIcon } from 'lucide-react';
 
 export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: () => void; showClient?: boolean }) {
@@ -49,10 +49,15 @@ export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: ()
       {task.assignees.length > 0 && (
         <div className="flex -space-x-2 shrink-0">
           {task.assignees.slice(0, 3).map(a => (
-            <Avatar key={a.id} className="h-7 w-7 border-2 border-card">
-              <AvatarImage src={a.avatar_url} />
-              <AvatarFallback className="text-[10px] font-semibold">{a.full_name?.charAt(0) || '?'}</AvatarFallback>
-            </Avatar>
+            <span
+              key={`${a.id}-${a.task_role || ''}`}
+              title={`${a.full_name || a.email}${a.task_role ? ` · ${TASK_ROLE_CONFIG[a.task_role]?.shortLabel || a.task_role}` : ''}`}
+            >
+              <Avatar className="h-7 w-7 border-2 border-card">
+                <AvatarImage src={a.avatar_url} />
+                <AvatarFallback className="text-[10px] font-semibold">{a.full_name?.charAt(0) || '?'}</AvatarFallback>
+              </Avatar>
+            </span>
           ))}
           {task.assignees.length > 3 && (
             <div className="h-7 w-7 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[10px] font-semibold">
