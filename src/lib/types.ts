@@ -1,12 +1,12 @@
 export type UserRole = 'admin' | 'operador' | 'client';
 
-export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes'] as const;
+export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias'] as const;
 export type ModuleId = typeof ALL_MODULES[number];
 
 export const DEFAULT_MODULES: Record<UserRole, ModuleId[]> = {
-  admin: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes'],
-  operador: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes'],
-  client: ['dashboard', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes'],
+  admin: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias'],
+  operador: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias'],
+  client: ['dashboard', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias'],
 };
 
 export interface User {
@@ -240,6 +240,43 @@ export interface TaskAttachment {
   name: string;
   type: string;
   created_at: string;
+}
+
+export type SuggestionType = 'suggestion' | 'bug';
+export type SuggestionStatus = 'abierta' | 'en_revision' | 'implementada' | 'descartada';
+
+export interface SuggestionAuthor extends User {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url: string;
+}
+
+export interface SuggestionComment {
+  id: string;
+  suggestion_id: string;
+  author_id: string;
+  parent_id: string | null;
+  content: string;
+  created_at: string;
+  author?: SuggestionAuthor | null;
+  replies?: SuggestionComment[];
+}
+
+export interface Suggestion {
+  id: string;
+  author_id: string;
+  type: SuggestionType;
+  title: string;
+  content: string;
+  status: SuggestionStatus;
+  created_at: string;
+  updated_at: string;
+  author?: SuggestionAuthor | null;
+  comment_count?: number;
+  like_count?: number;
+  liked_by_me?: boolean;
+  comments?: SuggestionComment[];
 }
 
 export interface Notification {

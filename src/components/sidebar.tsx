@@ -25,6 +25,7 @@ import {
   LayoutGrid,
   Mail,
   Users2,
+  Lightbulb,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { label: 'calendar', href: '/calendarios', icon: 'Calendar', moduleId: 'calendarios', roles: ['admin', 'operador', 'client'] },
   { label: 'documents', href: '/documentos', icon: 'FileText', moduleId: 'documentos', roles: ['admin', 'operador', 'client'] },
   { label: 'messages', href: '/messages', icon: 'Mail', moduleId: 'mensajes', roles: ['admin', 'operador', 'client'] },
+  { label: 'suggestions', href: '/sugerencias', icon: 'Lightbulb', moduleId: 'sugerencias', roles: ['admin', 'operador', 'client'] },
 ];
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -53,6 +55,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   Mail,
   Users2,
+  Lightbulb,
 };
 
 function RailItem({

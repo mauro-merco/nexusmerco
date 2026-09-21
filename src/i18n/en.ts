@@ -11,6 +11,7 @@ export const en = {
     calendar: 'Client Calendar',
     documents: 'Documents',
     messages: 'Messages',
+    suggestions: 'Suggestions',
     settings: 'Settings',
     logout: 'Logout',
     lightMode: 'Light Mode',

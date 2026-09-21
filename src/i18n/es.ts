@@ -11,6 +11,7 @@ export const es = {
     calendar: 'Calendario de clientes',
     documents: 'Documentos',
     messages: 'Mensajes',
+    suggestions: 'Sugerencias',
     settings: 'Configuración',
     logout: 'Cerrar sesión',
     lightMode: 'Modo claro',

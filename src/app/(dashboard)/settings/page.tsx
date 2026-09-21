@@ -35,6 +35,7 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   calendarios: 'Calendario de clientes',
   documentos: 'Documentos',
   mensajes: 'Mensajes',
+  sugerencias: 'Sugerencias',
 };
 
 const ROLE_LABELS: Record<UserRole, string> = {
