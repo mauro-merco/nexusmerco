@@ -99,7 +99,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { client_id, title, description, status, assignee_ids, assignees, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels } = body;
+    const { client_id, title, description, status, assignee_ids, assignees, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels, task_type } = body;
     const toCount = (v: unknown) => v === undefined || v === null || v === '' ? null : Number(v);
 
     if (!client_id || !title) {
@@ -123,6 +123,7 @@ export async function POST(request: Request) {
         author_id: author_id || null,
         priority: priority || 'medium',
         due_date: due_date || null,
+        task_type: task_type || null,
         pieces_stories: toCount(pieces_stories),
         pieces_feed: toCount(pieces_feed),
         pieces_reels: toCount(pieces_reels),

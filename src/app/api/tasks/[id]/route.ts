@@ -52,7 +52,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public']) {
+    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public', 'task_type']) {
       if (body[key] !== undefined) updates[key] = body[key];
     }
     for (const key of ['pieces_stories', 'pieces_feed', 'pieces_reels']) {

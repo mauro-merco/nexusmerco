@@ -34,7 +34,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { data: tasks } = assignedTaskIds.length > 0
       ? await supabase
           .from('tasks')
-          .select('id, client_id, title, description, status, priority, due_date, position, author_id, created_at, updated_at, completed_at')
+          .select('id, client_id, title, description, status, priority, task_type, due_date, position, author_id, created_at, updated_at, completed_at')
           .in('id', assignedTaskIds)
           .order('position', { ascending: true })
           .order('created_at', { ascending: true })

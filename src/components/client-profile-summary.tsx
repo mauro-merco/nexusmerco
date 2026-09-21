@@ -12,7 +12,7 @@ import { TeamActivity } from '@/components/team-activity';
 import { WorkStatistics } from '@/components/work-statistics';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ClientWall } from '@/components/client-wall';
-import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/task-config';
+import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG, taskTypeInfo } from '@/lib/task-config';
 import { cn } from '@/lib/utils';
 import type { User, Task, NexusDocument } from '@/lib/types';
 import { KanbanSquare, CheckCircle2, Users2, Loader2, ChevronRight, FileText, Plus, Calendar } from 'lucide-react';
@@ -30,6 +30,17 @@ function TaskRowInline({ task, onOpen, closed }: { task: Task; onOpen: () => voi
         <Badge variant="outline" className={cn('text-[10px] gap-1 shrink-0', sConfig.bgColorClass, sConfig.colorClass)}>
           <SIcon className="h-3 w-3" /> {sConfig.label}
         </Badge>
+        {taskTypeInfo(task.task_type) && (() => {
+          const info = taskTypeInfo(task.task_type)!;
+          const cat = info.category;
+          const Icon = cat.icon;
+          return (
+            <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0', cat.bgColorClass, cat.colorClass)}>
+              <Icon className="h-3 w-3" />
+              <span className="max-w-[160px] truncate">{info.label}</span>
+            </span>
+          );
+        })()}
         <span className="text-sm font-medium truncate">{task.title}</span>
       </div>
       <div className="flex items-center gap-2 shrink-0">

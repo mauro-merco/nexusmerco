@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { TASK_ROLE_CONFIG, TASK_ROLES, TASK_STATUS_CONFIG } from '@/lib/task-config';
+import { TASK_ROLE_CONFIG, TASK_ROLES, TASK_STATUS_CONFIG, taskTypeInfo } from '@/lib/task-config';
 import { WorkStatistics } from '@/components/work-statistics';
 import {
   Mail,
@@ -367,6 +367,17 @@ export default function PublicProfilePage() {
                           const Icon = cfg.icon;
                           return <span key={role} className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', cfg.bgColorClass, cfg.colorClass)}><Icon className="h-3 w-3" /> {cfg.shortLabel}</span>;
                         })}
+                        {taskTypeInfo(t.task_type) && (() => {
+                          const info = taskTypeInfo(t.task_type)!;
+                          const cat = info.category;
+                          const Icon = cat.icon;
+                          return (
+                            <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', cat.bgColorClass, cat.colorClass)}>
+                              <Icon className="h-3 w-3" />
+                              <span className="max-w-[180px] truncate">{info.label}</span>
+                            </span>
+                          );
+                        })()}
                         {t.client?.name && <Badge variant="secondary" className="text-[10px]">{t.client.name}</Badge>}
                         <Badge variant="outline" className={cn('text-[10px] capitalize', TASK_STATUS_CONFIG[t.status].colorClass)}>{t.status.replace(/_/g, ' ')}</Badge>
                         <Badge variant="outline" className="text-[10px] capitalize">{t.priority}</Badge>

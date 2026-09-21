@@ -34,6 +34,7 @@ export function useTasks(clientId: string | null) {
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
+    task_type?: string | null;
     pieces_stories?: number | null;
     pieces_feed?: number | null;
     pieces_reels?: number | null;
@@ -57,6 +58,7 @@ export function useTasks(clientId: string | null) {
     assignees: { id: string; role: TaskRole }[];
     priority: TaskPriority;
     due_date: string | null;
+    task_type: string | null;
     pieces_stories: number | null;
     pieces_feed: number | null;
     pieces_reels: number | null;

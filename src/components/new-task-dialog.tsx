@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { TaskStatus, TaskPriority, TaskRole } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES } from '@/lib/task-config';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskTypeLabel } from '@/lib/task-config';
 import { TaskRolesPicker, emptyRoles, rolesToList, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
+import { TaskTypePicker } from '@/components/task-type-picker';
 import { Loader2 } from 'lucide-react';
 
 interface UserRecord { id: string; full_name: string; email: string; avatar_url: string; }
@@ -29,6 +30,7 @@ interface NewTaskDialogProps {
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
+    task_type?: string;
     pieces_stories?: number | null;
     pieces_feed?: number | null;
     pieces_reels?: number | null;
@@ -40,6 +42,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('en_espera');
   const [roles, setRoles] = useState<TaskRolesState>(emptyRoles());
+  const [taskType, setTaskType] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
   const [piecesStories, setPiecesStories] = useState('');
@@ -56,6 +59,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
       setRoles(emptyRoles());
       setPriority('medium');
       setDueDate('');
+      setTaskType('');
       setPiecesStories('');
       setPiecesFeed('');
       setPiecesReels('');
@@ -79,6 +83,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
         assignees: rolesToList(roles),
         priority,
         due_date: dueDate || undefined,
+        task_type: taskType || undefined,
         pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
         pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
         pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
@@ -98,6 +103,13 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
         <DialogDescription>Creá una nueva tarea para el tablero Kanban</DialogDescription>
 
         <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4 py-2">
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label>
+              Tipo de tarea{' '}
+              {taskType && <span className="text-muted-foreground font-normal">· {taskTypeLabel(taskType)}</span>}
+            </Label>
+            <TaskTypePicker value={taskType} onChange={setTaskType} />
+          </div>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Título *</Label>

@@ -5,7 +5,7 @@ import { useTasks } from '@/lib/hooks/use-tasks';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/types';
-import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, PIECE_TYPES, taskPieceTotal } from '@/lib/task-config';
+import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, PIECE_TYPES, taskPieceTotal, taskTypeInfo } from '@/lib/task-config';
 import { Loader2, Calendar, KanbanSquare, CheckCircle2, Layers, ImageIcon } from 'lucide-react';
 
 export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: () => void; showClient?: boolean }) {
@@ -31,6 +31,17 @@ export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: ()
           <span className={cn('flex items-center gap-1 font-medium', sConfig.colorClass)}>
             <span className={cn('w-1.5 h-1.5 rounded-full', sConfig.dotColor)} /> {sConfig.label}
           </span>
+          {taskTypeInfo(task.task_type) && (() => {
+            const info = taskTypeInfo(task.task_type)!;
+            const cat = info.category;
+            const Icon = cat.icon;
+            return (
+              <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium', cat.bgColorClass, cat.colorClass)}>
+                <Icon className="h-3 w-3 shrink-0" />
+                <span className="max-w-[200px] truncate">{info.label}</span>
+              </span>
+            );
+          })()}
           <span className={cn('flex items-center gap-1 font-medium', pConfig.colorClass)}>
             <span className={cn('w-1.5 h-1.5 rounded-full', pConfig.dotColor)} /> {pConfig.label}
           </span>

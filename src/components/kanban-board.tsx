@@ -10,7 +10,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, taskPieceTotal } from '@/lib/task-config';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, taskPieceTotal, taskTypeInfo } from '@/lib/task-config';
 import { GripVertical, MessageSquare, Paperclip, Calendar, User, Layers } from 'lucide-react';
 
 function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
@@ -49,6 +49,18 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
       {task.description && (
         <p className="text-xs text-muted-foreground line-clamp-2 mb-2 ml-5">{task.description}</p>
       )}
+
+      {taskTypeInfo(task.task_type) && (() => {
+        const info = taskTypeInfo(task.task_type)!;
+        const cat = info.category;
+        const Icon = cat.icon;
+        return (
+          <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold mb-2 ml-5', cat.bgColorClass, cat.colorClass)}>
+            <Icon className="h-3 w-3 shrink-0" />
+            <span className="max-w-[170px] truncate">{info.label}</span>
+          </span>
+        );
+      })()}
 
       <div className="flex items-center justify-between ml-5">
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">

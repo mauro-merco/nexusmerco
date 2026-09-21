@@ -14,8 +14,9 @@ import { useAuthStore } from '@/store/auth-store';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MentionedText, MentionInput } from '@/components/mention';
 import type { Task, TaskStatus, TaskPriority, TaskRole, TaskComment } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES, taskTypeInfo } from '@/lib/task-config';
 import { TaskRolesPicker, rolesToList, rolesFromAssignees, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
+import { TaskTypePicker } from '@/components/task-type-picker';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
   Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X, Layers,
@@ -43,6 +44,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [roles, setRoles] = useState<TaskRolesState>(() => rolesFromAssignees(task.assignees));
   const [dueDate, setDueDate] = useState(task.due_date || '');
+  const [taskType, setTaskType] = useState(task.task_type || '');
   const [piecesStories, setPiecesStories] = useState(task.pieces_stories != null ? String(task.pieces_stories) : '');
   const [piecesFeed, setPiecesFeed] = useState(task.pieces_feed != null ? String(task.pieces_feed) : '');
   const [piecesReels, setPiecesReels] = useState(task.pieces_reels != null ? String(task.pieces_reels) : '');
@@ -69,6 +71,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setPriority(task.priority);
     setRoles(rolesFromAssignees(task.assignees));
     setDueDate(task.due_date || '');
+    setTaskType(task.task_type || '');
     setPiecesStories(task.pieces_stories != null ? String(task.pieces_stories) : '');
     setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
     setPiecesReels(task.pieces_reels != null ? String(task.pieces_reels) : '');
@@ -93,6 +96,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         title, description, status, priority,
         assignees: rolesToList(roles),
         due_date: dueDate || null,
+        task_type: taskType || null,
         pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
         pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
         pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
@@ -280,6 +284,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   setTitle(task.title); setDescription(task.description);
                   setStatus(task.status); setPriority(task.priority);
                   setRoles(rolesFromAssignees(task.assignees)); setDueDate(task.due_date || '');
+                  setTaskType(task.task_type || '');
                   setPiecesStories(task.pieces_stories != null ? String(task.pieces_stories) : '');
                   setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
                   setPiecesReels(task.pieces_reels != null ? String(task.pieces_reels) : '');
@@ -319,6 +324,13 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               {editing ? (
                 <div className="space-y-3">
                   {saveError && <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
+                  <div className="space-y-1.5">
+                    <Label>
+                      Tipo de tarea{' '}
+                      {taskType && <span className="text-muted-foreground font-normal">· {taskTypeInfo(taskType)?.label}</span>}
+                    </Label>
+                    <TaskTypePicker value={taskType} onChange={setTaskType} />
+                  </div>
                   <div className="space-y-1.5">
                     <Label>Descripción</Label>
                     <textarea className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm min-h-[100px] resize-none"
@@ -384,6 +396,16 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     <p className="text-sm text-muted-foreground italic">Sin descripción</p>
                   )}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                    {taskTypeInfo(task.task_type) && (() => {
+                      const info = taskTypeInfo(task.task_type)!;
+                      const cat = info.category;
+                      const Icon = cat.icon;
+                      return (
+                        <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', cat.bgColorClass, cat.colorClass)}>
+                          <Icon className="h-3 w-3" /> {info.label}
+                        </span>
+                      );
+                    })()}
                     <span className={cn('flex items-center gap-1 font-medium', TASK_PRIORITY_CONFIG[task.priority].colorClass)}>
                       <span className={cn('w-2 h-2 rounded-full', TASK_PRIORITY_CONFIG[task.priority].dotColor)} />
                       Prioridad {TASK_PRIORITY_CONFIG[task.priority].label}

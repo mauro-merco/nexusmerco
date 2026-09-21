@@ -194,6 +194,8 @@ export interface Task {
   client_id: string;
   title: string;
   description: string;
+  /** Type of the task: one of the ids in TASK_TYPE_CATEGORIES (e.g. redes_piezas, ads_gestion, web_landing...). */
+  task_type: string | null;
   status: TaskStatus;
   author_id: string | null;
   priority: TaskPriority;
