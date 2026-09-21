@@ -20,7 +20,7 @@ export function SuggestionsFloatingButtons() {
 
   return (
     <>
-      <div className="fixed bottom-[4.75rem] md:bottom-6 left-4 md:left-6 z-40 flex flex-col gap-2">
+      <div className="fixed bottom-[9.25rem] md:bottom-[5.75rem] right-4 md:right-6 z-40 flex flex-col items-end gap-2">
         <button type="button" onClick={() => open('suggestion')} title="Enviar sugerencia"
           className="group flex items-center gap-2 rounded-full border border-violet-500/40 bg-background/80 backdrop-blur px-3 py-2 text-xs font-semibold text-violet-600 dark:text-violet-400 shadow-lg transition-all hover:scale-105 hover:bg-violet-500/10">
           <Lightbulb className="h-4 w-4" />
