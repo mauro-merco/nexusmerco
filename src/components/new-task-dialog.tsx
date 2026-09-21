@@ -20,9 +20,10 @@ interface UserRecord { id: string; full_name: string; email: string; avatar_url:
 interface NewTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  clientId: string;
+  clients: { id: string; name: string }[];
   users: UserRecord[];
   onCreateTask: (data: {
+    client_id: string;
     title: string;
     description?: string;
     status?: TaskStatus;
@@ -37,7 +38,8 @@ interface NewTaskDialogProps {
   }) => Promise<unknown>;
 }
 
-export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTask }: NewTaskDialogProps) {
+export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask }: NewTaskDialogProps) {
+  const [selClient, setSelClient] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('en_espera');
@@ -60,6 +62,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
       setPriority('medium');
       setDueDate('');
       setTaskType('');
+      setSelClient('');
       setPiecesStories('');
       setPiecesFeed('');
       setPiecesReels('');
@@ -68,6 +71,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
   }, [open]);
 
   const handleSave = async () => {
+    if (!selClient) { setError('Seleccioná el cliente de la tarea'); return; }
     if (!title.trim()) { setError('Ingresá un título'); return; }
     if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) {
       setError('Asigná al menos una persona como responsable, ejecutor y control');
@@ -77,6 +81,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
     setError(null);
     try {
       await onCreateTask({
+        client_id: selClient,
         title: title.trim(),
         description: description.trim(),
         status,
@@ -103,6 +108,19 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
         <DialogDescription>Creá una nueva tarea para el tablero Kanban</DialogDescription>
 
         <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4 py-2">
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label>Cliente de la tarea *</Label>
+            <select
+              value={selClient}
+              onChange={e => setSelClient(e.target.value)}
+              className="w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Seleccioná el cliente de la tarea...</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="space-y-1.5 lg:col-span-2">
             <Label>
               Tipo de tarea{' '}

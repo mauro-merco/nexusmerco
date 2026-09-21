@@ -219,11 +219,12 @@ export default function OperationsPage() {
       <NewTaskDialog
         open={showNewTask}
         onOpenChange={setShowNewTask}
-        clientId={selectedClientId || clients[0].id}
+        clients={clients}
         users={users}
         onCreateTask={async (data) => {
           const created = await createTask({ ...data, author_id: user?.id });
           setAllTasks(prev => [created, ...prev]);
+          if (created.client_id !== selectedClientId) setSelectedClientId(created.client_id);
         }}
       />
 
