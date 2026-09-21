@@ -4,17 +4,19 @@ import { useMemo, useState } from 'react';
 import { useSuggestions } from '@/lib/hooks/use-suggestions';
 import { SuggestionComposeDialog } from '@/components/suggestion-compose-dialog';
 import { SuggestionDetailModal } from '@/components/suggestion-detail-modal';
+import { ActivityLog } from '@/components/activity-log';
 import { SUGGESTION_TYPE_CONFIG, SUGGESTION_STATUS_CONFIG, SUGGESTION_STATUSES } from '@/lib/suggestion-config';
 import { cn } from '@/lib/utils';
 import { MentionedText } from '@/components/mention';
 import type { Suggestion, SuggestionType, SuggestionStatus } from '@/lib/types';
-import { Lightbulb, Bug, Plus, Heart, MessageSquare, Loader2, Megaphone } from 'lucide-react';
+import { Lightbulb, Bug, Plus, Heart, MessageSquare, Loader2, Megaphone, ClipboardList } from 'lucide-react';
 
 export default function SuggestionsPage() {
   const {
     suggestions, loading, error, refetch, create, update, remove, toggleLike,
   } = useSuggestions();
 
+  const [view, setView] = useState<'wall' | 'report'>('wall');
   const [typeFilter, setTypeFilter] = useState<SuggestionType | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<SuggestionStatus | 'all'>('all');
   const [composeOpen, setComposeOpen] = useState(false);
@@ -71,6 +73,24 @@ export default function SuggestionsPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex rounded-xl border bg-card/50 p-0.5 w-full sm:w-auto">
+        <button onClick={() => setView('wall')}
+          className={cn('flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+            view === 'wall' ? 'bg-gradient-tech text-white shadow' : 'text-muted-foreground hover:text-foreground')}>
+          <Megaphone className="h-4 w-4" /> Muro
+        </button>
+        <button onClick={() => setView('report')}
+          className={cn('flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+            view === 'report' ? 'bg-gradient-tech text-white shadow' : 'text-muted-foreground hover:text-foreground')}>
+          <ClipboardList className="h-4 w-4" /> Reporte diario
+        </button>
+      </div>
+
+      {view === 'report' ? (
+        <ActivityLog />
+      ) : (
+        <>
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Total" value={stats.total} icon={<Megaphone className="h-3.5 w-3.5" />} color="text-foreground bg-foreground/5" />
@@ -155,6 +175,8 @@ export default function SuggestionsPage() {
             );
           })}
         </div>
+      )}
+        </>
       )}
 
       <SuggestionComposeDialog
