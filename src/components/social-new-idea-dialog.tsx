@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useEffect } from 'react';
 import {
@@ -9,9 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import type { PostType, IdeaStatus, Responsable } from '@/lib/types';
-import { POST_TYPE_CONFIG, STATUS_CONFIG, RESPONSABLE_CONFIG } from '@/lib/social-config';
-import { Loader2, User } from 'lucide-react';
+import type { PostType, IdeaStatus, User, WorkRole } from '@/lib/types';
+import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { TaskRolesPicker, emptyRoles, rolesToList, type TaskRolesState } from '@/components/task-roles-picker';
+import { useAuthStore } from '@/store/auth-store';
+import { Loader2 } from 'lucide-react';
 
 const POST_TYPES: { value: PostType; label: string }[] = [
   { value: 'historia', label: 'Historia' },
@@ -29,15 +32,19 @@ interface SocialNewIdeaDialogProps {
     brief?: string;
     eje_contenido?: string;
     copy_text?: string;
-    responsable?: Responsable;
     post_type: PostType;
     status?: IdeaStatus;
     publish_date: string;
+    author_id?: string;
+    assignees: { id: string; role: WorkRole }[];
   }) => Promise<unknown>;
+  users: User[];
+  calendarType?: 'social' | 'ads';
 }
 
-export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateIdea }: SocialNewIdeaDialogProps) {
-  const [responsable, setResponsable] = useState<Responsable>('mau');
+export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateIdea, users, calendarType = 'social' }: SocialNewIdeaDialogProps) {
+  const { user } = useAuthStore();
+  const [roles, setRoles] = useState<TaskRolesState>(emptyRoles);
   const [publishDate, setPublishDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const [ejeContenido, setEjeContenido] = useState('');
   const [brief, setBrief] = useState('');
@@ -51,7 +58,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
   useEffect(() => {
     if (open) {
       setPublishDate(initialDate || new Date().toISOString().split('T')[0]);
-      setResponsable('mau');
+      setRoles(emptyRoles());
       setEjeContenido('');
       setBrief('');
       setCopyText('');
@@ -68,6 +75,10 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
       return;
     }
     if (!publishDate) { setError('Seleccioná una fecha'); return; }
+    if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) {
+      setError('Asigná al menos una persona como responsable, ejecutor y control');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -77,10 +88,11 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
         brief: brief.trim(),
         eje_contenido: ejeContenido.trim(),
         copy_text: copyText.trim(),
-        responsable,
         post_type: postType,
         status,
         publish_date: publishDate,
+        author_id: user?.id,
+        assignees: rolesToList(roles),
       });
       onOpenChange(false);
     } catch (e) {
@@ -93,32 +105,13 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogTitle>Nueva Idea de Publicación</DialogTitle>
-        <DialogDescription>Creá una nueva idea para el calendario de redes</DialogDescription>
+        <DialogTitle>{calendarType === 'ads' ? 'Nueva pieza ADS' : 'Nueva idea de publicación'}</DialogTitle>
+        <DialogDescription>Creá contenido y definí quién responde, ejecuta y controla</DialogDescription>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Responsable *</Label>
-            <div className="flex gap-2">
-              {(['nico', 'mau'] as Responsable[]).map(r => {
-                const cfg = RESPONSABLE_CONFIG[r];
-                return (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setResponsable(r)}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm transition-colors font-medium',
-                      responsable === r
-                        ? cfg.colorClass
-                        : 'border-border text-muted-foreground hover:border-border/60',
-                    )}
-                  >
-                    <User className="h-4 w-4" /> {cfg.label}
-                  </button>
-                );
-              })}
-            </div>
+            <Label>Equipo asignado *</Label>
+            <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
           </div>
 
           <div className="space-y-1.5">
@@ -245,7 +238,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
           <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
           <Button onClick={handleSave} variant="cta" disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-            Crear Idea
+            {calendarType === 'ads' ? 'Crear pieza' : 'Crear idea'}
           </Button>
         </DialogFooter>
       </DialogContent>

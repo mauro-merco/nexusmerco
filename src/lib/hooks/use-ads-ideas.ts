@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { SocialIdea, PostType, IdeaStatus, Responsable, EcommerceDate } from '@/lib/types';
+import type { SocialIdea, PostType, IdeaStatus, Responsable, EcommerceDate, WorkRole } from '@/lib/types';
 
 export function useAdsIdeas(clientId: string | null, month?: string | null) {
   const [ideas, setIdeas] = useState<SocialIdea[]>([]);
@@ -39,6 +39,7 @@ export function useAdsIdeas(clientId: string | null, month?: string | null) {
     status?: IdeaStatus;
     publish_date: string;
     author_id?: string;
+    assignees?: { id: string; role: WorkRole }[];
   }) => {
     const res = await fetch('/api/ads-ideas', {
       method: 'POST',
@@ -54,6 +55,7 @@ export function useAdsIdeas(clientId: string | null, month?: string | null) {
   const updateIdea = useCallback(async (id: string, data: Partial<{
     title: string; description: string; brief: string; eje_contenido: string;
     copy_text: string; responsable: Responsable; post_type: PostType; status: IdeaStatus; publish_date: string;
+    assignees: { id: string; role: WorkRole }[];
   }>) => {
     const res = await fetch(`/api/ads-ideas/${id}`, {
       method: 'PUT',

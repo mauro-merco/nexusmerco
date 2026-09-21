@@ -12,6 +12,9 @@ const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || 'opencode';
 const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || '';
 const AGENT = 'dashboard';
 
+const AI_MODEL = process.env.OPENCODE_MODEL || 'anthropic/claude-sonnet-4-5';
+const [AI_MODEL_PROVIDER, AI_MODEL_ID] = AI_MODEL.split('/');
+
 function getSupabase() {
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -200,6 +203,7 @@ export async function POST(request: Request) {
       path: { id: session.id },
       body: {
         agent: AGENT,
+        model: { providerID: AI_MODEL_PROVIDER, modelID: AI_MODEL_ID },
         parts: [{ type: 'text', text: buildPrompt(context, message) }],
       },
     });

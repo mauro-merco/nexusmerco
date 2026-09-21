@@ -1,15 +1,14 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
-import { POST_TYPE_CONFIG, STATUS_CONFIG, RESPONSABLE_CONFIG } from '@/lib/social-config';
-import { User, Link as LinkIcon, Check, ChevronDown } from 'lucide-react';
+import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { Users, Link as LinkIcon, Check, ChevronDown } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
 
@@ -24,7 +23,6 @@ export function SocialIdeaCard({ idea, attachments = [], onClick, onStatusChange
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
   const stConfig = STATUS_CONFIG[idea.status];
   const PtIcon = ptConfig.icon;
-  const respCfg = RESPONSABLE_CONFIG[idea.responsable || 'mau'];
   const date = new Date(idea.publish_date + 'T12:00:00');
   const dateStr = date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
 
@@ -93,11 +91,6 @@ export function SocialIdeaCard({ idea, attachments = [], onClick, onStatusChange
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {idea.copy_text && (
-          <p className={cn('text-xs line-clamp-2 mb-2 font-medium', isPublished && 'blur-[1px]', 'text-foreground/90')}>
-            {idea.copy_text}
-          </p>
-        )}
         {idea.brief && (
           <p className={cn('text-xs text-muted-foreground line-clamp-2 mb-2', isPublished && 'blur-[1px]')}>{idea.brief}</p>
         )}
@@ -122,8 +115,8 @@ export function SocialIdeaCard({ idea, attachments = [], onClick, onStatusChange
           </div>
         )}
         <div className={cn('flex items-center justify-between text-[10px] text-muted-foreground', isPublished && 'blur-[1px]')}>
-          <span className={cn('flex items-center gap-1', respCfg.colorClass)}>
-            <User className="h-3 w-3" /> {respCfg.label}
+          <span className="flex items-center gap-1 text-violet-500">
+            <Users className="h-3 w-3" /> {idea.assignees?.length || 0} asignados
           </span>
           <span>{dateStr}</span>
         </div>

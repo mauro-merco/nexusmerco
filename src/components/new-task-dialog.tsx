@@ -8,10 +8,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import type { TaskStatus, TaskPriority } from '@/lib/types';
+import type { TaskStatus, TaskPriority, TaskRole } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES } from '@/lib/task-config';
+import { TaskRolesPicker, emptyRoles, rolesToList, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
 import { Loader2 } from 'lucide-react';
 
 interface UserRecord { id: string; full_name: string; email: string; avatar_url: string; }
@@ -25,7 +25,7 @@ interface NewTaskDialogProps {
     title: string;
     description?: string;
     status?: TaskStatus;
-    assignee_ids?: string[];
+    assignees?: { id: string; role: TaskRole }[];
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
@@ -39,7 +39,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('en_espera');
-  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [roles, setRoles] = useState<TaskRolesState>(emptyRoles());
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
   const [piecesStories, setPiecesStories] = useState('');
@@ -53,7 +53,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
       setTitle('');
       setDescription('');
       setStatus('en_espera');
-      setAssigneeIds([]);
+      setRoles(emptyRoles());
       setPriority('medium');
       setDueDate('');
       setPiecesStories('');
@@ -63,12 +63,12 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
     }
   }, [open]);
 
-  const toggleAssignee = (id: string) => {
-    setAssigneeIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-
   const handleSave = async () => {
     if (!title.trim()) { setError('Ingresá un título'); return; }
+    if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) {
+      setError('Asigná al menos una persona como responsable, ejecutor y control');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -76,7 +76,7 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
         title: title.trim(),
         description: description.trim(),
         status,
-        assignee_ids: assigneeIds,
+        assignees: rolesToList(roles),
         priority,
         due_date: dueDate || undefined,
         pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
@@ -174,19 +174,10 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
           </div>
 
           <div className="space-y-1.5">
-            <Label>Asignar a {assigneeIds.length > 0 && <span className="text-muted-foreground font-normal">({assigneeIds.length} seleccionado{assigneeIds.length !== 1 ? 's' : ''})</span>}</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto rounded-md border border-input p-2">
-              {users.length === 0 && <p className="text-xs text-muted-foreground col-span-full py-2 text-center">Sin usuarios disponibles</p>}
-              {users.map(u => (
-                <label key={u.id} className={cn(
-                  'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer transition-colors',
-                  assigneeIds.includes(u.id) ? 'border-primary/50 bg-primary/5' : 'border-border text-muted-foreground',
-                )}>
-                  <Checkbox checked={assigneeIds.includes(u.id)} onCheckedChange={() => toggleAssignee(u.id)} />
-                  <span className="truncate">{u.full_name || u.email}</span>
-                </label>
-              ))}
-            </div>
+            <Label>
+              Equipo y roles {totalPeople(roles) > 0 && <span className="text-muted-foreground font-normal">({totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''})</span>}
+            </Label>
+            <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}

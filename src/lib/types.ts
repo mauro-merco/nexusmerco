@@ -122,6 +122,11 @@ export interface NavItem {
 export type PostType = 'historia' | 'reel' | 'carrusel';
 export type IdeaStatus = 'borrador' | 'en_revision' | 'necesita_modificaciones' | 'aprobada' | 'listo_para_postear' | 'posteado';
 export type Responsable = 'nico' | 'mau';
+export type WorkRole = 'lead' | 'executor' | 'reviewer';
+
+export interface WorkAssignee extends User {
+  work_role: WorkRole;
+}
 
 export interface SocialIdea {
   id: string;
@@ -136,8 +141,10 @@ export interface SocialIdea {
   status: IdeaStatus;
   publish_date: string;
   author_id: string | null;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
+  assignees: WorkAssignee[];
 }
 
 export interface SocialAttachment {
@@ -176,6 +183,11 @@ export interface SocialAnnotation {
 
 export type TaskStatus = 'en_espera' | 'en_revision' | 'aprobado' | 'problemas' | 'cerrada';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskRole = WorkRole;
+
+export interface TaskAssignee extends User {
+  task_role: TaskRole;
+}
 
 export interface Task {
   id: string;
@@ -197,7 +209,9 @@ export interface Task {
   is_public: boolean;
   created_at: string;
   updated_at: string;
-  assignees: User[];
+  assignees: TaskAssignee[];
+  /** Role this user holds in the task (set when the task comes from a profile query). */
+  my_role?: TaskRole | null;
   author?: User | null;
   client?: Client | null;
   comment_count?: number;
@@ -316,9 +330,39 @@ export interface EcommerceDate {
   created_at: string;
 }
 
+export interface ProfileWorkItem {
+  id: string;
+  source: 'social' | 'ads';
+  client_id: string;
+  client?: Pick<Client, 'id' | 'name'> | null;
+  title: string;
+  status: IdeaStatus;
+  post_type: PostType;
+  publish_date: string;
+  completed_at: string | null;
+  created_at: string;
+  my_role: WorkRole;
+}
+
+export interface WorkStatsItem {
+  id: string;
+  source: 'task' | 'social' | 'ads';
+  client_id: string;
+  title: string;
+  status: string;
+  state: 'active' | 'closed';
+  created_at: string;
+  scheduled_at: string | null;
+  completed_at: string | null;
+  post_type: PostType | null;
+  piece_count: number;
+  assignees: WorkAssignee[];
+}
+
 export interface PublicProfile {
   user: User | null;
   tasks: Task[];
+  work_items: ProfileWorkItem[];
   documents: NexusDocument[];
   notes: StickyNote[];
 }

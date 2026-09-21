@@ -7,6 +7,9 @@ const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || 'opencode';
 const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || '';
 const AGENT = 'writer';
 
+const AI_MODEL = process.env.OPENCODE_MODEL || 'anthropic/claude-sonnet-4-5';
+const [AI_MODEL_PROVIDER, AI_MODEL_ID] = AI_MODEL.split('/');
+
 function getOpencodeClient() {
   return createOpencodeClient({
     baseUrl: OPENCODE_URL,
@@ -93,7 +96,11 @@ export async function POST(request: Request) {
 
     const res = await client.session.prompt({
       path: { id: created.data.id },
-      body: { agent: AGENT, parts: [{ type: 'text', text: buildPrompt({ theme, tone, length }) }] },
+      body: {
+        agent: AGENT,
+        model: { providerID: AI_MODEL_PROVIDER, modelID: AI_MODEL_ID },
+        parts: [{ type: 'text', text: buildPrompt({ theme, tone, length }) }],
+      },
     });
 
     if (res.error || !res.data) {

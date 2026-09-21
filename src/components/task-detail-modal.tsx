@@ -8,14 +8,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { useTaskComments, useTaskAttachments } from '@/lib/hooks/use-tasks';
 import { useAuthStore } from '@/store/auth-store';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MentionedText, MentionInput } from '@/components/mention';
-import type { Task, TaskStatus, TaskPriority, TaskComment } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal } from '@/lib/task-config';
+import type { Task, TaskStatus, TaskPriority, TaskRole, TaskComment } from '@/lib/types';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
+import { TaskRolesPicker, rolesToList, rolesFromAssignees, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
   Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X, Layers,
@@ -41,7 +41,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [description, setDescription] = useState(task.description);
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
-  const [assigneeIds, setAssigneeIds] = useState<string[]>(task.assignees?.map(a => a.id) || []);
+  const [roles, setRoles] = useState<TaskRolesState>(() => rolesFromAssignees(task.assignees));
   const [dueDate, setDueDate] = useState(task.due_date || '');
   const [piecesStories, setPiecesStories] = useState(task.pieces_stories != null ? String(task.pieces_stories) : '');
   const [piecesFeed, setPiecesFeed] = useState(task.pieces_feed != null ? String(task.pieces_feed) : '');
@@ -67,7 +67,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setDescription(task.description);
     setStatus(task.status);
     setPriority(task.priority);
-    setAssigneeIds(task.assignees?.map(a => a.id) || []);
+    setRoles(rolesFromAssignees(task.assignees));
     setDueDate(task.due_date || '');
     setPiecesStories(task.pieces_stories != null ? String(task.pieces_stories) : '');
     setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
@@ -83,12 +83,15 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setSaving(true);
     setSaveError(null);
     try {
+      if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) {
+        throw new Error('Asigná al menos una persona como responsable, ejecutor y control');
+      }
       const res = await fetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
         title, description, status, priority,
-        assignee_ids: assigneeIds,
+        assignees: rolesToList(roles),
         due_date: dueDate || null,
         pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
         pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
@@ -104,7 +107,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     } finally {
       setSaving(false);
     }
-  }, [task.id, title, description, status, priority, assigneeIds, dueDate, piecesStories, piecesFeed, piecesReels, onTaskUpdated]);
+  }, [task.id, title, description, status, priority, roles, dueDate, piecesStories, piecesFeed, piecesReels, onTaskUpdated]);
 
   const handleQuickStatus = useCallback(async (newStatus: TaskStatus) => {
     if (newStatus === status) return;
@@ -276,7 +279,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   setEditing(false); setSaveError(null);
                   setTitle(task.title); setDescription(task.description);
                   setStatus(task.status); setPriority(task.priority);
-                  setAssigneeIds(task.assignees?.map(a => a.id) || []); setDueDate(task.due_date || '');
+                  setRoles(rolesFromAssignees(task.assignees)); setDueDate(task.due_date || '');
                   setPiecesStories(task.pieces_stories != null ? String(task.pieces_stories) : '');
                   setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
                   setPiecesReels(task.pieces_reels != null ? String(task.pieces_reels) : '');
@@ -364,18 +367,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Asignar a {assigneeIds.length > 0 && <span className="text-muted-foreground font-normal">({assigneeIds.length} seleccionado{assigneeIds.length !== 1 ? 's' : ''})</span>}</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto rounded-md border border-input p-2">
-                      {users.map(u => (
-                        <label key={u.id} className={cn(
-                          'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer transition-colors',
-                          assigneeIds.includes(u.id) ? 'border-primary/50 bg-primary/5' : 'border-border text-muted-foreground',
-                        )}>
-                          <Checkbox checked={assigneeIds.includes(u.id)} onCheckedChange={() => setAssigneeIds(prev => prev.includes(u.id) ? prev.filter(x => x !== u.id) : [...prev, u.id])} />
-                          <span className="truncate">{u.full_name || u.email}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <Label>
+                      Equipo y roles {totalPeople(roles) > 0 && <span className="text-muted-foreground font-normal">({totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''})</span>}
+                    </Label>
+                    <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
                   </div>
                 </div>
               ) : (
@@ -431,6 +426,27 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                       })}
                     </div>
                   ) : null}
+
+                  {task.assignees && task.assignees.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Equipo del proyecto</p>
+                      <div className="space-y-1.5">
+                        {TASK_ROLES.map(roleKey => {
+                          const members = task.assignees.filter(a => a.task_role === roleKey);
+                          const cfg = TASK_ROLE_CONFIG[roleKey];
+                          const Icon = cfg.icon;
+                          if (members.length === 0) return null;
+                          return (
+                            <div key={roleKey} className={cn('flex flex-wrap items-center gap-1.5 rounded-lg border px-2.5 py-1.5', cfg.borderClass)}>
+                              <Icon className={cn('h-3.5 w-3.5', cfg.colorClass)} />
+                              <span className={cn('text-[11px] font-semibold', cfg.colorClass)}>{cfg.label}:</span>
+                              <span className="text-xs text-foreground/80">{members.map(m => m.full_name).join(', ')}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

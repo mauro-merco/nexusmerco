@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useCallback, useEffect } from 'react';
 import {
@@ -13,12 +14,14 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useSocialAttachments, useSocialComments } from '@/lib/hooks/use-social-ideas';
 import { SocialComment } from '@/components/social-comment';
+import { TaskRolesPicker, rolesFromAssignees, rolesToList, type TaskRolesState } from '@/components/task-roles-picker';
 import { useAuthStore } from '@/store/auth-store';
-import type { SocialIdea, PostType, IdeaStatus, Responsable } from '@/lib/types';
-import { POST_TYPE_CONFIG, STATUS_CONFIG, RESPONSABLE_CONFIG } from '@/lib/social-config';
+import type { SocialIdea, PostType, IdeaStatus, User as NexusUser } from '@/lib/types';
+import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import {
   Loader2, Trash2, Link, Paperclip,
-  Edit3, Calendar, User, Check,
+   Edit3, Calendar, Check,
 } from 'lucide-react';
 
 const POST_TYPES: { value: PostType; label: string }[] = [
@@ -35,12 +38,16 @@ interface SocialIdeaModalProps {
   onOpenChange: (open: boolean) => void;
   onIdeaUpdated: (idea: SocialIdea) => void;
   onIdeaDeleted: () => void;
+  users: NexusUser[];
+  calendarType?: 'social' | 'ads';
 }
 
-export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted }: SocialIdeaModalProps) {
+export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social' }: SocialIdeaModalProps) {
   const { user } = useAuthStore();
-  const { attachments, addAttachment, removeAttachment } = useSocialAttachments(idea.id);
-  const { comments, addComment, deleteComment, updateComment } = useSocialComments(idea.id);
+  const isSocial = calendarType === 'social';
+  const endpoint = calendarType === 'ads' ? '/api/ads-ideas' : '/api/social-ideas';
+  const { attachments, addAttachment, removeAttachment } = useSocialAttachments(isSocial ? idea.id : null);
+  const { comments, addComment, deleteComment, updateComment } = useSocialComments(isSocial ? idea.id : null);
 
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(idea.title);
@@ -48,7 +55,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
   const [brief, setBrief] = useState(idea.brief || '');
   const [copyText, setCopyText] = useState(idea.copy_text || '');
   const [ejeContenido, setEjeContenido] = useState(idea.eje_contenido || '');
-  const [responsable, setResponsable] = useState<Responsable>(idea.responsable || 'mau');
+  const [roles, setRoles] = useState<TaskRolesState>(() => rolesFromAssignees((idea.assignees || []).map(a => ({ id: a.id, task_role: a.work_role }))));
   const [postType, setPostType] = useState<PostType>(idea.post_type);
   const [status, setStatus] = useState<IdeaStatus>(idea.status);
   const [publishDate, setPublishDate] = useState(idea.publish_date);
@@ -66,7 +73,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     setBrief(idea.brief || '');
     setCopyText(idea.copy_text || '');
     setEjeContenido(idea.eje_contenido || '');
-    setResponsable(idea.responsable || 'mau');
+    setRoles(rolesFromAssignees((idea.assignees || []).map(a => ({ id: a.id, task_role: a.work_role }))));
     setPostType(idea.post_type);
     setStatus(idea.status);
     setPublishDate(idea.publish_date);
@@ -79,12 +86,15 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/api/social-ideas/${idea.id}`, {
+      if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) {
+        throw new Error('Asigná al menos una persona como responsable, ejecutor y control');
+      }
+      const res = await fetch(`${endpoint}/${idea.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title, description, brief, eje_contenido: ejeContenido, copy_text: copyText,
-          responsable, post_type: postType, status, publish_date: publishDate,
+          post_type: postType, status, publish_date: publishDate, assignees: rolesToList(roles),
         }),
       });
       const json = await res.json();
@@ -96,13 +106,13 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     } finally {
       setSaving(false);
     }
-  }, [idea.id, title, description, brief, copyText, ejeContenido, responsable, postType, status, publishDate, onIdeaUpdated]);
+  }, [idea.id, endpoint, title, description, brief, copyText, ejeContenido, roles, postType, status, publishDate, onIdeaUpdated]);
 
   const handleQuickStatusChange = useCallback(async (newStatus: IdeaStatus) => {
     if (newStatus === idea.status) return;
     setChangingStatus(true);
     try {
-      const res = await fetch(`/api/social-ideas/${idea.id}`, {
+      const res = await fetch(`${endpoint}/${idea.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -116,7 +126,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     } finally {
       setChangingStatus(false);
     }
-  }, [idea.id, idea.status, onIdeaUpdated]);
+  }, [idea.id, idea.status, endpoint, onIdeaUpdated]);
 
   const handleAddAttachment = useCallback(async () => {
     if (!newAttachUrl.trim()) return;
@@ -135,7 +145,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
       return;
     }
     try {
-      const res = await fetch(`/api/social-ideas/${idea.id}`, { method: 'DELETE' });
+      const res = await fetch(`${endpoint}/${idea.id}`, { method: 'DELETE' });
       if (res.ok) {
         onIdeaDeleted();
         onOpenChange(false);
@@ -143,13 +153,11 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     } finally {
       setConfirmDelete(false);
     }
-  }, [idea.id, confirmDelete, onIdeaDeleted, onOpenChange]);
+  }, [idea.id, endpoint, confirmDelete, onIdeaDeleted, onOpenChange]);
 
   const dateStr = new Date(idea.publish_date + 'T12:00:00').toLocaleDateString('es-AR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
-
-  const isPublished = idea.status === 'posteado';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -173,14 +181,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                   </Badge>
                 );
               })()}
-              {(() => {
-                const cfg = RESPONSABLE_CONFIG[idea.responsable || 'mau'];
-                return (
-                  <Badge variant="outline" className={cn('text-[10px] gap-1', cfg.colorClass)}>
-                    <User className="h-2.5 w-2.5" /> {cfg.label}
-                  </Badge>
-                );
-              })()}
+              <Badge variant="outline" className="text-[10px]">{idea.assignees?.length || 0} asignados</Badge>
             </DialogDescription>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -190,7 +191,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
               </Button>
             ) : (
               <>
-                   <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setSaveError(null); setTitle(idea.title); setDescription(idea.description); setBrief(idea.brief || ''); setCopyText(idea.copy_text || ''); setEjeContenido(idea.eje_contenido || ''); setResponsable(idea.responsable || 'mau'); setPostType(idea.post_type); setStatus(idea.status); setPublishDate(idea.publish_date); }}>
+               <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setSaveError(null); setTitle(idea.title); setDescription(idea.description); setBrief(idea.brief || ''); setCopyText(idea.copy_text || ''); setEjeContenido(idea.eje_contenido || ''); setRoles(rolesFromAssignees((idea.assignees || []).map(a => ({ id: a.id, task_role: a.work_role })))); setPostType(idea.post_type); setStatus(idea.status); setPublishDate(idea.publish_date); }}>
                   Cancelar
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -249,25 +250,8 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                   )}
 
                   <div className="space-y-1.5">
-                    <Label>Responsable</Label>
-                    <div className="flex gap-2">
-                      {(['nico', 'mau'] as Responsable[]).map(r => {
-                        const cfg = RESPONSABLE_CONFIG[r];
-                        return (
-                          <button
-                            key={r}
-                            type="button"
-                            onClick={() => setResponsable(r)}
-                            className={cn(
-                              'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors font-medium',
-                              responsable === r ? cfg.colorClass : 'border-border text-muted-foreground',
-                            )}
-                          >
-                            <User className="h-3 w-3" /> {cfg.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <Label>Equipo asignado</Label>
+                    <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
                   </div>
 
                   <div className="space-y-1.5">
@@ -340,6 +324,21 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Equipo asignado</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {TASK_ROLES.map(role => {
+                        const cfg = TASK_ROLE_CONFIG[role];
+                        const assigned = (idea.assignees || []).filter(a => a.work_role === role);
+                        return (
+                          <div key={role} className={cn('rounded-lg border p-2', cfg.borderClass)}>
+                            <p className={cn('text-[10px] font-semibold', cfg.colorClass)}>{cfg.question}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{assigned.map(a => a.full_name || a.email).join(', ') || 'Sin asignar'}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                   {idea.eje_contenido && (
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Eje de contenido</p>
@@ -373,7 +372,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
               <Separator />
 
               {/* Attachments section */}
-              <div className="space-y-3">
+              {isSocial && <div className="space-y-3">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1">
                   <Paperclip className="h-3 w-3" /> Adjuntos ({attachments.length})
                 </p>
@@ -408,11 +407,11 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                     ))}
                   </div>
                 )}
-              </div>
+              </div>}
             </div>
 
             {/* RIGHT COLUMN — Comments */}
-            <div className="md:col-span-2 flex flex-col min-h-0 rounded-xl bg-muted/30 border border-border/40 p-3">
+            {isSocial && <div className="md:col-span-2 flex flex-col min-h-0 rounded-xl bg-muted/30 border border-border/40 p-3">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1 mb-2 shrink-0">
                 Comentarios ({comments.length})
               </p>
@@ -426,7 +425,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                   currentUserId={user?.id}
                 />
               </div>
-            </div>
+            </div>}
           </div>
         </div>
 

@@ -1,5 +1,5 @@
-import type { TaskStatus, TaskPriority, Task } from '@/lib/types';
-import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video } from 'lucide-react';
+import type { TaskStatus, TaskPriority, TaskRole, Task } from '@/lib/types';
+import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: LucideIcon; colorClass: string; bgColorClass: string; dotColor: string }> = {
@@ -60,3 +60,63 @@ export const TASK_PRIORITY_CONFIG: Record<TaskPriority, { label: string; colorCl
 
 export const TASK_STATUSES: TaskStatus[] = ['en_espera', 'en_revision', 'aprobado', 'problemas', 'cerrada'];
 export const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
+
+export const TASK_ROLE_CONFIG: Record<TaskRole, {
+  label: string;
+  question: string;
+  shortLabel: string;
+  verb: string;
+  description: string;
+  icon: LucideIcon;
+  colorClass: string;
+  bgColorClass: string;
+  borderClass: string;
+  dotColor: string;
+}> = {
+  lead: {
+    label: 'Responsable',
+    question: '¿Quién es responsable?',
+    shortLabel: 'Responsable',
+    verb: 'es responsable de',
+    description: 'Lidera la tarea y responde por el resultado.',
+    icon: Crown,
+    colorClass: 'text-violet-600 dark:text-violet-400',
+    bgColorClass: 'bg-violet-500/15',
+    borderClass: 'border-violet-500/40',
+    dotColor: 'bg-violet-500',
+  },
+  executor: {
+    label: 'Ejecuta',
+    question: '¿Quién ejecuta?',
+    shortLabel: 'Ejecuta',
+    verb: 'ejecuta',
+    description: 'Realiza el trabajo principal de la tarea.',
+    icon: Hammer,
+    colorClass: 'text-cyan-600 dark:text-cyan-400',
+    bgColorClass: 'bg-cyan-500/15',
+    borderClass: 'border-cyan-500/40',
+    dotColor: 'bg-cyan-500',
+  },
+  reviewer: {
+    label: 'Controla',
+    question: '¿Quién controla?',
+    shortLabel: 'Controla',
+    verb: 'controla',
+    description: 'Controla y valida el resultado.',
+    icon: SearchCheck,
+    colorClass: 'text-amber-600 dark:text-amber-400',
+    bgColorClass: 'bg-amber-500/15',
+    borderClass: 'border-amber-500/40',
+    dotColor: 'bg-amber-500',
+  },
+};
+
+export const TASK_ROLES: TaskRole[] = ['lead', 'executor', 'reviewer'];
+
+export function assigneeByRole(task: Pick<Task, 'assignees'>, role: TaskRole) {
+  return (task.assignees || []).filter(a => a.task_role === role);
+}
+
+export function taskRolesOfUser(task: Pick<Task, 'assignees'>, userId: string): TaskRole[] {
+  return (task.assignees || []).filter(a => a.id === userId).map(a => a.task_role);
+}

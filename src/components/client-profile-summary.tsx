@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { TeamActivity } from '@/components/team-activity';
+import { WorkStatistics } from '@/components/work-statistics';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ClientWall } from '@/components/client-wall';
 import { TASK_STATUS_CONFIG } from '@/lib/task-config';
@@ -150,6 +151,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
           </div>
 
           <TeamActivity tasks={tasks} />
+          <WorkStatistics clientId={clientId} />
         </CardContent>
       </Card>
 

@@ -10,6 +10,7 @@ import { NotificationToasts } from '@/components/notification-toasts';
 import { RemindersBell } from '@/components/reminders-bell';
 import { ProfileMenu } from '@/components/profile-menu';
 import { useAuthStore } from '@/store/auth-store';
+import { initAuthSync } from '@/lib/auth-sync';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -19,6 +20,10 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const { user, isLoading } = useAuthStore();
+
+  useEffect(() => {
+    initAuthSync();
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !user) {

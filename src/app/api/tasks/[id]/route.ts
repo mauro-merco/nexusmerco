@@ -12,7 +12,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { data: task, error } = await supabase.from('tasks').select('*').eq('id', id).single();
     if (error) throw error;
 
-    const { data: assigneeRows } = await supabase.from('task_assignees').select('user_id').eq('task_id', id);
+    const { data: assigneeRows } = await supabase.from('task_assignees').select('user_id, role').eq('task_id', id);
     const assigneeIds = (assigneeRows || []).map(r => r.user_id);
 
     const userIds = [...new Set([...assigneeIds, task.author_id].filter(Boolean))];
@@ -30,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({
       data: {
         ...task,
-        assignees: assigneeIds.map(uid => usersMap[uid]).filter(Boolean),
+        assignees: (assigneeRows || []).map(r => usersMap[r.user_id] && { ...usersMap[r.user_id], task_role: r.role }).filter(Boolean),
         author: task.author_id ? usersMap[task.author_id] || null : null,
         client: client || null,
         comment_count: comment_count || 0,
@@ -46,6 +46,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await request.json();
+    const roleList = ['lead', 'executor', 'reviewer'];
+    if (Array.isArray(body.assignees) && !roleList.every(role => body.assignees.some((assignee: { role?: string }) => assignee?.role === role))) {
+      return NextResponse.json({ error: 'Responsable, ejecutor y control son obligatorios' }, { status: 400 });
+    }
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public']) {
@@ -68,41 +72,90 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).select().single();
     if (error) throw error;
 
-    if (Array.isArray(body.assignee_ids)) {
-      const newIds: string[] = body.assignee_ids.filter(Boolean);
-      const { data: existingRows } = await supabase.from('task_assignees').select('user_id').eq('task_id', id);
-      const existingIds = (existingRows || []).map(r => r.user_id);
+    const assigneesProvided = Array.isArray(body.assignees);
+    if (assigneesProvided) {
+      const desired = (body.assignees as { id?: string; role?: string }[])
+        .filter(a => a?.id && roleList.includes(a.role || ''))
+        .map(a => ({ user_id: a.id!, role: a.role! }));
+      const desiredIds = desired.map(a => a.user_id);
 
-      const toAdd = newIds.filter(uid => !existingIds.includes(uid));
-      const toRemove = existingIds.filter(uid => !newIds.includes(uid));
+      const { data: existingRows } = await supabase.from('task_assignees').select('user_id, role').eq('task_id', id);
+      const existing = existingRows || [];
+      const existingIds = existing.map(r => r.user_id);
+      const existingByUser = Object.fromEntries(existing.map(r => [r.user_id, r.role]));
+
+      const toRemove = existingIds.filter(uid => !desiredIds.includes(uid));
+      const upsert = desired.filter(a => existingByUser[a.user_id] !== a.role);
+      const toAdd = upsert.filter(a => !existingByUser[a.user_id]);
+      const toUpdateRole = upsert.filter(a => existingByUser[a.user_id]);
 
       if (toRemove.length > 0) {
         await supabase.from('task_assignees').delete().eq('task_id', id).in('user_id', toRemove);
       }
+      if (toUpdateRole.length > 0) {
+        for (const a of toUpdateRole) {
+          await supabase.from('task_assignees').update({ role: a.role }).eq('task_id', id).eq('user_id', a.user_id);
+        }
+      }
       if (toAdd.length > 0) {
-        await supabase.from('task_assignees').insert(toAdd.map(user_id => ({ task_id: id, user_id })));
+        await supabase.from('task_assignees').insert(toAdd.map(a => ({ task_id: id, user_id: a.user_id, role: a.role })));
 
-        const { data: actor } = data.author_id
-          ? await supabase.from('users').select('full_name, email').eq('id', data.author_id).single()
-          : { data: null };
-        await supabase.from('notifications').insert(toAdd.map(user_id => ({
-          user_id,
+        const actor = data.author_id
+          ? (await supabase.from('users').select('full_name, email').eq('id', data.author_id).single()).data
+          : null;
+        const actorName = actor?.full_name || actor?.email || 'Alguien';
+        await supabase.from('notifications').insert(toAdd.map(a => ({
+          user_id: a.user_id,
           type: 'task_assigned',
           title: 'Te asignaron una tarea',
-          message: `${actor?.full_name || actor?.email || 'Alguien'} te asignó: ${data.title}`,
+          message: `${actorName} te asignó: ${data.title}`,
           task_id: id,
           link: `/operations?task=${id}`,
         })));
       }
+    } else {
+      if (Array.isArray(body.assignee_ids)) {
+        const newIds: string[] = body.assignee_ids.filter(Boolean);
+        const { data: existingRows } = await supabase.from('task_assignees').select('user_id').eq('task_id', id);
+        const existingIds = (existingRows || []).map(r => r.user_id);
+
+        const toAdd = newIds.filter(uid => !existingIds.includes(uid));
+        const toRemove = existingIds.filter(uid => !newIds.includes(uid));
+
+        if (toRemove.length > 0) {
+          await supabase.from('task_assignees').delete().eq('task_id', id).in('user_id', toRemove);
+        }
+        if (toAdd.length > 0) {
+          await supabase.from('task_assignees').insert(toAdd.map(user_id => ({ task_id: id, user_id, role: 'executor' })));
+
+          const { data: actor } = data.author_id
+            ? await supabase.from('users').select('full_name, email').eq('id', data.author_id).single()
+            : { data: null };
+          await supabase.from('notifications').insert(toAdd.map(user_id => ({
+            user_id,
+            type: 'task_assigned',
+            title: 'Te asignaron una tarea',
+            message: `${actor?.full_name || actor?.email || 'Alguien'} te asignó: ${data.title}`,
+            task_id: id,
+            link: `/operations?task=${id}`,
+          })));
+        }
+      }
     }
 
-    const { data: assigneeRows } = await supabase.from('task_assignees').select('user_id').eq('task_id', id);
+    const { data: assigneeRows } = await supabase.from('task_assignees').select('user_id, role').eq('task_id', id);
     const assigneeIds = (assigneeRows || []).map(r => r.user_id);
-    const { data: assignees } = assigneeIds.length > 0
+    const { data: assigneeUsers } = assigneeIds.length > 0
       ? await supabase.from('users').select('id, full_name, avatar_url, email, role').in('id', assigneeIds)
       : { data: [] };
+    const usersMap = Object.fromEntries((assigneeUsers || []).map(u => [u.id, u]));
 
-    return NextResponse.json({ data: { ...data, assignees: assignees || [] } });
+    return NextResponse.json({
+      data: {
+        ...data,
+        assignees: (assigneeRows || []).map(r => usersMap[r.user_id] && { ...usersMap[r.user_id], task_role: r.role }).filter(Boolean),
+      },
+    });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }

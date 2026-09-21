@@ -18,6 +18,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useSocialIdeas } from '@/lib/hooks/use-social-ideas';
+import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { SocialIdeaCard } from '@/components/social-idea-card';
@@ -248,6 +249,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
   const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
 
   const { ideas, loading, createIdea, updateIdea, deleteIdea, patchIdea } = useSocialIdeas(clientId, monthStr);
+  const internalUsers = useInternalUsers();
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -574,6 +576,8 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
         onOpenChange={setShowNewIdea}
         initialDate={selectedDate}
         onCreateIdea={createIdea}
+        users={internalUsers}
+        calendarType="social"
       />
 
       {/* Idea Detail Modal */}
@@ -589,6 +593,8 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
             deleteIdea(selectedIdea!.id);
             setSelectedIdea(null);
           }}
+          users={internalUsers}
+          calendarType="social"
         />
       )}
     </>

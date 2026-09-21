@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import { eachDayOfInterval, endOfMonth, format, startOfMonth } from 'date-fns';
 
 interface CalendarData {
@@ -329,6 +330,23 @@ function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, o
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {(idea.assignees || []).length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2">Equipo asignado</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {TASK_ROLES.map(role => {
+                  const cfg = TASK_ROLE_CONFIG[role];
+                  const names = idea.assignees.filter(assignee => assignee.work_role === role).map(assignee => assignee.full_name);
+                  return (
+                    <div key={role} className={cn('rounded-lg border p-2', cfg.borderClass)}>
+                      <p className={cn('text-[10px] font-semibold', cfg.colorClass)}>{cfg.question}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{names.join(', ') || 'Sin asignar'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {idea.copy_text && (
             <div><h3 className="text-xs font-semibold text-muted-foreground mb-1">Copy</h3>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{idea.copy_text}</p></div>

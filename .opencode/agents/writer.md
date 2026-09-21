@@ -2,6 +2,7 @@
 description: Redactor IA del Centro de Documentos del Nexus Marketing Dashboard. Genera el contenido de un documento en HTML según la temática, tono y extensión pedidos. No edita archivos.
 mode: all
 temperature: 0.5
+model: anthropic/claude-sonnet-4-5
 permission:
   read: deny
   glob: deny

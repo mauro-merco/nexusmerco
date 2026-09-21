@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { TaskRow } from '@/components/client-tasks-tab';
-import type { Task, User } from '@/lib/types';
+import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
+import type { Task, TaskRole, User } from '@/lib/types';
 import { KanbanSquare, CheckCircle2 } from 'lucide-react';
 
 interface UserTasksModalProps {
@@ -21,6 +22,16 @@ export function UserTasksModal({ user, tasks, open, onOpenChange }: UserTasksMod
 
   const activeTasks = tasks.filter(t => t.status !== 'cerrada');
   const historyTasks = tasks.filter(t => t.status === 'cerrada');
+
+  const roleCounts = (): Record<TaskRole, number> => {
+    const out: Record<TaskRole, number> = { lead: 0, executor: 0, reviewer: 0 };
+    for (const t of tasks) {
+      const a = t.assignees.find(x => x.id === user.id);
+      if (a && a.task_role && out[a.task_role] !== undefined) out[a.task_role] += 1;
+    }
+    return out;
+  };
+  const counts = roleCounts();
 
   const openTask = (id: string) => {
     onOpenChange(false);
@@ -39,6 +50,23 @@ export function UserTasksModal({ user, tasks, open, onOpenChange }: UserTasksMod
             <DialogTitle className="text-base">{user.full_name}</DialogTitle>
             <DialogDescription className="text-xs">{user.email}</DialogDescription>
           </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5 shrink-0 mt-3">
+          {TASK_ROLES.map(roleKey => {
+            const cfg = TASK_ROLE_CONFIG[roleKey];
+            const Icon = cfg.icon;
+            const total = counts[roleKey];
+            const active = tasks.filter(t => t.status !== 'cerrada' && t.assignees.some(a => a.id === user.id && a.task_role === roleKey)).length;
+            return (
+              <div key={roleKey} className={`flex flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 ${cfg.borderClass}`}>
+                <Icon className={`h-3 w-3 ${cfg.colorClass}`} />
+                <span className={`text-xs font-bold ${cfg.colorClass}`}>{total}</span>
+                <span className="text-[8px] leading-none text-muted-foreground uppercase">{cfg.shortLabel}</span>
+                <span className="text-[8px] text-muted-foreground">{active} ahora</span>
+              </div>
+            );
+          })}
         </div>
 
         <Tabs defaultValue="active" className="flex-1 min-h-0 flex flex-col">

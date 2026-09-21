@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { SocialIdea, SocialAttachment, SocialComment, SocialAnnotation, PostType, IdeaStatus, Responsable } from '@/lib/types';
+import type { SocialIdea, SocialAttachment, SocialComment, SocialAnnotation, PostType, IdeaStatus, Responsable, WorkRole } from '@/lib/types';
 
 export function useSocialIdeas(clientId: string | null, month?: string | null) {
   const [ideas, setIdeas] = useState<SocialIdea[]>([]);
@@ -39,6 +39,7 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
     status?: IdeaStatus;
     publish_date: string;
     author_id?: string;
+    assignees?: { id: string; role: WorkRole }[];
   }) => {
     const res = await fetch('/api/social-ideas', {
       method: 'POST',
@@ -61,6 +62,7 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
     post_type: PostType;
     status: IdeaStatus;
     publish_date: string;
+    assignees: { id: string; role: WorkRole }[];
   }>) => {
     const res = await fetch(`/api/social-ideas/${id}`, {
       method: 'PUT',

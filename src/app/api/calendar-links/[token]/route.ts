@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { enrichIdeasWithAssignees } from '@/lib/idea-assignees-server';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -59,6 +60,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
 
     const { data: ideas, error: ideasError } = await query;
     if (ideasError) throw ideasError;
+    const enrichedIdeas = await enrichIdeasWithAssignees(
+      supabase,
+      type === 'ads' ? 'ads_idea_assignees' : 'social_idea_assignees',
+      ideas || [],
+    );
+    const publicIdeas = enrichedIdeas.map(idea => ({
+      ...idea,
+      assignees: idea.assignees.map(assignee => ({
+        id: assignee.id,
+        full_name: assignee.full_name,
+        avatar_url: assignee.avatar_url,
+        work_role: assignee.work_role,
+      })),
+    }));
 
     // Fetch attachments (social only — ads doesn't have attachments yet)
     let attachments: Record<string, { url: string; name: string; type: string }[]> = {};
@@ -116,7 +131,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
 
     return NextResponse.json({
       client: { id: client.id, name: client.name, logo_url: client.logo_url },
-      ideas: ideas || [],
+      ideas: publicIdeas,
       attachments_by_idea: attachments,
       comments_by_idea: comments,
       ecommerce_dates: ecommerceDates,

@@ -2,6 +2,7 @@
 description: Asistente del Nexus Marketing Dashboard. Solo responde temas relacionados al dashboard y a los datos de campañas. Solo lectura.
 mode: all
 temperature: 0.3
+model: anthropic/claude-sonnet-4-5
 permission:
   read: allow
   glob: allow

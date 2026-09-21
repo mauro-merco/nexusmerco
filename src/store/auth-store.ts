@@ -11,6 +11,8 @@ interface AuthState {
   hydrated: boolean;
   pending2FA: boolean;
   pendingUserId: string | null;
+  manualLogout: boolean;
+  setToken: (token: string) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; needs2FA?: boolean }>;
   verify2FA: (code: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
@@ -26,6 +28,9 @@ export const useAuthStore = create<AuthState>()(
       hydrated: false,
       pending2FA: false,
       pendingUserId: null,
+      manualLogout: false,
+
+      setToken: (token: string) => set({ token }),
 
       login: async (email: string, password: string) => {
         set({ isLoading: true });
@@ -153,13 +158,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        set({ manualLogout: true });
         try {
           const { getSupabase } = await import('@/lib/supabase');
           await getSupabase().auth.signOut();
         } catch {
           // ignore
         }
-        set({ user: null });
+        set({ user: null, token: '', manualLogout: false });
       },
 
       restoreSession: async () => {
@@ -213,13 +219,18 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
           } else {
-            // No session — try to use persisted user as fallback
+            // No session — if the persisted JWT is still valid, keep working
+            // (transient refresh failures shouldn't log the user out instantly).
             const current = get().user;
-            if (current) {
-              set({ isLoading: false });
-            } else {
-              set({ user: null, isLoading: false });
+            const prevToken = get().token;
+            if (current && prevToken) {
+              const { tokenUnexpired } = await import('@/lib/jwt');
+              if (tokenUnexpired(prevToken)) {
+                set({ isLoading: false });
+                return;
+              }
             }
+            set({ user: null, token: '', isLoading: false });
           }
         } catch {
           set({ isLoading: false });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Task, TaskStatus, TaskComment, TaskAttachment, TaskPriority } from '@/lib/types';
+import type { Task, TaskStatus, TaskComment, TaskAttachment, TaskPriority, TaskRole } from '@/lib/types';
 
 export function useTasks(clientId: string | null) {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -30,6 +30,7 @@ export function useTasks(clientId: string | null) {
     description?: string;
     status?: TaskStatus;
     assignee_ids?: string[];
+    assignees?: { id: string; role: TaskRole }[];
     author_id?: string;
     priority?: TaskPriority;
     due_date?: string;
@@ -53,6 +54,7 @@ export function useTasks(clientId: string | null) {
     description: string;
     status: TaskStatus;
     assignee_ids: string[];
+    assignees: { id: string; role: TaskRole }[];
     priority: TaskPriority;
     due_date: string | null;
     pieces_stories: number | null;

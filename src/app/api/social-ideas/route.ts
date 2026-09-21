@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { enrichIdeasWithAssignees, hasEveryWorkRole, normalizeWorkAssignees, syncIdeaAssignees } from '@/lib/idea-assignees-server';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +35,8 @@ export async function GET(request: Request) {
       throw error;
     }
 
-    return NextResponse.json({ data });
+    const enriched = await enrichIdeasWithAssignees(supabase, 'social_idea_assignees', data || []);
+    return NextResponse.json({ data: enriched });
   } catch (e) {
     console.error('GET /api/social-ideas error:', e);
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
@@ -53,10 +55,13 @@ async function insertIdea(payload: Record<string, unknown>) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { client_id, title, description, brief, eje_contenido, copy_text, responsable, post_type, status, publish_date, author_id } = body;
+    const { client_id, title, description, brief, eje_contenido, copy_text, responsable, post_type, status, publish_date, author_id, assignees } = body;
 
     if (!client_id || !title || !post_type || !publish_date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!hasEveryWorkRole(normalizeWorkAssignees(assignees))) {
+      return NextResponse.json({ error: 'Responsable, ejecutor y control son obligatorios' }, { status: 400 });
     }
 
     const fullPayload: Record<string, unknown> = {
@@ -71,12 +76,18 @@ export async function POST(request: Request) {
       status: status || 'borrador',
       publish_date,
       author_id: author_id || null,
+      completed_at: status === 'posteado' ? new Date().toISOString() : null,
     };
 
     let result = await insertIdea(fullPayload);
 
     if (result.error && (result.error.code === '42703' || result.error.message?.includes('column'))) {
-      const { brief: _b, eje_contenido: _e, responsable: _r, copy_text: _c, ...fallbackPayload } = fullPayload;
+      const fallbackPayload = { ...fullPayload };
+      delete fallbackPayload.brief;
+      delete fallbackPayload.eje_contenido;
+      delete fallbackPayload.responsable;
+      delete fallbackPayload.copy_text;
+      delete fallbackPayload.completed_at;
       result = await insertIdea(fallbackPayload);
     }
 
@@ -85,7 +96,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error.message || JSON.stringify(result.error) }, { status: 500 });
     }
 
-    return NextResponse.json({ data: result.data });
+    try {
+      const { added } = await syncIdeaAssignees(supabase, 'social_idea_assignees', result.data.id, assignees);
+      if (added.length > 0) {
+        await supabase.from('notifications').insert(added.filter(a => a.user_id !== author_id).map(a => ({
+          user_id: a.user_id,
+          type: 'calendar_piece_assigned',
+          title: 'Te asignaron una pieza de Redes',
+          message: `Fuiste asignado en: ${title}`,
+          link: `/calendarios?client=${client_id}&type=social&idea=${result.data.id}`,
+        })));
+      }
+    } catch (assignmentError) {
+      await supabase.from('social_ideas').delete().eq('id', result.data.id);
+      throw assignmentError;
+    }
+    const [enriched] = await enrichIdeasWithAssignees(supabase, 'social_idea_assignees', [result.data]);
+    return NextResponse.json({ data: enriched });
   } catch (e) {
     console.error('POST /api/social-ideas error:', e);
     const msg = e instanceof Error ? e.message : typeof e === 'object' ? JSON.stringify(e) : String(e);

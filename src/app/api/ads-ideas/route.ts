@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { enrichIdeasWithAssignees, hasEveryWorkRole, normalizeWorkAssignees, syncIdeaAssignees } from '@/lib/idea-assignees-server';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,7 +31,8 @@ export async function GET(request: Request) {
 
     const { data, error } = await query;
     if (error) throw error;
-    return NextResponse.json({ data });
+    const enriched = await enrichIdeasWithAssignees(supabase, 'ads_idea_assignees', data || []);
+    return NextResponse.json({ data: enriched });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }
@@ -39,10 +41,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { client_id, title, description, brief, eje_contenido, copy_text, responsable, post_type, status, publish_date, author_id } = body;
+    const { client_id, title, description, brief, eje_contenido, copy_text, responsable, post_type, status, publish_date, author_id, assignees } = body;
 
     if (!client_id || !title || !post_type || !publish_date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!hasEveryWorkRole(normalizeWorkAssignees(assignees))) {
+      return NextResponse.json({ error: 'Responsable, ejecutor y control son obligatorios' }, { status: 400 });
     }
 
     const { data, error } = await supabase
@@ -58,12 +63,29 @@ export async function POST(request: Request) {
         status: status || 'borrador',
         publish_date,
         author_id: author_id || null,
+        completed_at: status === 'posteado' ? new Date().toISOString() : null,
       })
       .select()
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ data });
+    try {
+      const { added } = await syncIdeaAssignees(supabase, 'ads_idea_assignees', data.id, assignees);
+      if (added.length > 0) {
+        await supabase.from('notifications').insert(added.filter(a => a.user_id !== author_id).map(a => ({
+          user_id: a.user_id,
+          type: 'calendar_piece_assigned',
+          title: 'Te asignaron una pieza ADS',
+          message: `Fuiste asignado en: ${title}`,
+          link: `/calendarios?client=${client_id}&type=ads&idea=${data.id}`,
+        })));
+      }
+    } catch (assignmentError) {
+      await supabase.from('ads_ideas').delete().eq('id', data.id);
+      throw assignmentError;
+    }
+    const [enriched] = await enrichIdeasWithAssignees(supabase, 'ads_idea_assignees', [data]);
+    return NextResponse.json({ data: enriched });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }

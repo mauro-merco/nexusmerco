@@ -17,6 +17,7 @@ import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useAdsIdeas, useEcommerceDates } from '@/lib/hooks/use-ads-ideas';
+import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { SocialIdeaCard } from '@/components/social-idea-card';
@@ -338,6 +339,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
   const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
 
   const { ideas, loading, createIdea, updateIdea, deleteIdea, patchIdea } = useAdsIdeas(clientId, monthStr);
+  const internalUsers = useInternalUsers();
   const { dates: ecommerceDates, createDate, deleteDate } = useEcommerceDates(clientId, monthStr);
 
   const [showNewIdea, setShowNewIdea] = useState(false);
@@ -633,6 +635,8 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
         onOpenChange={setShowNewIdea}
         initialDate={selectedDate}
         onCreateIdea={createIdea}
+        users={internalUsers}
+        calendarType="ads"
       />
 
       <EcommerceDateDialog
@@ -648,6 +652,8 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
           onOpenChange={(open) => { if (!open) setSelectedIdea(null); }}
           onIdeaUpdated={(updated) => syncIdea(updated)}
           onIdeaDeleted={() => { deleteIdea(selectedIdea!.id); setSelectedIdea(null); }}
+          users={internalUsers}
+          calendarType="ads"
         />
       )}
     </>

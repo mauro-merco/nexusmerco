@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     const client_id = searchParams.get('client_id');
     const status = searchParams.get('status');
     const assignee_id = searchParams.get('assignee_id');
+    const role_filter = searchParams.get('role');
 
     let query = supabase
       .from('tasks')
@@ -23,10 +24,9 @@ export async function GET(request: Request) {
     if (status) query = query.eq('status', status);
 
     if (assignee_id) {
-      const { data: assignedRows } = await supabase
-        .from('task_assignees')
-        .select('task_id')
-        .eq('user_id', assignee_id);
+      let assigneeQuery = supabase.from('task_assignees').select('task_id').eq('user_id', assignee_id);
+      if (role_filter) assigneeQuery = assigneeQuery.eq('role', role_filter);
+      const { data: assignedRows } = await assigneeQuery;
       const taskIds = (assignedRows || []).map(r => r.task_id);
       if (taskIds.length === 0) return NextResponse.json({ data: [] });
       query = query.in('id', taskIds);
@@ -40,8 +40,8 @@ export async function GET(request: Request) {
 
     const [{ data: assigneeRows }, { data: clients }] = await Promise.all([
       taskIds.length > 0
-        ? supabase.from('task_assignees').select('task_id, user_id').in('task_id', taskIds)
-        : Promise.resolve({ data: [] as { task_id: string; user_id: string }[] }),
+        ? supabase.from('task_assignees').select('task_id, user_id, role').in('task_id', taskIds)
+        : Promise.resolve({ data: [] as { task_id: string; user_id: string; role: string }[] }),
       client_id
         ? Promise.resolve({ data: null })
         : supabase.from('clients').select('id, name, logo_url'),
@@ -59,11 +59,11 @@ export async function GET(request: Request) {
       : { data: [] as TaskUser[] };
     const usersMap: Record<string, TaskUser> = Object.fromEntries((users || []).map((u: TaskUser) => [u.id, u]));
 
-    const assigneesByTask: Record<string, TaskUser[]> = {};
+    const assigneesByTask: Record<string, (TaskUser & { task_role: string })[]> = {};
     for (const row of assigneeRows || []) {
       if (!assigneesByTask[row.task_id]) assigneesByTask[row.task_id] = [];
       const u = usersMap[row.user_id];
-      if (u) assigneesByTask[row.task_id]!.push(u);
+      if (u) assigneesByTask[row.task_id]!.push({ ...u, task_role: row.role });
     }
 
     const [{ data: comments }, { data: attachments }] = await Promise.all([
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { client_id, title, description, status, assignee_ids, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels } = body;
+    const { client_id, title, description, status, assignee_ids, assignees, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels } = body;
     const toCount = (v: unknown) => v === undefined || v === null || v === '' ? null : Number(v);
 
     if (!client_id || !title) {
@@ -134,22 +134,37 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    const assigneeIds: string[] = Array.isArray(assignee_ids) ? assignee_ids.filter(Boolean) : [];
-    let assignees: { id: string; full_name: string; avatar_url: string; email: string; role: string }[] = [];
+    const roleList = ['lead', 'executor', 'reviewer'];
+    let assigneeRoles: { user_id: string; role: string }[] = [];
+    if (Array.isArray(assignees) && assignees.length > 0) {
+      assigneeRoles = assignees
+        .filter((a: { id?: string; role?: string }) => a?.id && roleList.includes(a.role || ''))
+        .map((a: { id: string; role: string }) => ({ user_id: a.id, role: a.role }));
+    } else {
+      assigneeRoles = (Array.isArray(assignee_ids) ? assignee_ids.filter(Boolean) : [])
+        .map(user_id => ({ user_id, role: 'executor' }));
+    }
+    if (!roleList.every(role => assigneeRoles.some(assignee => assignee.role === role))) {
+      await supabase.from('tasks').delete().eq('id', data.id);
+      return NextResponse.json({ error: 'Responsable, ejecutor y control son obligatorios' }, { status: 400 });
+    }
 
-    if (assigneeIds.length > 0) {
-      await supabase.from('task_assignees').insert(assigneeIds.map(user_id => ({ task_id: data.id, user_id })));
+    let assigneesOut: { id: string; full_name: string; avatar_url: string; email: string; role: string; task_role: string }[] = [];
+
+    if (assigneeRoles.length > 0) {
+      await supabase.from('task_assignees').insert(assigneeRoles.map(a => ({ task_id: data.id, user_id: a.user_id, role: a.role })));
 
       const { data: assigneeUsers } = await supabase
-        .from('users').select('id, full_name, avatar_url, email, role').in('id', assigneeIds);
-      assignees = assigneeUsers || [];
+        .from('users').select('id, full_name, avatar_url, email, role').in('id', assigneeRoles.map(a => a.user_id));
+      const usersMap = Object.fromEntries((assigneeUsers || []).map(u => [u.id, u]));
+      assigneesOut = assigneeRoles.map(a => ({ ...(usersMap[a.user_id] || {}), task_role: a.role })).filter(a => a.id);
 
       let authorName = 'Alguien';
       if (author_id) {
         const { data: author } = await supabase.from('users').select('full_name, email').eq('id', author_id).single();
         if (author) authorName = author.full_name || author.email || 'Alguien';
       }
-      const notifyIds = assigneeIds.filter(id => id !== author_id);
+      const notifyIds = assigneeRoles.map(a => a.user_id).filter(id => id !== author_id);
       if (notifyIds.length > 0) {
         await supabase.from('notifications').insert(notifyIds.map(user_id => ({
           user_id,
@@ -162,7 +177,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ data: { ...data, assignees } });
+    return NextResponse.json({ data: { ...data, assignees: assigneesOut } });
   } catch (e) {
     console.error('POST /api/tasks error:', e);
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
