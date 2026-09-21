@@ -93,11 +93,11 @@ export function NewTaskDialog({ open, onOpenChange, clientId, users, onCreateTas
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-4xl sm:aspect-[16/9] aspect-[9/16] max-h-[85dvh] overflow-hidden flex flex-col">
         <DialogTitle>Nueva Tarea</DialogTitle>
         <DialogDescription>Creá una nueva tarea para el tablero Kanban</DialogDescription>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto min-h-0 flex-1">
           <div className="space-y-1.5">
             <Label>Título *</Label>
             <Input placeholder="Título de la tarea..." value={title} onChange={e => setTitle(e.target.value)} />
