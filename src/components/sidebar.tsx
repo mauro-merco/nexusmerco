@@ -170,12 +170,12 @@ function AppsDock({ onNavigate }: { onNavigate: (href: string, label: string) =>
       {open && (
         <div className="fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-[transition-fade_0.2s_ease-out]"
+            className="absolute inset-0 bg-black/55 backdrop-blur-sm animate-[transition-fade_0.2s_ease-out]"
             onClick={() => setOpen(false)}
           />
           <div
             ref={panelRef}
-            className="absolute bottom-24 left-6 flex max-h-[72vh] w-[21rem] flex-col overflow-hidden rounded-3xl border bg-popover/95 backdrop-blur-xl shadow-2xl animate-[apps-pop_0.35s_cubic-bezier(0.22,1,0.36,1)_both] origin-bottom-left"
+            className="absolute bottom-24 left-6 flex max-h-[72vh] w-[21rem] flex-col overflow-hidden rounded-3xl border border-primary/25 bg-popover shadow-2xl ring-1 ring-black/10 dark:ring-white/10 shadow-[0_24px_70px_-15px_rgba(0,0,0,0.55)] backdrop-blur-2xl animate-[apps-pop_0.35s_cubic-bezier(0.22,1,0.36,1)_both] origin-bottom-left"
           >
             {/* Header */}
             <div className="flex items-center gap-3 border-b px-5 py-4">
