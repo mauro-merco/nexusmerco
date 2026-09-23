@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     if (existingError && hasConfigUpdate) {
       return NextResponse.json({
         error: 'No se pudo guardar la configuración de invitados. Revisá que la tabla calendar_share_links exista en Supabase y que el schema cache esté actualizado.',
-        details: `${existingError.code || 'sin_codigo'}: ${existingError.message}`,
+        details: `Detalle Supabase: ${existingError.code || 'sin_codigo'}: ${existingError.message}`,
       }, { status: 500 });
     }
     if (existing && !hasConfigUpdate) return NextResponse.json({ data: existing });

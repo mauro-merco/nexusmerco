@@ -81,7 +81,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
         }),
       });
       const json = await res.json();
-      if (!res.ok) { setError(json.error || 'No se pudo guardar'); return; }
+      if (!res.ok) { setError([json.error, json.details].filter(Boolean).join(' ' ) || 'No se pudo guardar'); return; }
       onConfigChange({
         token: json.data?.token || config?.token || null,
         allowed_client_id: json.data?.allowed_client_id || allowedClientId,
