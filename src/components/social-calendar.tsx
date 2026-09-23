@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -19,6 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useSocialIdeas } from '@/lib/hooks/use-social-ideas';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
+import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { SocialIdeaCard } from '@/components/social-idea-card';
@@ -28,7 +30,7 @@ import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import { ChevronLeft, ChevronRight, Plus, Calendar, Loader2, GripVertical, Check, ChevronDown, Copy, Share, RefreshCw } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
-type ShareConfig = { token: string | null; guest_enabled: boolean; allowed_user_ids: string[] };
+type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
 
 function StatusDropdown({ idea, onStatusChange }: { idea: SocialIdea; onStatusChange: (id: string, status: IdeaStatus) => void }) {
   const stConfig = STATUS_CONFIG[idea.status];
@@ -245,6 +247,7 @@ interface SocialCalendarProps {
 }
 
 export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
+  const { user } = useAuthStore();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -278,7 +281,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
       });
       if (res.ok) {
         const json = await res.json();
-        setShareConfig({ token: json.data?.token || null, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
+        setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
       }
     } catch {
       // ignore
@@ -372,6 +375,9 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
     return { total, byStatus };
   }, [ideas]);
 
+  const shareUrl = shareConfig?.token && typeof window !== 'undefined' ? `${window.location.origin}/c/${shareConfig.token}` : '';
+  const canManageShare = user?.role === 'admin' || user?.role === 'operador';
+
   if (loading) {
     return (
       <Card>
@@ -405,7 +411,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
             <Plus className="h-4 w-4" /> Nueva Idea
           </Button>
 
-          {shareConfig?.token && (
+          {canManageShare && shareConfig?.token && (
             <div className="flex items-center gap-2">
               <CalendarGuestAccessDialog clientId={clientId} calendarType="social" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} />
               <Button
@@ -413,8 +419,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
                 size="sm"
                 className="gap-1.5"
                 onClick={async () => {
-                  const link = `${window.location.origin}/c/${shareConfig.token}`;
-                  await navigator.clipboard.writeText(link);
+                  await navigator.clipboard.writeText(shareUrl);
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
@@ -433,7 +438,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
             </div>
           )}
 
-          {!shareConfig?.token && !shareLoading && (
+          {canManageShare && !shareConfig?.token && !shareLoading && (
             <Button
               variant="outline"
               size="sm"
@@ -447,7 +452,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
                   });
                   if (res.ok) {
                     const json = await res.json();
-                    setShareConfig({ token: json.data?.token || null, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
+                    setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
                   }
                 } catch {
                   // ignore
@@ -458,6 +463,22 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
             </Button>
           )}
         </div>
+
+        {canManageShare && shareConfig?.token && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex flex-col gap-3 p-3 md:flex-row md:items-center">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">Link único para compartir con cliente</p>
+                <p className="text-xs text-muted-foreground">Este link abre el calendario fuera de la app para ver, comentar y modificar según permisos.</p>
+              </div>
+              <Input value={shareUrl} readOnly className="h-9 min-w-0 md:max-w-md" onFocus={(e) => e.currentTarget.select()} />
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={async () => { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? 'Copiado' : 'Copiar link'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">

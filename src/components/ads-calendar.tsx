@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useAdsIdeas, useEcommerceDates } from '@/lib/hooks/use-ads-ideas';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
+import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { SocialIdeaCard } from '@/components/social-idea-card';
@@ -30,7 +31,7 @@ import {
 } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
-type ShareConfig = { token: string | null; guest_enabled: boolean; allowed_user_ids: string[] };
+type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
 
 const ECOMMERCE_COLORS = [
   { label: 'Rojo',    value: '#ef4444' },
@@ -335,6 +336,7 @@ interface AdsCalendarProps {
 }
 
 export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarProps) {
+  const { user } = useAuthStore();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -362,7 +364,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
       body: JSON.stringify({ client_id: clientId, calendar_type: 'ads', month: monthStr }),
     })
       .then(r => r.json())
-      .then(json => setShareConfig({ token: json.data?.token || null, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] }))
+      .then(json => setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] }))
       .catch(() => {})
       .finally(() => setShareLoading(false));
   }, [clientId, monthStr]);
@@ -431,6 +433,9 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
     return { total, byStatus };
   }, [ideas]);
 
+  const shareUrl = shareConfig?.token && typeof window !== 'undefined' ? `${window.location.origin}/c/${shareConfig.token}?type=ads` : '';
+  const canManageShare = user?.role === 'admin' || user?.role === 'operador';
+
   if (loading) {
     return (
       <Card>
@@ -459,13 +464,12 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
             </Button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {shareConfig?.token && (
+            {canManageShare && shareConfig?.token && (
               <>
                 <CalendarGuestAccessDialog clientId={clientId} calendarType="ads" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} />
                 <Button variant="outline" size="sm" className="gap-1.5"
                   onClick={async () => {
-                    const link = `${window.location.origin}/c/${shareConfig.token}?type=ads`;
-                    await navigator.clipboard.writeText(link);
+                    await navigator.clipboard.writeText(shareUrl);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}>
@@ -478,7 +482,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
                 </a>
               </>
             )}
-            {!shareConfig?.token && !shareLoading && (
+            {canManageShare && !shareConfig?.token && !shareLoading && (
               <Button variant="outline" size="sm" className="gap-1.5"
                 onClick={async () => {
                   try {
@@ -489,7 +493,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
                     });
                     if (res.ok) {
                       const json = await res.json();
-                      setShareConfig({ token: json.data?.token || null, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
+                      setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
                     }
                   } catch { /* ignore */ }
                 }}>
@@ -504,6 +508,22 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
             </Button>
           </div>
         </div>
+
+        {canManageShare && shareConfig?.token && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex flex-col gap-3 p-3 md:flex-row md:items-center">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">Link único para compartir con cliente</p>
+                <p className="text-xs text-muted-foreground">Este link abre el calendario fuera de la app para ver, comentar y modificar según permisos.</p>
+              </div>
+              <Input value={shareUrl} readOnly className="h-9 min-w-0 md:max-w-md" onFocus={(e) => e.currentTarget.select()} />
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={async () => { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? 'Copiado' : 'Copiar link'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Ecommerce dates legend */}
         {ecommerceDates.length > 0 && (

@@ -12,8 +12,14 @@ type ClientUser = {
   full_name: string | null;
 };
 
+type ClientOption = {
+  id: string;
+  name: string;
+};
+
 type CalendarShareConfig = {
   token: string | null;
+  allowed_client_id?: string;
   guest_enabled: boolean;
   allowed_user_ids: string[];
 };
@@ -29,6 +35,8 @@ interface CalendarGuestAccessDialogProps {
 export function CalendarGuestAccessDialog({ clientId, calendarType, month, config, onConfigChange }: CalendarGuestAccessDialogProps) {
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState<ClientUser[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [allowedClientId, setAllowedClientId] = useState(clientId);
   const [guestEnabled, setGuestEnabled] = useState(false);
   const [allowedUserIds, setAllowedUserIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,16 +45,32 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
 
   useEffect(() => {
     if (!open) return;
+    const initialClientId = config?.allowed_client_id || clientId;
+    setAllowedClientId(initialClientId);
     setGuestEnabled(!!config?.guest_enabled);
     setAllowedUserIds(config?.allowed_user_ids || []);
     setLoading(true);
     setError('');
-    fetch(`/api/users?client_id=${clientId}`)
+    Promise.all([fetch('/api/clients').then(r => r.json()), fetch(`/api/users?client_id=${initialClientId}`).then(r => r.json())])
+      .then(([clientsJson, usersJson]) => {
+        setClients(clientsJson.data || []);
+        setUsers(usersJson.data || []);
+      })
+      .catch(() => setError('No se pudieron cargar los clientes'))
+      .finally(() => setLoading(false));
+  }, [open, clientId, config]);
+
+  useEffect(() => {
+    if (!open) return;
+    const initialClientId = config?.allowed_client_id || clientId;
+    setLoading(true);
+    if (allowedClientId !== initialClientId) setAllowedUserIds([]);
+    fetch(`/api/users?client_id=${allowedClientId}`)
       .then(r => r.json())
       .then(json => setUsers(json.data || []))
       .catch(() => setError('No se pudieron cargar los usuarios cliente'))
       .finally(() => setLoading(false));
-  }, [open, clientId, config]);
+  }, [allowedClientId, open]);
 
   const toggleUser = (userId: string) => {
     setAllowedUserIds(current => current.includes(userId) ? current.filter(id => id !== userId) : [...current, userId]);
@@ -63,6 +87,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
           client_id: clientId,
           calendar_type: calendarType,
           month,
+          allowed_client_id: allowedClientId,
           guest_enabled: guestEnabled,
           allowed_user_ids: guestEnabled ? allowedUserIds : [],
         }),
@@ -71,6 +96,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
       if (!res.ok) { setError(json.error || 'No se pudo guardar'); return; }
       onConfigChange({
         token: json.data?.token || config?.token || null,
+        allowed_client_id: json.data?.allowed_client_id || allowedClientId,
         guest_enabled: !!json.data?.guest_enabled,
         allowed_user_ids: json.data?.allowed_user_ids || [],
       });
@@ -93,7 +119,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogTitle>Acceso de invitados</DialogTitle>
-          <DialogDescription>Definí qué usuarios cliente pueden entrar al link de {month}.</DialogDescription>
+          <DialogDescription>Definí qué cliente y qué usuarios pueden entrar al link de {month}.</DialogDescription>
 
           <div className="space-y-4 py-2">
             <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-medium">
@@ -101,10 +127,24 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
               Habilitar invitado
             </label>
 
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cliente autorizado</label>
+              <select
+                value={allowedClientId}
+                disabled={!guestEnabled}
+                onChange={(event) => setAllowedClientId(event.target.value)}
+                className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm disabled:opacity-60"
+              >
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>{client.name}</option>
+                ))}
+              </select>
+            </div>
+
             {loading ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
             ) : users.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No hay usuarios cliente asociados a este cliente.</p>
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No hay usuarios asociados al cliente seleccionado.</p>
             ) : (
               <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                 {users.map(user => (
