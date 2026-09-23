@@ -652,6 +652,18 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     setAuthMode('gate');
   };
 
+  const closeSelectedIdea = () => {
+    setSelectedIdea(null);
+    setInitialIdeaId(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('idea')) {
+        url.searchParams.delete('idea');
+        window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+      }
+    }
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const idea = (event.active.data.current as { idea?: SocialIdea })?.idea;
     if (idea) setActiveIdea(idea);
@@ -849,7 +861,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           viewer={viewer}
           calendarType={calendarType}
           token={token}
-          onClose={() => { setSelectedIdea(null); setInitialIdeaId(null); }}
+          onClose={closeSelectedIdea}
           onCommentAdded={fetchCalendar}
         />
       )}

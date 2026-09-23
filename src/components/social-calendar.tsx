@@ -400,6 +400,18 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
   const shareUrl = shareConfig?.token && typeof window !== 'undefined' ? `${window.location.origin}/c/${shareConfig.token}` : '';
   const canManageShare = user?.role === 'admin' || user?.role === 'operador';
 
+  const closeSelectedIdea = useCallback(() => {
+    if (selectedIdea) setDismissedIdeaId(selectedIdea.id);
+    setSelectedIdea(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('idea')) {
+        url.searchParams.delete('idea');
+        window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+      }
+    }
+  }, [selectedIdea]);
+
   if (loading) {
     return (
       <Card>
@@ -640,7 +652,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
         <SocialIdeaModal
           idea={selectedIdea}
           open={!!selectedIdea}
-          onOpenChange={(open) => { if (!open) { setDismissedIdeaId(selectedIdea.id); setSelectedIdea(null); } }}
+          onOpenChange={(open) => { if (!open) closeSelectedIdea(); }}
           onIdeaUpdated={(updated) => {
             syncIdea(updated);
           }}
