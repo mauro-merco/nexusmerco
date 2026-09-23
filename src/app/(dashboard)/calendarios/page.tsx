@@ -32,6 +32,7 @@ export default function CalendariosPage() {
     const type = searchParams.get('type');
     if (client) setSelectedClientId(client);
     if (type === 'ads' || type === 'redes') setActiveTab(type);
+    if (type === 'social') setActiveTab('redes');
   }, [searchParams]);
 
   const isClientUser = user?.role === 'client';

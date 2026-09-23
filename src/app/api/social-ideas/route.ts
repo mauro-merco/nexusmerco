@@ -105,7 +105,7 @@ export async function POST(request: Request) {
           type: 'calendar_piece_assigned',
           title: 'Te asignaron una pieza de Redes',
           message: `Fuiste asignado en: ${title}`,
-          link: `/calendarios?client=${client_id}&type=social&idea=${result.data.id}`,
+          link: `/calendarios?client=${client_id}&type=redes&month=${String(result.data.publish_date).slice(0, 7)}&idea=${result.data.id}`,
         })));
       }
     } catch (assignmentError) {

@@ -86,7 +86,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
           type: 'calendar_piece_assigned',
           title: 'Te asignaron una pieza de Redes',
           message: `Fuiste asignado en: ${result.data.title}`,
-          link: `/calendarios?client=${result.data.client_id}&type=social&idea=${id}`,
+          link: `/calendarios?client=${result.data.client_id}&type=redes&month=${String(result.data.publish_date).slice(0, 7)}&idea=${id}`,
         })));
       }
     }
