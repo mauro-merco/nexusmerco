@@ -21,6 +21,7 @@ import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { SocialIdeaCard } from '@/components/social-idea-card';
+import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
 import type { SocialIdea, IdeaStatus, EcommerceDate } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import {
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
+type ShareConfig = { token: string | null; guest_enabled: boolean; allowed_user_ids: string[] };
 
 const ECOMMERCE_COLORS = [
   { label: 'Rojo',    value: '#ef4444' },
@@ -347,7 +349,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
-  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareConfig, setShareConfig] = useState<ShareConfig | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -360,7 +362,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
       body: JSON.stringify({ client_id: clientId, calendar_type: 'ads', month: monthStr }),
     })
       .then(r => r.json())
-      .then(json => setShareToken(json.data?.token || null))
+      .then(json => setShareConfig({ token: json.data?.token || null, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] }))
       .catch(() => {})
       .finally(() => setShareLoading(false));
   }, [clientId, monthStr]);
@@ -457,11 +459,12 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
             </Button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {shareToken && (
+            {shareConfig?.token && (
               <>
+                <CalendarGuestAccessDialog clientId={clientId} calendarType="ads" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} />
                 <Button variant="outline" size="sm" className="gap-1.5"
                   onClick={async () => {
-                    const link = `${window.location.origin}/c/${shareToken}?type=ads`;
+                    const link = `${window.location.origin}/c/${shareConfig.token}?type=ads`;
                     await navigator.clipboard.writeText(link);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
@@ -469,13 +472,13 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
                   {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                   {copied ? '¡Copiado!' : 'Compartir'}
                 </Button>
-                <a href={`/c/${shareToken}?type=ads`} target="_blank" rel="noopener noreferrer"
+                <a href={`/c/${shareConfig.token}?type=ads`} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors gap-1.5">
                   <ExternalLink className="h-3.5 w-3.5" /> Ver landing
                 </a>
               </>
             )}
-            {!shareToken && !shareLoading && (
+            {!shareConfig?.token && !shareLoading && (
               <Button variant="outline" size="sm" className="gap-1.5"
                 onClick={async () => {
                   try {
@@ -486,7 +489,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
                     });
                     if (res.ok) {
                       const json = await res.json();
-                      setShareToken(json.data?.token);
+                      setShareConfig({ token: json.data?.token || null, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
                     }
                   } catch { /* ignore */ }
                 }}>

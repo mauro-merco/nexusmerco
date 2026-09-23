@@ -22,11 +22,13 @@ import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { SocialIdeaCard } from '@/components/social-idea-card';
+import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import { ChevronLeft, ChevronRight, Plus, Calendar, Loader2, GripVertical, Check, ChevronDown, Copy, Share, RefreshCw } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
+type ShareConfig = { token: string | null; guest_enabled: boolean; allowed_user_ids: string[] };
 
 function StatusDropdown({ idea, onStatusChange }: { idea: SocialIdea; onStatusChange: (id: string, status: IdeaStatus) => void }) {
   const stConfig = STATUS_CONFIG[idea.status];
@@ -250,7 +252,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
 
   const { ideas, loading, createIdea, updateIdea, deleteIdea, patchIdea } = useSocialIdeas(clientId, monthStr);
   const internalUsers = useInternalUsers();
-  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareConfig, setShareConfig] = useState<ShareConfig | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showNewIdea, setShowNewIdea] = useState(false);
@@ -276,7 +278,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
       });
       if (res.ok) {
         const json = await res.json();
-        setShareToken(json.data?.token || null);
+        setShareConfig({ token: json.data?.token || null, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
       }
     } catch {
       // ignore
@@ -403,14 +405,15 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
             <Plus className="h-4 w-4" /> Nueva Idea
           </Button>
 
-          {shareToken && (
+          {shareConfig?.token && (
             <div className="flex items-center gap-2">
+              <CalendarGuestAccessDialog clientId={clientId} calendarType="social" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} />
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-1.5"
                 onClick={async () => {
-                  const link = `${window.location.origin}/c/${shareToken}`;
+                  const link = `${window.location.origin}/c/${shareConfig.token}`;
                   await navigator.clipboard.writeText(link);
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
@@ -420,7 +423,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
                 {copied ? '¡Copiado!' : 'Compartir calendario'}
               </Button>
               <a
-                href={`/c/${shareToken}`}
+                href={`/c/${shareConfig.token}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
@@ -430,7 +433,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
             </div>
           )}
 
-          {!shareToken && !shareLoading && (
+          {!shareConfig?.token && !shareLoading && (
             <Button
               variant="outline"
               size="sm"
@@ -444,7 +447,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
                   });
                   if (res.ok) {
                     const json = await res.json();
-                    setShareToken(json.data?.token);
+                    setShareConfig({ token: json.data?.token || null, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
                   }
                 } catch {
                   // ignore

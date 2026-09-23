@@ -12,7 +12,7 @@ function getAdmin() {
 
 export async function POST(request: Request) {
   try {
-    const { client_id, calendar_type = 'social', month, allowed_client_id } = await request.json();
+    const { client_id, calendar_type = 'social', month, allowed_client_id, guest_enabled, allowed_user_ids } = await request.json();
     if (!client_id || !month || !['social', 'ads'].includes(calendar_type)) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
     }
@@ -21,16 +21,20 @@ export async function POST(request: Request) {
     }
 
     const supabase = getAdmin();
+    const payload: Record<string, unknown> = {
+      client_id,
+      calendar_type,
+      month,
+      allowed_client_id: allowed_client_id || client_id,
+      enabled: true,
+    };
+    if (guest_enabled !== undefined) payload.guest_enabled = !!guest_enabled;
+    if (Array.isArray(allowed_user_ids)) payload.allowed_user_ids = allowed_user_ids;
+
     const { data, error } = await supabase
       .from('calendar_share_links')
-      .upsert({
-        client_id,
-        calendar_type,
-        month,
-        allowed_client_id: allowed_client_id || client_id,
-        enabled: true,
-      }, { onConflict: 'client_id,calendar_type,month' })
-      .select('token, client_id, calendar_type, month, allowed_client_id, enabled')
+      .upsert(payload, { onConflict: 'client_id,calendar_type,month' })
+      .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, enabled')
       .single();
 
     if (error) throw error;

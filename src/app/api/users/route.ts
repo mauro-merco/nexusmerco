@@ -15,15 +15,20 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const appFilter = searchParams.get('app_id') || APP_ID;
+    const clientId = searchParams.get('client_id');
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, role, visible_modules')
+      .select('id, email, full_name, avatar_url, role, client_id, visible_modules')
       .eq('app_id', appFilter)
       .order('full_name', { ascending: true });
+
+    if (clientId) query = query.eq('client_id', clientId).eq('role', 'client');
+
+    const { data, error } = await query;
     if (error) throw error;
 
-    const filtered = (data || []).filter(u =>
+    const filtered = clientId ? (data || []) : (data || []).filter(u =>
       ALLOWED_DOMAINS.some(d => u.email?.toLowerCase().endsWith(d))
     );
     return NextResponse.json({ data: filtered });

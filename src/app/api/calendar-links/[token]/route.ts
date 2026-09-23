@@ -21,7 +21,7 @@ function isCalendarType(value: string): value is CalendarType {
 async function resolveCalendarLink(supabase: ReturnType<typeof getAdmin>, token: string, requestedType: CalendarType) {
   const { data: link } = await supabase
     .from('calendar_share_links')
-    .select('token, client_id, calendar_type, month, allowed_client_id, enabled')
+    .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, enabled')
     .eq('token', token)
     .maybeSingle();
 
@@ -51,7 +51,7 @@ async function resolveCalendarLink(supabase: ReturnType<typeof getAdmin>, token:
   };
 }
 
-async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof getAdmin>, allowedClientId: string) {
+async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof getAdmin>, link: { allowed_client_id: string; guest_enabled?: boolean; allowed_user_ids?: string[] }) {
   const authHeader = request.headers.get('authorization') || '';
   const token = authHeader.replace('Bearer ', '');
   if (token && token !== 'undefined') {
@@ -64,23 +64,24 @@ async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof g
           .select('role, client_id')
           .eq('id', userId)
           .single();
-        if (user?.role === 'admin' || user?.role === 'operador' || user?.client_id === allowedClientId) return true;
+        if (user?.role === 'admin' || user?.role === 'operador') return true;
+        if (user?.client_id === link.allowed_client_id && (link.allowed_user_ids || []).includes(userId)) return true;
       }
     } catch { /* ignore */ }
   }
 
   const url = new URL(request.url);
   const guestEmail = (request.headers.get('x-guest-email') || url.searchParams.get('guest_email') || '').trim().toLowerCase();
-  if (!guestEmail) return false;
+  if (!guestEmail || !link.guest_enabled || !link.allowed_user_ids?.length) return false;
 
   const { data: allowedUser } = await supabase
     .from('users')
     .select('id')
-    .eq('client_id', allowedClientId)
+    .eq('client_id', link.allowed_client_id)
     .ilike('email', guestEmail)
     .maybeSingle();
 
-  return !!allowedUser;
+  return !!allowedUser && link.allowed_user_ids.includes(allowedUser.id);
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -121,7 +122,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       });
     }
 
-    const canAccess = await hasCalendarAccess(request, supabase, link.allowed_client_id);
+    const canAccess = await hasCalendarAccess(request, supabase, link);
     if (!canAccess) return NextResponse.json({ error: 'Email no autorizado para este calendario' }, { status: 401 });
 
     const table = type === 'ads' ? 'ads_ideas' : 'social_ideas';

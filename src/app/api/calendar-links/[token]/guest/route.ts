@@ -20,12 +20,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const supabase = getAdmin();
     const { data: link } = await supabase
       .from('calendar_share_links')
-      .select('allowed_client_id, enabled')
+      .select('allowed_client_id, guest_enabled, allowed_user_ids, enabled')
       .eq('token', token)
       .maybeSingle();
 
     let allowedClientId = link?.allowed_client_id as string | undefined;
     if (link && !link.enabled) return NextResponse.json({ error: 'Calendario no disponible' }, { status: 404 });
+    if (link && (!link.guest_enabled || !link.allowed_user_ids?.length)) {
+      return NextResponse.json({ error: 'El ingreso como invitado no está habilitado para este calendario' }, { status: 403 });
+    }
 
     if (!allowedClientId) {
       const { data: client } = await supabase
@@ -40,12 +43,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
     const { data: user } = await supabase
       .from('users')
-      .select('email, full_name')
+      .select('id, email, full_name')
       .eq('client_id', allowedClientId)
       .ilike('email', normalizedEmail)
       .maybeSingle();
 
     if (!user) return NextResponse.json({ error: 'Este email no está autorizado para este calendario' }, { status: 403 });
+    if (link && !link.allowed_user_ids.includes(user.id)) {
+      return NextResponse.json({ error: 'Este usuario no está habilitado para este calendario' }, { status: 403 });
+    }
     return NextResponse.json({ ok: true, name: user.full_name || user.email, email: user.email });
   } catch (err) {
     console.error('POST /api/calendar-links/[token]/guest error:', err);

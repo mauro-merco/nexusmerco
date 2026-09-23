@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS public.calendar_share_links (
   calendar_type TEXT NOT NULL CHECK (calendar_type IN ('social', 'ads')),
   month TEXT NOT NULL CHECK (month ~ '^\d{4}-\d{2}$'),
   allowed_client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  guest_enabled BOOLEAN NOT NULL DEFAULT false,
+  allowed_user_ids UUID[] NOT NULL DEFAULT '{}',
   enabled BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
