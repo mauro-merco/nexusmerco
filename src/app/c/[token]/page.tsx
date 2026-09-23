@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -210,12 +210,12 @@ function EcommerceBands({ date, ecommerceDates }: { date: string; ecommerceDates
 
 // ─── Calendar day ─────────────────────────────────────────────────────────────
 
-function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick }: {
+function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick, onAddClick }: {
   dateStr: string; day: number; ideas: SocialIdea[]; isToday: boolean;
-  ecommerceDates: EcommerceDate[]; onIdeaClick: (idea: SocialIdea) => void;
+  ecommerceDates: EcommerceDate[]; onIdeaClick: (idea: SocialIdea) => void; onAddClick: (date: string) => void;
 }) {
   return (
-    <div className={cn('min-h-[80px] rounded-lg border p-1.5 bg-card/50', isToday && 'border-primary/50 bg-primary/5')}>
+    <div className={cn('relative min-h-[80px] rounded-lg border p-1.5 bg-card/50', isToday && 'border-primary/50 bg-primary/5')}>
       <EcommerceBands date={dateStr} ecommerceDates={ecommerceDates} />
       <span className={cn('text-xs font-medium block mb-1 pl-0.5', isToday ? 'text-primary font-bold' : 'text-muted-foreground/60')}>{day}</span>
       <div className="space-y-1">
@@ -234,15 +234,18 @@ function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick
           );
         })}
       </div>
+      <button type="button" onClick={() => onAddClick(dateStr)} className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary/20">
+        <Plus className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
 
 // ─── Calendar grid ────────────────────────────────────────────────────────────
 
-function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick }: {
+function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick, onAddClick }: {
   monthStr: string; ideas: SocialIdea[]; ecommerceDates: EcommerceDate[];
-  onIdeaClick: (idea: SocialIdea) => void;
+  onIdeaClick: (idea: SocialIdea) => void; onAddClick: (date: string) => void;
 }) {
   const [y, m] = monthStr.split('-').map(Number);
   const today = new Date();
@@ -272,7 +275,7 @@ function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick }: {
           return (
             <CalendarDay key={dateStr} dateStr={dateStr} day={day.getDate()}
               ideas={ideasByDate.get(dateStr) || []} isToday={isToday}
-              ecommerceDates={ecommerceDates} onIdeaClick={onIdeaClick} />
+              ecommerceDates={ecommerceDates} onIdeaClick={onIdeaClick} onAddClick={onAddClick} />
           );
         })}
       </div>
@@ -475,11 +478,12 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [viewMonth, setViewMonth] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [ideaTitle, setIdeaTitle] = useState('');
-  const [ideaType, setIdeaType] = useState('carrusel');
+  const [ideaType, setIdeaType] = useState('sugerencia');
   const [ideaDescription, setIdeaDescription] = useState('');
   const [ideaLinks, setIdeaLinks] = useState('');
   const [ideaSending, setIdeaSending] = useState(false);
   const [ideaError, setIdeaError] = useState('');
+  const [newIdeaDate, setNewIdeaDate] = useState<string | null>(null);
 
   // Resolve params
   useEffect(() => {
@@ -635,7 +639,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           post_type: ideaType,
           description: ideaDescription,
           links: ideaLinks.split(/[\n,;]/).map(link => link.trim()).filter(Boolean),
-          publish_date: viewMonth ? `${viewMonth}-01` : undefined,
+          publish_date: newIdeaDate || (viewMonth ? `${viewMonth}-01` : undefined),
           guest_name: viewer.name,
           content: `Idea sugerida por ${viewer.name}`,
         }),
@@ -643,9 +647,10 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
       const json = await res.json();
       if (!res.ok) { setIdeaError(json.error || 'No se pudo crear la idea'); return; }
       setIdeaTitle('');
-      setIdeaType('carrusel');
+      setIdeaType('sugerencia');
       setIdeaDescription('');
       setIdeaLinks('');
+      setNewIdeaDate(null);
       fetchCalendar();
     } catch {
       setIdeaError('No se pudo crear la idea');
@@ -770,31 +775,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         <Card className="border-border/50 bg-card/50 backdrop-blur-xl">
           <CardContent className="p-4">
             {viewMonth && (
-              <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} />
+              <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={setNewIdeaDate} />
             )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/20 bg-card/70 backdrop-blur-xl">
-          <CardContent className="p-4 space-y-3">
-            <div>
-              <p className="text-sm font-bold text-gradient-tech">Ideas de contenido</p>
-              <p className="text-xs text-muted-foreground">Proponé una idea, sumá links y después comentamos dentro de la tarjeta.</p>
-            </div>
-            <form onSubmit={handleCreateContentIdea} className="grid gap-3 md:grid-cols-[1fr_180px]">
-              <Input value={ideaTitle} onChange={e => setIdeaTitle(e.target.value)} placeholder="Título de sugerencia" className="h-10 rounded-xl" />
-              <select value={ideaType} onChange={e => setIdeaType(e.target.value)} className="h-10 rounded-xl border border-input bg-background px-3 text-sm">
-                <option value="carrusel">Carrusel</option>
-                <option value="reel">Reel</option>
-                <option value="historia">Historia</option>
-              </select>
-              <textarea value={ideaDescription} onChange={e => setIdeaDescription(e.target.value)} placeholder="Descripción de la idea" className="min-h-20 rounded-xl border border-input bg-background px-3 py-2 text-sm md:col-span-2" />
-              <textarea value={ideaLinks} onChange={e => setIdeaLinks(e.target.value)} placeholder="Links de referencia, uno por línea" className="min-h-16 rounded-xl border border-input bg-background px-3 py-2 text-sm md:col-span-2" />
-              {ideaError && <p className="text-xs text-destructive md:col-span-2">{ideaError}</p>}
-              <Button type="submit" variant="cta" size="cta" className="md:col-span-2 w-fit gap-2" disabled={ideaSending}>
-                {ideaSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar idea
-              </Button>
-            </form>
           </CardContent>
         </Card>
 
@@ -820,6 +802,38 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           onClose={() => setSelectedIdea(null)}
           onCommentAdded={fetchCalendar}
         />
+      )}
+
+      {newIdeaDate && viewer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setNewIdeaDate(null)}>
+          <div className="w-full max-w-lg rounded-xl bg-background p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold">Nueva idea</h2>
+                <p className="text-xs text-muted-foreground">Fecha: {newIdeaDate}</p>
+              </div>
+              <button onClick={() => setNewIdeaDate(null)} className="text-muted-foreground hover:text-foreground">×</button>
+            </div>
+            <form onSubmit={handleCreateContentIdea} className="space-y-3">
+              <Input value={ideaTitle} onChange={e => setIdeaTitle(e.target.value)} placeholder="Título de sugerencia" className="h-10 rounded-xl" autoFocus />
+              <select value={ideaType} onChange={e => setIdeaType(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                <option value="sugerencia">Sugerencia</option>
+                <option value="carrusel">Carrusel</option>
+                <option value="reel">Reel</option>
+                <option value="historia">Historia</option>
+              </select>
+              <textarea value={ideaDescription} onChange={e => setIdeaDescription(e.target.value)} placeholder="Descripción de la idea" className="min-h-24 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+              <textarea value={ideaLinks} onChange={e => setIdeaLinks(e.target.value)} placeholder="Links de referencia, uno por línea" className="min-h-16 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" />
+              {ideaError && <p className="text-xs text-destructive">{ideaError}</p>}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setNewIdeaDate(null)}>Cancelar</Button>
+                <Button type="submit" variant="cta" disabled={ideaSending}>
+                  {ideaSending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />} Crear idea
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -104,7 +104,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
           title: cleanTitle,
           description: String(description || '').trim(),
           brief: String(description || '').trim(),
-          post_type: post_type || 'carrusel',
+          post_type: post_type || 'sugerencia',
           publish_date: publish_date || new Date().toISOString().slice(0, 10),
           status: 'borrador',
           copy_text: Array.isArray(links) ? links.filter(Boolean).join('\n') : '',

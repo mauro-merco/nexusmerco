@@ -28,6 +28,7 @@ const POST_TYPES: { value: PostType; label: string }[] = [
   { value: 'historia', label: 'Historia' },
   { value: 'reel', label: 'Reel' },
   { value: 'carrusel', label: 'Carrusel' },
+  { value: 'sugerencia', label: 'Sugerencia' },
 ];
 
 const STATUS_FLOW: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];

@@ -1,5 +1,5 @@
 import type { PostType, IdeaStatus, Responsable } from '@/lib/types';
-import { Camera, Video, Images, User } from 'lucide-react';
+import { Camera, Video, Images, Lightbulb } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const RESPONSABLE_CONFIG: Record<Responsable, { label: string; colorClass: string }> = {
@@ -31,6 +31,14 @@ export const POST_TYPE_CONFIG: Record<PostType, { label: string; icon: LucideIco
     bgColorClass: 'bg-orange-500/15',
     borderColorClass: 'border-orange-400/40',
     dotColor: 'bg-orange-400',
+  },
+  sugerencia: {
+    label: 'Sugerencia',
+    icon: Lightbulb,
+    colorClass: 'text-violet-600',
+    bgColorClass: 'bg-violet-500/15',
+    borderColorClass: 'border-violet-400/40',
+    dotColor: 'bg-violet-400',
   },
 };
 

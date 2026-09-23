@@ -20,6 +20,7 @@ const POST_TYPES: { value: PostType; label: string }[] = [
   { value: 'historia', label: 'Historia' },
   { value: 'reel', label: 'Reel' },
   { value: 'carrusel', label: 'Carrusel' },
+  { value: 'sugerencia', label: 'Sugerencia' },
 ];
 
 interface SocialNewIdeaDialogProps {
