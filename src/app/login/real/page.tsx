@@ -14,7 +14,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function RealLoginPage() {
   const router = useRouter();
-  const { login, isLoading } = useAuthStore();
+  const { login, isLoading, logout } = useAuthStore();
   const _ = useT();
 
   const [email, setEmail] = useState('');
@@ -33,6 +33,12 @@ export default function RealLoginPage() {
     const result = await login(email, password);
 
     if (result.success) {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.role === 'client') {
+        logout();
+        setError('Este acceso es solo para el equipo Merco. Para entrar como cliente usá el link del calendario compartido.');
+        return;
+      }
       router.push('/dashboard');
     } else {
       setError(result.error || 'Error al iniciar sesión');

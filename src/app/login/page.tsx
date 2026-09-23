@@ -89,7 +89,7 @@ function TypewriterText() {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, verify2FA, isLoading, pending2FA } = useAuthStore();
+  const { login, verify2FA, isLoading, pending2FA, logout } = useAuthStore();
   const _ = useT();
 
   const [email, setEmail] = useState('');
@@ -109,6 +109,12 @@ export default function LoginPage() {
     const result = await login(email, password);
 
     if (result.success && !result.needs2FA) {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.role === 'client') {
+        logout();
+        setError('Este acceso es solo para el equipo Merco. Para entrar como cliente usá el link del calendario compartido.');
+        return;
+      }
       router.push('/dashboard');
     } else if (result.needs2FA) {
       // 2FA screen will show

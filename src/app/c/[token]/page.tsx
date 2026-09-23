@@ -305,7 +305,7 @@ function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, o
     setSendError('');
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (viewer.type === 'user' && viewer.authToken) {
+      if (viewer.authToken) {
         headers['Authorization'] = `Bearer ${viewer.authToken}`;
       }
       const res = await fetch(`/api/calendar-links/${token}/actions`, {
@@ -474,6 +474,12 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [error, setError] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
+  const [ideaTitle, setIdeaTitle] = useState('');
+  const [ideaType, setIdeaType] = useState('carrusel');
+  const [ideaDescription, setIdeaDescription] = useState('');
+  const [ideaLinks, setIdeaLinks] = useState('');
+  const [ideaSending, setIdeaSending] = useState(false);
+  const [ideaError, setIdeaError] = useState('');
 
   // Resolve params
   useEffect(() => {
@@ -609,6 +615,45 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     setViewMonth(m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`);
   };
 
+  const handleCreateContentIdea = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!viewer || !token) return;
+    if (!ideaTitle.trim()) { setIdeaError('Ingresá un título'); return; }
+    setIdeaSending(true);
+    setIdeaError('');
+    try {
+      const res = await fetch(`/api/calendar-links/${token}/actions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(viewer.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {}),
+        },
+        body: JSON.stringify({
+          action_type: 'create_idea',
+          calendar_type: calendarType,
+          title: ideaTitle,
+          post_type: ideaType,
+          description: ideaDescription,
+          links: ideaLinks.split(/[\n,;]/).map(link => link.trim()).filter(Boolean),
+          publish_date: viewMonth ? `${viewMonth}-01` : undefined,
+          guest_name: viewer.name,
+          content: `Idea sugerida por ${viewer.name}`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setIdeaError(json.error || 'No se pudo crear la idea'); return; }
+      setIdeaTitle('');
+      setIdeaType('carrusel');
+      setIdeaDescription('');
+      setIdeaLinks('');
+      fetchCalendar();
+    } catch {
+      setIdeaError('No se pudo crear la idea');
+    } finally {
+      setIdeaSending(false);
+    }
+  };
+
   const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
   // Loading initial auth check
@@ -727,6 +772,29 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
             {viewMonth && (
               <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} />
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/20 bg-card/70 backdrop-blur-xl">
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <p className="text-sm font-bold text-gradient-tech">Ideas de contenido</p>
+              <p className="text-xs text-muted-foreground">Proponé una idea, sumá links y después comentamos dentro de la tarjeta.</p>
+            </div>
+            <form onSubmit={handleCreateContentIdea} className="grid gap-3 md:grid-cols-[1fr_180px]">
+              <Input value={ideaTitle} onChange={e => setIdeaTitle(e.target.value)} placeholder="Título de sugerencia" className="h-10 rounded-xl" />
+              <select value={ideaType} onChange={e => setIdeaType(e.target.value)} className="h-10 rounded-xl border border-input bg-background px-3 text-sm">
+                <option value="carrusel">Carrusel</option>
+                <option value="reel">Reel</option>
+                <option value="historia">Historia</option>
+              </select>
+              <textarea value={ideaDescription} onChange={e => setIdeaDescription(e.target.value)} placeholder="Descripción de la idea" className="min-h-20 rounded-xl border border-input bg-background px-3 py-2 text-sm md:col-span-2" />
+              <textarea value={ideaLinks} onChange={e => setIdeaLinks(e.target.value)} placeholder="Links de referencia, uno por línea" className="min-h-16 rounded-xl border border-input bg-background px-3 py-2 text-sm md:col-span-2" />
+              {ideaError && <p className="text-xs text-destructive md:col-span-2">{ideaError}</p>}
+              <Button type="submit" variant="cta" size="cta" className="md:col-span-2 w-fit gap-2" disabled={ideaSending}>
+                {ideaSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar idea
+              </Button>
+            </form>
           </CardContent>
         </Card>
 

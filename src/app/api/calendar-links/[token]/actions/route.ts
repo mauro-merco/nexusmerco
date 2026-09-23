@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const { token } = await params;
     const userId = getCurrentUserId(request);
     const body = await request.json();
-    const { idea_id, content, guest_name, action_type, status, publish_date, calendar_type } = body;
+    const { idea_id, content, guest_name, action_type, status, publish_date, calendar_type, title, description, post_type, links } = body;
     const ideasTable = calendar_type === 'ads' ? 'ads_ideas' : 'social_ideas';
     const commentsTable = calendar_type === 'ads' ? 'ads_comments' : 'social_comments';
 
@@ -93,6 +93,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     }
 
     const supabase = getAdmin();
+
+    if (action_type === 'create_idea') {
+      const cleanTitle = String(title || '').trim();
+      if (!cleanTitle) return NextResponse.json({ error: 'Título requerido' }, { status: 400 });
+      const { data: idea, error } = await supabase
+        .from(ideasTable)
+        .insert({
+          client_id: client.id,
+          title: cleanTitle,
+          description: String(description || '').trim(),
+          brief: String(description || '').trim(),
+          post_type: post_type || 'carrusel',
+          publish_date: publish_date || new Date().toISOString().slice(0, 10),
+          status: 'borrador',
+          copy_text: Array.isArray(links) ? links.filter(Boolean).join('\n') : '',
+          author_id: userId || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      if (content || guest_name) {
+        await supabase.from(commentsTable).insert({
+          idea_id: idea.id,
+          user_id: userId || null,
+          guest_name: guest_name || null,
+          content: content || 'Idea creada por cliente',
+          action_type: 'comment',
+        });
+      }
+
+      return NextResponse.json({ data: idea }, { status: 201 });
+    }
 
     // Handle different action types
     if (action_type === 'status_change' && status) {
@@ -154,6 +187,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     });
 
     if (error) throw error;
+    const { data: idea } = await supabase.from(ideasTable).select('id, title, author_id').eq('id', idea_id).single();
+    const { data: assignees } = await supabase
+      .from(calendar_type === 'ads' ? 'ads_idea_assignees' : 'social_idea_assignees')
+      .select('user_id')
+      .eq('idea_id', idea_id);
+    const recipients = new Set<string>();
+    if (idea?.author_id) recipients.add(idea.author_id);
+    for (const assignee of assignees || []) if (assignee.user_id) recipients.add(assignee.user_id);
+    if (userId) recipients.delete(userId);
+    if (recipients.size > 0) {
+      await supabase.from('notifications').insert([...recipients].map(recipientId => ({
+        user_id: recipientId,
+        type: 'calendar_comment',
+        title: 'Nuevo comentario en calendario',
+        message: `${guest_name || 'Alguien'} hizo un comentario en ${idea?.title || 'una idea'}`,
+        link: `/calendarios`,
+        read: false,
+      })));
+    }
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (e) {
     console.error('POST /api/calendar-links/[token] error:', e);
