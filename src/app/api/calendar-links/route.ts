@@ -10,6 +10,37 @@ function getAdmin() {
   });
 }
 
+async function getLegacyClientToken(supabase: ReturnType<typeof getAdmin>, clientId: string, calendarType: string, month: string) {
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .select('share_token')
+    .eq('id', clientId)
+    .single();
+
+  if (clientError) throw clientError;
+  const token = client?.share_token || crypto.randomUUID();
+
+  if (!client?.share_token) {
+    const { error: updateError } = await supabase
+      .from('clients')
+      .update({ share_token: token })
+      .eq('id', clientId);
+    if (updateError) throw updateError;
+  }
+
+  return {
+    token,
+    client_id: clientId,
+    calendar_type: calendarType,
+    month,
+    allowed_client_id: clientId,
+    guest_enabled: true,
+    allowed_user_ids: [],
+    enabled: true,
+    legacy: true,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const { client_id, calendar_type = 'social', month, allowed_client_id, guest_enabled, allowed_user_ids } = await request.json();
@@ -37,7 +68,13 @@ export async function POST(request: Request) {
       .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, enabled')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42P01' || error.code === '42703' || error.message?.includes('calendar_share_links')) {
+        const legacy = await getLegacyClientToken(supabase, client_id, calendar_type, month);
+        return NextResponse.json({ data: legacy });
+      }
+      throw error;
+    }
     return NextResponse.json({ data });
   } catch (err) {
     console.error('POST /api/calendar-links error:', err);

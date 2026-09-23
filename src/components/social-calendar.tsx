@@ -257,6 +257,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
   const internalUsers = useInternalUsers();
   const [shareConfig, setShareConfig] = useState<ShareConfig | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState('');
   const [copied, setCopied] = useState(false);
   const [showNewIdea, setShowNewIdea] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -273,18 +274,18 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
   const fetchShareToken = useCallback(async () => {
     if (!clientId) return;
     setShareLoading(true);
+    setShareError('');
     try {
       const res = await fetch('/api/calendar-links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ client_id: clientId, calendar_type: 'social', month: monthStr }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
-      }
-    } catch {
-      // ignore
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'No se pudo generar el link');
+      setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : 'No se pudo generar el link');
     } finally {
       setShareLoading(false);
     }
@@ -444,25 +445,32 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
               size="sm"
               className="gap-1.5"
               onClick={async () => {
+                setShareLoading(true);
+                setShareError('');
                 try {
                   const res = await fetch('/api/calendar-links', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ client_id: clientId, calendar_type: 'social', month: monthStr }),
                   });
-                  if (res.ok) {
-                    const json = await res.json();
-                    setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
-                  }
-                } catch {
-                  // ignore
+                  const json = await res.json();
+                  if (!res.ok) throw new Error(json.error || 'No se pudo generar el link');
+                  setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
+                } catch (err) {
+                  setShareError(err instanceof Error ? err.message : 'No se pudo generar el link');
+                } finally {
+                  setShareLoading(false);
                 }
               }}
             >
-              <Share className="h-3.5 w-3.5" /> Generar link
+              {shareLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share className="h-3.5 w-3.5" />} Generar link
             </Button>
           )}
         </div>
+
+        {canManageShare && shareError && (
+          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{shareError}</p>
+        )}
 
         {canManageShare && shareConfig?.token && (
           <Card className="border-primary/20 bg-primary/5">

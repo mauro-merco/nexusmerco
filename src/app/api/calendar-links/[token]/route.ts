@@ -45,13 +45,13 @@ async function resolveCalendarLink(supabase: ReturnType<typeof getAdmin>, token:
   if (clientError || !client) return { error: 'Calendario no encontrado', status: 404 as const };
   return {
     client,
-    link: { allowed_client_id: client.id, calendar_type: requestedType, month: null },
+    link: { allowed_client_id: client.id, calendar_type: requestedType, month: null, legacy: true },
     type: requestedType,
     month: null,
   };
 }
 
-async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof getAdmin>, link: { allowed_client_id: string; guest_enabled?: boolean; allowed_user_ids?: string[] }) {
+async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof getAdmin>, link: { allowed_client_id: string; guest_enabled?: boolean; allowed_user_ids?: string[]; legacy?: boolean }) {
   const authHeader = request.headers.get('authorization') || '';
   const token = authHeader.replace('Bearer ', '');
   if (token && token !== 'undefined') {
@@ -65,14 +65,15 @@ async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof g
           .eq('id', userId)
           .single();
         if (user?.role === 'admin' || user?.role === 'operador') return true;
-        if (user?.client_id === link.allowed_client_id && (link.allowed_user_ids || []).includes(userId)) return true;
+        if (user?.client_id === link.allowed_client_id && (link.legacy || (link.allowed_user_ids || []).includes(userId))) return true;
       }
     } catch { /* ignore */ }
   }
 
   const url = new URL(request.url);
   const guestEmail = (request.headers.get('x-guest-email') || url.searchParams.get('guest_email') || '').trim().toLowerCase();
-  if (!guestEmail || !link.guest_enabled || !link.allowed_user_ids?.length) return false;
+  if (!guestEmail) return false;
+  if (!link.legacy && (!link.guest_enabled || !link.allowed_user_ids?.length)) return false;
 
   const { data: allowedUser } = await supabase
     .from('users')
@@ -81,7 +82,7 @@ async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof g
     .ilike('email', guestEmail)
     .maybeSingle();
 
-  return !!allowedUser && link.allowed_user_ids.includes(allowedUser.id);
+  return !!allowedUser && (link.legacy || (link.allowed_user_ids || []).includes(allowedUser.id));
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
