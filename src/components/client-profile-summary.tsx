@@ -12,10 +12,18 @@ import { TeamActivity } from '@/components/team-activity';
 import { WorkStatistics } from '@/components/work-statistics';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ClientWall } from '@/components/client-wall';
+import { Input } from '@/components/ui/input';
 import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG, taskTypeInfo } from '@/lib/task-config';
 import { cn } from '@/lib/utils';
 import type { User, Task, NexusDocument } from '@/lib/types';
-import { KanbanSquare, CheckCircle2, Users2, Loader2, ChevronRight, FileText, Plus, Calendar } from 'lucide-react';
+import { KanbanSquare, CheckCircle2, Users2, Loader2, ChevronRight, FileText, Plus, Calendar, FolderOpen, ExternalLink, Trash2 } from 'lucide-react';
+
+type DriveFolder = {
+  id: string;
+  name: string;
+  url: string;
+  created_at: string;
+};
 
 function TaskRowInline({ task, onOpen, closed }: { task: Task; onOpen: () => void; closed?: boolean }) {
   const sConfig = TASK_STATUS_CONFIG[task.status];
@@ -215,6 +223,8 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
 
       <DocumentsSection clientId={clientId} />
 
+      <DriveFoldersSection clientId={clientId} />
+
       <ClientWall clientId={clientId} />
 
       {selectedTask && (
@@ -228,6 +238,117 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
         />
       )}
     </div>
+  );
+}
+
+function DriveFoldersSection({ clientId }: { clientId: string }) {
+  const { token } = useAuthStore();
+  const [folders, setFolders] = useState<DriveFolder[]>([]);
+  const [name, setName] = useState('');
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const authHeaders = useCallback((json = false) => ({
+    ...(json ? { 'Content-Type': 'application/json' } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }), [token]);
+
+  const fetchFolders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/drive-folders`, { headers: authHeaders() });
+      const json = await res.json();
+      setFolders(json.data || []);
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
+  }, [clientId, authHeaders]);
+
+  useEffect(() => { fetchFolders(); }, [fetchFolders]);
+
+  const handleAdd = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/clients/${clientId}/drive-folders`, {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: JSON.stringify({ name, url }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error || 'No se pudo guardar'); return; }
+      setFolders(current => [json.data, ...current]);
+      setName('');
+      setUrl('');
+    } catch {
+      setError('No se pudo guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (folderId: string) => {
+    const previous = folders;
+    setFolders(current => current.filter(folder => folder.id !== folderId));
+    try {
+      const res = await fetch(`/api/clients/${clientId}/drive-folders?folder_id=${folderId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (!res.ok) setFolders(previous);
+    } catch {
+      setFolders(previous);
+    }
+  };
+
+  return (
+    <Card className="bg-card/50 backdrop-blur-xl border border-border/30">
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold flex items-center gap-2 uppercase tracking-wide">
+              <FolderOpen className="h-4 w-4 text-primary" /> Carpetas importantes en Drive
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Links rápidos a carpetas clave de la marca.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-[minmax(0,220px)_1fr_auto]">
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Carpeta de logos" className="h-9" />
+          <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://drive.google.com/drive/folders/..." className="h-9" />
+          <Button size="sm" variant="cta" className="h-9 gap-1" onClick={handleAdd} disabled={saving}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Agregar
+          </Button>
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+
+        {loading ? (
+          <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+        ) : folders.length === 0 ? (
+          <p className="text-sm text-muted-foreground/60 italic text-center py-4">Todavía no hay carpetas importantes.</p>
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {folders.map(folder => (
+              <div key={folder.id} className="group flex items-center justify-between gap-2 rounded-xl border bg-background/40 p-3">
+                <a href={folder.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2 hover:text-primary transition-colors">
+                  <FolderOpen className="h-4 w-4 shrink-0 text-amber-500" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{folder.name}</span>
+                    <span className="block truncate text-[10px] text-muted-foreground">Abrir carpeta en Drive</span>
+                  </span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                </a>
+                <Button variant="ghost" size="icon-sm" className="opacity-60 hover:opacity-100" onClick={() => handleDelete(folder.id)}>
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
