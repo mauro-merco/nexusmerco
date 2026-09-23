@@ -624,6 +624,12 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     if (idea) setSelectedIdea(idea);
   }, [initialIdeaId, data?.ideas, selectedIdea?.id]);
 
+  useEffect(() => {
+    if (!selectedIdea || initialIdeaId === selectedIdea.id) return;
+    const stillVisible = data?.ideas.some(idea => idea.id === selectedIdea.id);
+    if (!stillVisible) setSelectedIdea(null);
+  }, [data?.ideas, initialIdeaId, selectedIdea]);
+
   const handleViewerEnter = (v: Viewer) => {
     setViewer(v);
     // Only persist guest sessions; authenticated users re-detect via session on next load
@@ -843,7 +849,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           viewer={viewer}
           calendarType={calendarType}
           token={token}
-          onClose={() => setSelectedIdea(null)}
+          onClose={() => { setSelectedIdea(null); setInitialIdeaId(null); }}
           onCommentAdded={fetchCalendar}
         />
       )}

@@ -264,6 +264,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
   const [showNewIdea, setShowNewIdea] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
+  const [dismissedIdeaId, setDismissedIdeaId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
   const [attachmentsByIdea, setAttachmentsByIdea] = useState<Record<string, { url: string }[]>>({});
 
@@ -304,10 +305,16 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
   }, [initialMonth]);
 
   useEffect(() => {
-    if (!initialIdeaId || selectedIdea?.id === initialIdeaId) return;
+    if (!initialIdeaId || dismissedIdeaId === initialIdeaId || selectedIdea?.id === initialIdeaId) return;
     const idea = ideas.find(item => item.id === initialIdeaId);
     if (idea) setSelectedIdea(idea);
-  }, [initialIdeaId, ideas, selectedIdea?.id]);
+  }, [dismissedIdeaId, initialIdeaId, ideas, selectedIdea?.id]);
+
+  useEffect(() => {
+    if (!selectedIdea) return;
+    const stillVisible = ideas.some(idea => idea.id === selectedIdea.id);
+    if (!stillVisible) setSelectedIdea(null);
+  }, [ideas, selectedIdea]);
 
   useEffect(() => {
     if (ideas.length === 0) { setAttachmentsByIdea({}); return; }
@@ -633,7 +640,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
         <SocialIdeaModal
           idea={selectedIdea}
           open={!!selectedIdea}
-          onOpenChange={(open) => { if (!open) setSelectedIdea(null); }}
+          onOpenChange={(open) => { if (!open) { setDismissedIdeaId(selectedIdea.id); setSelectedIdea(null); } }}
           onIdeaUpdated={(updated) => {
             syncIdea(updated);
           }}

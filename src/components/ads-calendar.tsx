@@ -352,6 +352,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
   const [showNewEcomDate, setShowNewEcomDate] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
+  const [dismissedIdeaId, setDismissedIdeaId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
   const [shareConfig, setShareConfig] = useState<ShareConfig | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
@@ -383,10 +384,16 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
   }, [initialMonth]);
 
   useEffect(() => {
-    if (!initialIdeaId || selectedIdea?.id === initialIdeaId) return;
+    if (!initialIdeaId || dismissedIdeaId === initialIdeaId || selectedIdea?.id === initialIdeaId) return;
     const idea = ideas.find(item => item.id === initialIdeaId);
     if (idea) setSelectedIdea(idea);
-  }, [initialIdeaId, ideas, selectedIdea?.id]);
+  }, [dismissedIdeaId, initialIdeaId, ideas, selectedIdea?.id]);
+
+  useEffect(() => {
+    if (!selectedIdea) return;
+    const stillVisible = ideas.some(idea => idea.id === selectedIdea.id);
+    if (!stillVisible) setSelectedIdea(null);
+  }, [ideas, selectedIdea]);
 
   const syncIdea = useCallback((updated: SocialIdea) => {
     setSelectedIdea(updated);
@@ -704,7 +711,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
         <SocialIdeaModal
           idea={selectedIdea}
           open={!!selectedIdea}
-          onOpenChange={(open) => { if (!open) setSelectedIdea(null); }}
+          onOpenChange={(open) => { if (!open) { setDismissedIdeaId(selectedIdea.id); setSelectedIdea(null); } }}
           onIdeaUpdated={(updated) => syncIdea(updated)}
           onIdeaDeleted={() => { deleteIdea(selectedIdea!.id); setSelectedIdea(null); }}
           users={internalUsers}
