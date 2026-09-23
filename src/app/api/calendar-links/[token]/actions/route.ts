@@ -202,7 +202,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         type: 'calendar_comment',
         title: 'Nuevo comentario en calendario',
         message: `${guest_name || 'Alguien'} hizo un comentario en ${idea?.title || 'una idea'}`,
-        link: `/calendarios`,
+        link: `/calendarios?client=${client.id}&type=${calendar_type === 'ads' ? 'ads' : 'redes'}`,
         read: false,
       })));
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus } from 'lucide-react';
+import { Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,9 @@ import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment } from '@/lib
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import { eachDayOfInterval, endOfMonth, format, startOfMonth } from 'date-fns';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CalendarData {
   client: { id: string; name: string; logo_url: string | null };
@@ -20,6 +23,7 @@ interface CalendarData {
   comments_by_idea: Record<string, SocialComment[]>;
   ecommerce_dates: EcommerceDate[];
   calendar_type: 'social' | 'ads';
+  month?: string | null;
 }
 
 type AuthMode = 'loading' | 'authenticated' | 'gate';
@@ -210,29 +214,38 @@ function EcommerceBands({ date, ecommerceDates }: { date: string; ecommerceDates
 
 // ─── Calendar day ─────────────────────────────────────────────────────────────
 
+function PublicIdeaPill({ idea, onClick }: { idea: SocialIdea; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: idea.id, data: { idea } });
+  const ptConfig = POST_TYPE_CONFIG[idea.post_type];
+  const PtIcon = ptConfig.icon;
+  const isPublished = idea.status === 'posteado';
+  const style = transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined;
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      className={cn('flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-medium cursor-pointer transition-all hover:scale-[1.02]',
+        isPublished ? 'bg-green-500/15 border-green-400/40 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass, ptConfig.borderColorClass],
+        isDragging && 'opacity-50')}
+    >
+      <span {...listeners} {...attributes} className="cursor-grab active:cursor-grabbing"><PtIcon className="h-2.5 w-2.5 shrink-0" /></span>
+      <span className="truncate">{idea.eje_contenido || idea.title}</span>
+    </div>
+  );
+}
+
 function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick, onAddClick }: {
   dateStr: string; day: number; ideas: SocialIdea[]; isToday: boolean;
   ecommerceDates: EcommerceDate[]; onIdeaClick: (idea: SocialIdea) => void; onAddClick: (date: string) => void;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: dateStr });
   return (
-    <div className={cn('relative min-h-[80px] rounded-lg border p-1.5 bg-card/50', isToday && 'border-primary/50 bg-primary/5')}>
+    <div ref={setNodeRef} className={cn('relative min-h-[15vh] rounded-lg border p-2 bg-card/50 transition-colors', isToday && 'border-primary/50 bg-primary/5', isOver && 'border-primary bg-primary/10')}>
       <EcommerceBands date={dateStr} ecommerceDates={ecommerceDates} />
       <span className={cn('text-xs font-medium block mb-1 pl-0.5', isToday ? 'text-primary font-bold' : 'text-muted-foreground/60')}>{day}</span>
       <div className="space-y-1">
-        {ideas.map(idea => {
-          const ptConfig = POST_TYPE_CONFIG[idea.post_type];
-          const PtIcon = ptConfig.icon;
-          const isPublished = idea.status === 'posteado';
-          return (
-            <div key={idea.id} onClick={() => onIdeaClick(idea)}
-              className={cn('flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-medium cursor-pointer transition-all hover:scale-[1.02]',
-                isPublished ? 'bg-green-500/15 border-green-400/40 text-green-600'
-                  : [ptConfig.bgColorClass, ptConfig.colorClass, ptConfig.borderColorClass])}>
-              <PtIcon className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">{idea.eje_contenido || idea.title}</span>
-            </div>
-          );
-        })}
+        {ideas.map(idea => <PublicIdeaPill key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} />)}
       </div>
       <button type="button" onClick={() => onAddClick(dateStr)} className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary hover:bg-primary/20">
         <Plus className="h-3.5 w-3.5" />
@@ -484,6 +497,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [ideaSending, setIdeaSending] = useState(false);
   const [ideaError, setIdeaError] = useState('');
   const [newIdeaDate, setNewIdeaDate] = useState<string | null>(null);
+  const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   // Resolve params
   useEffect(() => {
@@ -607,16 +622,22 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     setAuthMode('gate');
   };
 
-  const handlePrevMonth = () => {
-    if (!viewMonth) return;
-    const [y, m] = viewMonth.split('-').map(Number);
-    setViewMonth(m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`);
+  const handleDragStart = (event: DragStartEvent) => {
+    const idea = (event.active.data.current as { idea?: SocialIdea })?.idea;
+    if (idea) setActiveIdea(idea);
   };
 
-  const handleNextMonth = () => {
-    if (!viewMonth) return;
-    const [y, m] = viewMonth.split('-').map(Number);
-    setViewMonth(m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`);
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveIdea(null);
+    const idea = (event.active.data.current as { idea?: SocialIdea })?.idea;
+    const newDate = event.over?.id as string | undefined;
+    if (!idea || !newDate || idea.publish_date === newDate || !viewer || !token) return;
+    await fetch(`/api/calendar-links/${token}/actions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(viewer.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {}) },
+      body: JSON.stringify({ idea_id: idea.id, action_type: 'date_move', publish_date: newDate, calendar_type: calendarType, guest_name: viewer.name, content: `${viewer.name} movió el contenido al ${newDate}` }),
+    });
+    fetchCalendar();
   };
 
   const handleCreateContentIdea = async (event: React.FormEvent) => {
@@ -697,7 +718,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#e0f2fe] to-[#f5f0ff] dark:from-[#0a0a1a] dark:via-[#0f0a2e] dark:to-[#1a0a2e]">
-      <div className="max-w-6xl mx-auto p-4 md:p-6">
+      <div className="w-full p-3 md:p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -731,11 +752,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={handlePrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
-              <span className="text-sm font-medium min-w-[140px] text-center">{monthLabel}</span>
-              <Button variant="ghost" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
-            </div>
+            <span className="rounded-xl border bg-background/60 px-3 py-2 text-sm font-semibold">{monthLabel}</span>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs text-muted-foreground h-8" onClick={handleLogout}>
               <LogOut className="h-3.5 w-3.5" />
               Salir
@@ -773,9 +790,12 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
         {/* Calendar */}
         <Card className="border-border/50 bg-card/50 backdrop-blur-xl">
-          <CardContent className="p-4">
+          <CardContent className="p-2 md:p-4">
             {viewMonth && (
-              <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={setNewIdeaDate} />
+              <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={setNewIdeaDate} />
+                <DragOverlay>{activeIdea ? <PublicIdeaPill idea={activeIdea} onClick={() => {}} /> : null}</DragOverlay>
+              </DndContext>
             )}
           </CardContent>
         </Card>

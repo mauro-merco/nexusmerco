@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,11 +20,19 @@ type CalendarTab = 'redes' | 'ads';
 
 export default function CalendariosPage() {
   const { user } = useAuthStore();
+  const searchParams = useSearchParams();
   const _ = useT();
   const { clients, loading } = useClients();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CalendarTab>('redes');
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const client = searchParams.get('client');
+    const type = searchParams.get('type');
+    if (client) setSelectedClientId(client);
+    if (type === 'ads' || type === 'redes') setActiveTab(type);
+  }, [searchParams]);
 
   const isClientUser = user?.role === 'client';
 
