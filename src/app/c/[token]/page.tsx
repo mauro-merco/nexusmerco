@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus } from 'lucide-react';
+import { Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -311,6 +311,7 @@ function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, o
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
   const stConfig = STATUS_CONFIG[idea.status];
 
@@ -349,9 +350,17 @@ function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, o
     }
   };
 
+  const copyIdeaLink = async () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('idea', idea.id);
+    await navigator.clipboard.writeText(url.toString());
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 1800);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-background rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-background rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="p-4 border-b flex items-start justify-between gap-3">
           <div>
@@ -362,6 +371,9 @@ function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, o
             </div>
             <h2 className="text-lg font-bold">{idea.eje_contenido || idea.title}</h2>
           </div>
+          <button onClick={copyIdeaLink} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mt-0.5 shrink-0">
+            <Copy className="h-3.5 w-3.5" /> {copiedLink ? 'Copiado' : 'Link'}
+          </button>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0">
             <span className="sr-only">Cerrar</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -369,7 +381,9 @@ function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, o
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="grid gap-4 md:grid-cols-5">
+            <div className="space-y-4 md:col-span-3">
           {(idea.assignees || []).length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground mb-2">Equipo asignado</h3>
@@ -417,8 +431,9 @@ function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, o
             </div>
           )}
 
-          {/* Comments */}
-          <div>
+            </div>
+
+          <div className="md:col-span-2 rounded-xl border bg-muted/20 p-3">
             <h3 className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-1">
               <MessageCircle className="h-3 w-3" /> Comentarios ({comments.length})
             </h3>
@@ -448,6 +463,7 @@ function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, o
                 })
               )}
             </div>
+          </div>
           </div>
         </div>
 
@@ -490,6 +506,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [error, setError] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
+  const [initialIdeaId, setInitialIdeaId] = useState<string | null>(null);
   const [ideaTitle, setIdeaTitle] = useState('');
   const [ideaType, setIdeaType] = useState('sugerencia');
   const [ideaDescription, setIdeaDescription] = useState('');
@@ -510,6 +527,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     if (!token) return;
     const resolvedToken = token; // capture as non-null for async closures
     const type = new URLSearchParams(window.location.search).get('type') === 'ads' ? 'ads' : 'social';
+    setInitialIdeaId(new URLSearchParams(window.location.search).get('idea'));
     setCalendarType(type);
 
     async function checkSession() {
@@ -599,6 +617,12 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   useEffect(() => {
     if (authMode === 'authenticated' && viewer) fetchCalendar();
   }, [authMode, viewer, fetchCalendar]);
+
+  useEffect(() => {
+    if (!initialIdeaId || !data?.ideas.length || selectedIdea?.id === initialIdeaId) return;
+    const idea = data.ideas.find(item => item.id === initialIdeaId);
+    if (idea) setSelectedIdea(idea);
+  }, [initialIdeaId, data?.ideas, selectedIdea?.id]);
 
   const handleViewerEnter = (v: Viewer) => {
     setViewer(v);

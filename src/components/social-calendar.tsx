@@ -244,13 +244,15 @@ function DragOverlayPill({ idea }: { idea: SocialIdea }) {
 interface SocialCalendarProps {
   clientId: string;
   clientName: string;
+  initialMonth?: string | null;
+  initialIdeaId?: string | null;
 }
 
-export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
+export function SocialCalendar({ clientId, clientName, initialMonth, initialIdeaId }: SocialCalendarProps) {
   const { user } = useAuthStore();
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(initialMonth ? Number(initialMonth.split('-')[0]) : today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initialMonth ? Number(initialMonth.split('-')[1]) - 1 : today.getMonth());
   const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
 
   const { ideas, loading, createIdea, updateIdea, deleteIdea, patchIdea } = useSocialIdeas(clientId, monthStr);
@@ -294,6 +296,18 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
   useEffect(() => {
     fetchShareToken();
   }, [fetchShareToken]);
+
+  useEffect(() => {
+    if (!initialMonth) return;
+    const [year, month] = initialMonth.split('-').map(Number);
+    if (year && month) { setViewYear(year); setViewMonth(month - 1); }
+  }, [initialMonth]);
+
+  useEffect(() => {
+    if (!initialIdeaId || selectedIdea?.id === initialIdeaId) return;
+    const idea = ideas.find(item => item.id === initialIdeaId);
+    if (idea) setSelectedIdea(idea);
+  }, [initialIdeaId, ideas, selectedIdea?.id]);
 
   useEffect(() => {
     if (ideas.length === 0) { setAttachmentsByIdea({}); return; }

@@ -187,7 +187,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     });
 
     if (error) throw error;
-    const { data: idea } = await supabase.from(ideasTable).select('id, title, author_id').eq('id', idea_id).single();
+    const { data: idea } = await supabase.from(ideasTable).select('id, title, author_id, publish_date').eq('id', idea_id).single();
     const { data: assignees } = await supabase
       .from(calendar_type === 'ads' ? 'ads_idea_assignees' : 'social_idea_assignees')
       .select('user_id')
@@ -202,7 +202,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         type: 'calendar_comment',
         title: 'Nuevo comentario en calendario',
         message: `${guest_name || 'Alguien'} hizo un comentario en ${idea?.title || 'una idea'}`,
-        link: `/calendarios?client=${client.id}&type=${calendar_type === 'ads' ? 'ads' : 'redes'}`,
+        link: `/calendarios?client=${client.id}&type=${calendar_type === 'ads' ? 'ads' : 'redes'}&month=${String((idea as { publish_date?: string } | null)?.publish_date || '').slice(0, 7)}&idea=${idea_id}`,
         read: false,
       })));
     }

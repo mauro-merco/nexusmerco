@@ -20,7 +20,7 @@ import type { SocialIdea, PostType, IdeaStatus, User as NexusUser } from '@/lib/
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import {
-  Loader2, Trash2, Link, Paperclip,
+  Loader2, Trash2, Link, Paperclip, Copy,
    Edit3, Calendar, Check,
 } from 'lucide-react';
 
@@ -64,6 +64,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const [newAttachUrl, setNewAttachUrl] = useState('');
   const [addingAttach, setAddingAttach] = useState(false);
@@ -160,6 +161,18 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
+  const copyIdeaLink = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.origin + '/calendarios');
+    url.searchParams.set('client', idea.client_id);
+    url.searchParams.set('type', calendarType === 'ads' ? 'ads' : 'redes');
+    url.searchParams.set('month', idea.publish_date.slice(0, 7));
+    url.searchParams.set('idea', idea.id);
+    await navigator.clipboard.writeText(url.toString());
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 1800);
+  }, [calendarType, idea.client_id, idea.id, idea.publish_date]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -186,6 +199,9 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
             </DialogDescription>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="sm" onClick={copyIdeaLink} title="Copiar link de la idea">
+              <Copy className="h-3.5 w-3.5" /> {copiedLink ? 'Copiado' : null}
+            </Button>
             {!editing ? (
               <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
                 <Edit3 className="h-3.5 w-3.5" />

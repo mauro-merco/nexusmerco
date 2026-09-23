@@ -35,6 +35,8 @@ export default function CalendariosPage() {
   }, [searchParams]);
 
   const isClientUser = user?.role === 'client';
+  const urlMonth = searchParams.get('month');
+  const urlIdea = searchParams.get('idea');
 
   const calendarClients = clients.filter(c => c.social_calendar_enabled || c.ads_calendar_enabled);
   const filteredClients = calendarClients.filter(
@@ -88,8 +90,8 @@ export default function CalendariosPage() {
         {hasSocial && hasAds && (
           <CalendarTabs active={tab as CalendarTab} onChange={setActiveTab} />
         )}
-        {tab === 'redes' && <SocialCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} />}
-        {tab === 'ads' && <AdsCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} />}
+        {tab === 'redes' && <SocialCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
+        {tab === 'ads' && <AdsCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
       </div>
     );
   }
@@ -197,10 +199,10 @@ export default function CalendariosPage() {
         <CalendarTabs active={tab as CalendarTab} onChange={setActiveTab} />
       )}
       {selectedClient && tab === 'redes' && (
-        <SocialCalendar clientId={selectedClient.id} clientName={selectedClient.name} />
+        <SocialCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} initialIdeaId={urlIdea} />
       )}
       {selectedClient && tab === 'ads' && (
-        <AdsCalendar clientId={selectedClient.id} clientName={selectedClient.name} />
+        <AdsCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} initialIdeaId={urlIdea} />
       )}
     </div>
   );

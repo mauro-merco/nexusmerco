@@ -333,13 +333,15 @@ function DragOverlayPill({ idea }: { idea: SocialIdea }) {
 interface AdsCalendarProps {
   clientId: string;
   clientName: string;
+  initialMonth?: string | null;
+  initialIdeaId?: string | null;
 }
 
-export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarProps) {
+export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, initialIdeaId }: AdsCalendarProps) {
   const { user } = useAuthStore();
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(initialMonth ? Number(initialMonth.split('-')[0]) : today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initialMonth ? Number(initialMonth.split('-')[1]) - 1 : today.getMonth());
   const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
 
   const { ideas, loading, createIdea, updateIdea, deleteIdea, patchIdea } = useAdsIdeas(clientId, monthStr);
@@ -373,6 +375,18 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
       .catch((err) => setShareError(err instanceof Error ? err.message : 'No se pudo generar el link'))
       .finally(() => setShareLoading(false));
   }, [clientId, monthStr]);
+
+  useEffect(() => {
+    if (!initialMonth) return;
+    const [year, month] = initialMonth.split('-').map(Number);
+    if (year && month) { setViewYear(year); setViewMonth(month - 1); }
+  }, [initialMonth]);
+
+  useEffect(() => {
+    if (!initialIdeaId || selectedIdea?.id === initialIdeaId) return;
+    const idea = ideas.find(item => item.id === initialIdeaId);
+    if (idea) setSelectedIdea(idea);
+  }, [initialIdeaId, ideas, selectedIdea?.id]);
 
   const syncIdea = useCallback((updated: SocialIdea) => {
     setSelectedIdea(updated);
