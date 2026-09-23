@@ -104,12 +104,12 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-lg md:aspect-video md:w-[min(92vw,1120px)] md:max-w-none">
         <DialogTitle>{calendarType === 'ads' ? 'Nueva pieza ADS' : 'Nueva idea de publicación'}</DialogTitle>
         <DialogDescription>Creá contenido y definí quién responde, ejecuta y controla</DialogDescription>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
+        <div className="grid gap-4 overflow-y-auto py-2 pr-1 md:grid-cols-2 md:content-start">
+          <div className="space-y-1.5 md:col-span-2">
             <Label>Equipo asignado *</Label>
             <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
           </div>
@@ -234,7 +234,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
           <Button onClick={handleSave} variant="cta" disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
