@@ -52,11 +52,26 @@ export async function POST(request: Request) {
     }
 
     const supabase = getAdmin();
+    const hasConfigUpdate = guest_enabled !== undefined || Array.isArray(allowed_user_ids) || Array.isArray(allowed_emails) || allowed_client_id !== undefined;
+
+    const { data: existing, error: existingError } = await supabase
+      .from('calendar_share_links')
+      .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, allowed_emails, enabled')
+      .eq('client_id', client_id)
+      .eq('calendar_type', calendar_type)
+      .eq('month', month)
+      .maybeSingle();
+
+    if (existingError && !(existingError.code === '42P01' || existingError.code === '42703' || existingError.message?.includes('calendar_share_links'))) {
+      throw existingError;
+    }
+    if (existing && !hasConfigUpdate) return NextResponse.json({ data: existing });
+
     const payload: Record<string, unknown> = {
       client_id,
       calendar_type,
       month,
-      allowed_client_id: allowed_client_id || client_id,
+      allowed_client_id: allowed_client_id || existing?.allowed_client_id || client_id,
       enabled: true,
     };
     if (guest_enabled !== undefined) payload.guest_enabled = !!guest_enabled;

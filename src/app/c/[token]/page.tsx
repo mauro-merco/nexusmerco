@@ -54,9 +54,9 @@ function AuthGate({ token, client, calendarType, onEnter }: {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
   // Guest state
-  const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
-  const [guestColor, setGuestColor] = useState(GUEST_COLORS[0]);
+  const [guestPassword, setGuestPassword] = useState('');
+  const [showGuestPassword, setShowGuestPassword] = useState(false);
   const [guestError, setGuestError] = useState('');
   const [guestLoading, setGuestLoading] = useState(false);
 
@@ -87,11 +87,15 @@ function AuthGate({ token, client, calendarType, onEnter }: {
 
   const handleGuest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestName.trim()) { setGuestError('Ingresá tu nombre'); return; }
-    if (!guestEmail.trim()) { setGuestError('Ingresá el email autorizado del cliente'); return; }
+    if (!guestEmail.trim() || !guestPassword.trim()) { setGuestError('Completá email y contraseña'); return; }
     setGuestError('');
     setGuestLoading(true);
     try {
+      const { getSupabase } = await import('@/lib/supabase');
+      const supabase = getSupabase();
+      const { data, error } = await supabase.auth.signInWithPassword({ email: guestEmail.trim(), password: guestPassword });
+      if (error || !data.session) { setGuestError(error?.message || 'Credenciales incorrectas'); return; }
+
       const res = await fetch(`/api/calendar-links/${token}/guest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,9 +103,9 @@ function AuthGate({ token, client, calendarType, onEnter }: {
       });
       const json = await res.json();
       if (!res.ok) { setGuestError(json.error || 'Email no autorizado'); return; }
-      onEnter({ type: 'guest', name: guestName.trim(), email: json.email || guestEmail.trim(), color: guestColor });
+      onEnter({ type: 'guest', name: json.name || data.session.user.email || guestEmail.trim(), email: json.email || guestEmail.trim(), color: GUEST_COLORS[0], authToken: data.session.access_token });
     } catch {
-      setGuestError('Error al validar el email');
+      setGuestError('Error al validar el acceso');
     } finally {
       setGuestLoading(false);
     }
@@ -162,23 +166,20 @@ function AuthGate({ token, client, calendarType, onEnter }: {
         ) : (
           <form onSubmit={handleGuest} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium">¿Quién sos?</label>
-              <Input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Tu nombre" className="h-11 rounded-xl" autoFocus />
+              <label className="text-xs font-medium">Email</label>
+              <Input value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="tu@email.com" type="email" className="h-11 rounded-xl" autoFocus />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Email autorizado del cliente</label>
-              <Input value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="tu@email.com" type="email" className="h-11 rounded-xl" />
-              {guestError && <p className="text-xs text-destructive">{guestError}</p>}
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium">Color</label>
-              <div className="flex gap-2 flex-wrap">
-                {GUEST_COLORS.map(c => (
-                  <button key={c} type="button" onClick={() => setGuestColor(c)}
-                    className={cn('h-8 w-8 rounded-lg border-2 transition-all', guestColor === c ? 'border-foreground scale-110' : 'border-gray-300 dark:border-gray-600')}
-                    style={{ backgroundColor: c }} />
-                ))}
+              <label className="text-xs font-medium">Contraseña</label>
+              <div className="relative">
+                <Input value={guestPassword} onChange={e => setGuestPassword(e.target.value)} placeholder="••••••••"
+                  type={showGuestPassword ? 'text' : 'password'} className="h-11 rounded-xl pr-10" />
+                <button type="button" onClick={() => setShowGuestPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showGuestPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
+              {guestError && <p className="text-xs text-destructive">{guestError}</p>}
             </div>
             <Button type="submit" variant="cta" size="cta" className="w-full gap-2" disabled={guestLoading}>
               {guestLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <User className="h-4 w-4" />} Entrar al calendario
