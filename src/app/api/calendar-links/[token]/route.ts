@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { decodeJwt } from 'jose';
 import { enrichIdeasWithAssignees } from '@/lib/idea-assignees-server';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -11,29 +12,97 @@ function getAdmin() {
   });
 }
 
+type CalendarType = 'social' | 'ads';
+
+function isCalendarType(value: string): value is CalendarType {
+  return value === 'social' || value === 'ads';
+}
+
+async function resolveCalendarLink(supabase: ReturnType<typeof getAdmin>, token: string, requestedType: CalendarType) {
+  const { data: link } = await supabase
+    .from('calendar_share_links')
+    .select('token, client_id, calendar_type, month, allowed_client_id, enabled')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (link) {
+    if (!link.enabled) return { error: 'Calendario no disponible', status: 404 as const };
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('id, name, logo_url, social_calendar_enabled, ads_calendar_enabled')
+      .eq('id', link.client_id)
+      .single();
+    if (clientError || !client) return { error: 'Calendario no encontrado', status: 404 as const };
+    return { client, link, type: link.calendar_type as CalendarType, month: link.month as string };
+  }
+
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .select('id, name, logo_url, share_token, social_calendar_enabled, ads_calendar_enabled')
+    .eq('share_token', token)
+    .single();
+
+  if (clientError || !client) return { error: 'Calendario no encontrado', status: 404 as const };
+  return {
+    client,
+    link: { allowed_client_id: client.id, calendar_type: requestedType, month: null },
+    type: requestedType,
+    month: null,
+  };
+}
+
+async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof getAdmin>, allowedClientId: string) {
+  const authHeader = request.headers.get('authorization') || '';
+  const token = authHeader.replace('Bearer ', '');
+  if (token && token !== 'undefined') {
+    try {
+      const payload = decodeJwt(token);
+      const userId = String(payload.sub || '');
+      if (userId) {
+        const { data: user } = await supabase
+          .from('users')
+          .select('role, client_id')
+          .eq('id', userId)
+          .single();
+        if (user?.role === 'admin' || user?.role === 'operador' || user?.client_id === allowedClientId) return true;
+      }
+    } catch { /* ignore */ }
+  }
+
+  const url = new URL(request.url);
+  const guestEmail = (request.headers.get('x-guest-email') || url.searchParams.get('guest_email') || '').trim().toLowerCase();
+  if (!guestEmail) return false;
+
+  const { data: allowedUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('client_id', allowedClientId)
+    .ilike('email', guestEmail)
+    .maybeSingle();
+
+  return !!allowedUser;
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params;
     const url = new URL(request.url);
-    const month = url.searchParams.get('month');
-    const type = url.searchParams.get('type') || 'social'; // 'social' | 'ads'
+    const requestedMonth = url.searchParams.get('month');
+    const requestedType = url.searchParams.get('type') || 'social';
+    const metaOnly = url.searchParams.get('meta') === '1';
 
     if (!token) {
       return NextResponse.json({ error: 'Token requerido' }, { status: 400 });
     }
 
+    if (!isCalendarType(requestedType)) return NextResponse.json({ error: 'Tipo de calendario inválido' }, { status: 400 });
+
     const supabase = getAdmin();
+    const resolved = await resolveCalendarLink(supabase, token, requestedType);
+    if ('error' in resolved) return NextResponse.json({ error: resolved.error }, { status: resolved.status });
 
-    // Look up client by share_token
-    const { data: client, error: clientError } = await supabase
-      .from('clients')
-      .select('id, name, logo_url, share_token, social_calendar_enabled, ads_calendar_enabled')
-      .eq('share_token', token)
-      .single();
-
-    if (clientError || !client) {
-      return NextResponse.json({ error: 'Calendario no encontrado' }, { status: 404 });
-    }
+    const { client, link, type } = resolved;
+    const month = resolved.month || requestedMonth;
 
     // Validate the requested calendar type is enabled
     if (type === 'ads' && !client.ads_calendar_enabled) {
@@ -42,6 +111,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     if (type === 'social' && !client.social_calendar_enabled) {
       return NextResponse.json({ error: 'Calendario de redes no disponible para este cliente' }, { status: 404 });
     }
+
+    if (metaOnly) {
+      return NextResponse.json({
+        client: { id: client.id, name: client.name, logo_url: client.logo_url },
+        calendar_type: type,
+        month,
+        requires_guest_email: true,
+      });
+    }
+
+    const canAccess = await hasCalendarAccess(request, supabase, link.allowed_client_id);
+    if (!canAccess) return NextResponse.json({ error: 'Email no autorizado para este calendario' }, { status: 401 });
 
     const table = type === 'ads' ? 'ads_ideas' : 'social_ideas';
 
@@ -136,6 +217,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       comments_by_idea: comments,
       ecommerce_dates: ecommerceDates,
       calendar_type: type,
+      month,
     });
   } catch (e) {
     console.error('GET /api/calendar-links/[token] error:', e);

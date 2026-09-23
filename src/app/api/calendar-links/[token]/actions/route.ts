@@ -53,6 +53,22 @@ function getCurrentUserId(request: Request): string | null {
 
 async function resolveClient(token: string) {
   const supabase = getAdmin();
+  const { data: link } = await supabase
+    .from('calendar_share_links')
+    .select('client_id, enabled')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (link) {
+    if (!link.enabled) return { client: null, error: new Error('Calendario no disponible') };
+    const { data: client, error } = await supabase
+      .from('clients')
+      .select('id, name')
+      .eq('id', link.client_id)
+      .single();
+    return { client, error };
+  }
+
   const { data: client, error } = await supabase
     .from('clients')
     .select('id, name')

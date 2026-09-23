@@ -28,6 +28,7 @@ interface Viewer {
   type: 'user' | 'guest';
   name: string;
   color: string;
+  email?: string;
   authToken?: string; // JWT for authenticated users
 }
 
@@ -39,7 +40,8 @@ function getStorageKey(token: string, type: string) {
 
 // ─── Auth Gate ────────────────────────────────────────────────────────────────
 
-function AuthGate({ client, calendarType, onEnter }: {
+function AuthGate({ token, client, calendarType, onEnter }: {
+  token: string;
   client: { name: string; logo_url: string | null };
   calendarType: 'social' | 'ads';
   onEnter: (viewer: Viewer) => void;
@@ -53,8 +55,10 @@ function AuthGate({ client, calendarType, onEnter }: {
   const [loginError, setLoginError] = useState('');
   // Guest state
   const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
   const [guestColor, setGuestColor] = useState(GUEST_COLORS[0]);
   const [guestError, setGuestError] = useState('');
+  const [guestLoading, setGuestLoading] = useState(false);
 
   const calLabel = calendarType === 'ads' ? 'Piezas para ADS' : 'Calendario de Redes';
 
@@ -81,11 +85,26 @@ function AuthGate({ client, calendarType, onEnter }: {
     }
   };
 
-  const handleGuest = (e: React.FormEvent) => {
+  const handleGuest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guestName.trim()) { setGuestError('Ingresá tu nombre'); return; }
+    if (!guestEmail.trim()) { setGuestError('Ingresá el email autorizado del cliente'); return; }
     setGuestError('');
-    onEnter({ type: 'guest', name: guestName.trim(), color: guestColor });
+    setGuestLoading(true);
+    try {
+      const res = await fetch(`/api/calendar-links/${token}/guest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: guestEmail.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setGuestError(json.error || 'Email no autorizado'); return; }
+      onEnter({ type: 'guest', name: guestName.trim(), email: json.email || guestEmail.trim(), color: guestColor });
+    } catch {
+      setGuestError('Error al validar el email');
+    } finally {
+      setGuestLoading(false);
+    }
   };
 
   return (
@@ -108,7 +127,7 @@ function AuthGate({ client, calendarType, onEnter }: {
           <button type="button" onClick={() => setTab('login')}
             className={cn('flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
               tab === 'login' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-            <LogIn className="h-4 w-4" /> Iniciar sesión
+            <LogIn className="h-4 w-4" /> Como Merco
           </button>
           <button type="button" onClick={() => setTab('guest')}
             className={cn('flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
@@ -145,6 +164,10 @@ function AuthGate({ client, calendarType, onEnter }: {
             <div className="space-y-2">
               <label className="text-xs font-medium">¿Quién sos?</label>
               <Input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Tu nombre" className="h-11 rounded-xl" autoFocus />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Email autorizado del cliente</label>
+              <Input value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="tu@email.com" type="email" className="h-11 rounded-xl" />
               {guestError && <p className="text-xs text-destructive">{guestError}</p>}
             </div>
             <div className="space-y-2">
@@ -157,8 +180,8 @@ function AuthGate({ client, calendarType, onEnter }: {
                 ))}
               </div>
             </div>
-            <Button type="submit" variant="cta" size="cta" className="w-full gap-2">
-              <User className="h-4 w-4" /> Entrar al calendario
+            <Button type="submit" variant="cta" size="cta" className="w-full gap-2" disabled={guestLoading}>
+              {guestLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <User className="h-4 w-4" />} Entrar al calendario
             </Button>
           </form>
         )}
@@ -503,7 +526,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         const stored = localStorage.getItem(getStorageKey(resolvedToken, type));
         if (stored) {
           const saved = JSON.parse(stored) as Viewer;
-          if (saved.name?.trim()) {
+          if (saved.name?.trim() && saved.email?.trim()) {
             setViewer(saved);
             setAuthMode('authenticated');
             return;
@@ -521,13 +544,20 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     if (!token) return;
     setFetchLoading(true);
     setError(null);
-    fetch(`/api/calendar-links/${token}?month=${viewMonth}&type=${calendarType}`)
+    const params = new URLSearchParams({ type: calendarType });
+    if (viewMonth) params.set('month', viewMonth);
+    if (viewer?.type === 'guest' && viewer.email) params.set('guest_email', viewer.email);
+    fetch(`/api/calendar-links/${token}?${params.toString()}`, {
+      headers: viewer?.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {},
+    })
       .then(r => r.json())
       .then(json => {
         if (!json.client) throw new Error(json.error || 'Calendario no encontrado');
         setData(json);
         if (!viewMonth) {
-          if (json.ideas.length > 0) {
+          if (json.month) {
+            setViewMonth(json.month);
+          } else if (json.ideas.length > 0) {
             setViewMonth(json.ideas[0].publish_date.substring(0, 7));
           } else {
             const now = new Date();
@@ -537,7 +567,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
       })
       .catch(e => setError(e.message))
       .finally(() => setFetchLoading(false));
-  }, [token, viewMonth, calendarType]);
+  }, [token, viewMonth, calendarType, viewer]);
 
   useEffect(() => {
     if (authMode === 'authenticated') fetchCalendar();
@@ -547,7 +577,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     setViewer(v);
     // Only persist guest sessions; authenticated users re-detect via session on next load
     if (v.type === 'guest') {
-      localStorage.setItem(getStorageKey(token!, calendarType), JSON.stringify({ type: 'guest', name: v.name, color: v.color }));
+      localStorage.setItem(getStorageKey(token!, calendarType), JSON.stringify({ type: 'guest', name: v.name, email: v.email, color: v.color }));
     }
     setAuthMode('authenticated');
   };
@@ -735,7 +765,7 @@ function GateWithClientFetch({ token, calendarType, onEnter }: {
   const [fetchError, setFetchError] = useState('');
 
   useEffect(() => {
-    fetch(`/api/calendar-links/${token}?type=${calendarType}`)
+    fetch(`/api/calendar-links/${token}?type=${calendarType}&meta=1`)
       .then(r => r.json())
       .then(json => {
         if (json.client) setClient(json.client);
@@ -758,5 +788,5 @@ function GateWithClientFetch({ token, calendarType, onEnter }: {
       </div>
     );
   }
-  return <AuthGate client={client} calendarType={calendarType} onEnter={onEnter} />;
+  return <AuthGate token={token} client={client} calendarType={calendarType} onEnter={onEnter} />;
 }

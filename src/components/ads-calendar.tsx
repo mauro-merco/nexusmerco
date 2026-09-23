@@ -354,12 +354,16 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
   useEffect(() => {
     if (!clientId) return;
     setShareLoading(true);
-    fetch(`/api/clients/${clientId}`)
+    fetch('/api/calendar-links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: clientId, calendar_type: 'ads', month: monthStr }),
+    })
       .then(r => r.json())
-      .then(json => setShareToken(json.data?.share_token || null))
+      .then(json => setShareToken(json.data?.token || null))
       .catch(() => {})
       .finally(() => setShareLoading(false));
-  }, [clientId]);
+  }, [clientId, monthStr]);
 
   const syncIdea = useCallback((updated: SocialIdea) => {
     setSelectedIdea(updated);
@@ -475,14 +479,14 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
               <Button variant="outline" size="sm" className="gap-1.5"
                 onClick={async () => {
                   try {
-                    const res = await fetch(`/api/clients/${clientId}`, {
-                      method: 'PUT',
+                    const res = await fetch('/api/calendar-links', {
+                      method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ share_token: crypto.randomUUID() }),
+                      body: JSON.stringify({ client_id: clientId, calendar_type: 'ads', month: monthStr }),
                     });
                     if (res.ok) {
                       const json = await res.json();
-                      setShareToken(json.data?.share_token);
+                      setShareToken(json.data?.token);
                     }
                   } catch { /* ignore */ }
                 }}>

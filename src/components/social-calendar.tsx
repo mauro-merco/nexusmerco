@@ -264,22 +264,26 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
     patchIdea(updated);
   }, [patchIdea]);
 
-  // Fetch client share token
+  // Fetch/create share token for the visible month
   const fetchShareToken = useCallback(async () => {
     if (!clientId) return;
     setShareLoading(true);
     try {
-      const res = await fetch(`/api/clients/${clientId}`);
+      const res = await fetch('/api/calendar-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, calendar_type: 'social', month: monthStr }),
+      });
       if (res.ok) {
         const json = await res.json();
-        setShareToken(json.data?.share_token || null);
+        setShareToken(json.data?.token || null);
       }
     } catch {
       // ignore
     } finally {
       setShareLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, monthStr]);
 
   useEffect(() => {
     fetchShareToken();
@@ -432,17 +436,15 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
               size="sm"
               className="gap-1.5"
               onClick={async () => {
-                // This will trigger the auto-migration to generate the share_token
-                // We need to ensure the token exists
                 try {
-                  const res = await fetch(`/api/clients/${clientId}`, {
-                    method: 'PUT',
+                  const res = await fetch('/api/calendar-links', {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ share_token: crypto.randomUUID() }),
+                    body: JSON.stringify({ client_id: clientId, calendar_type: 'social', month: monthStr }),
                   });
                   if (res.ok) {
                     const json = await res.json();
-                    setShareToken(json.data?.share_token);
+                    setShareToken(json.data?.token);
                   }
                 } catch {
                   // ignore
