@@ -65,7 +65,8 @@ async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof g
           .eq('id', userId)
           .single();
         if (user?.role === 'admin' || user?.role === 'operador') return true;
-        if (user?.client_id === link.allowed_client_id && (link.legacy || (link.allowed_user_ids || []).includes(userId))) return true;
+        if (link.legacy && user?.client_id === link.allowed_client_id) return true;
+        if ((link.allowed_user_ids || []).includes(userId)) return true;
       }
     } catch { /* ignore */ }
   }
@@ -80,7 +81,6 @@ async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof g
   const { data: allowedUser } = await supabase
     .from('users')
     .select('id')
-    .eq('client_id', link.allowed_client_id)
     .ilike('email', guestEmail)
     .maybeSingle();
 

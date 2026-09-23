@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const appFilter = searchParams.get('app_id') || APP_ID;
     const clientId = searchParams.get('client_id');
+    const role = searchParams.get('role');
 
     let query = supabase
       .from('users')
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
       .order('full_name', { ascending: true });
 
     if (clientId) query = query.eq('client_id', clientId).eq('role', 'client');
+    if (role) query = query.eq('role', role);
 
     const { data, error } = await query;
     if (error) throw error;

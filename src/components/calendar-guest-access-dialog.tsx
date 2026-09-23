@@ -5,7 +5,6 @@ import { Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 
 type ClientUser = {
   id: string;
@@ -41,7 +40,6 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
   const [allowedClientId, setAllowedClientId] = useState(clientId);
   const [guestEnabled, setGuestEnabled] = useState(false);
   const [allowedUserIds, setAllowedUserIds] = useState<string[]>([]);
-  const [allowedEmailsText, setAllowedEmailsText] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -52,10 +50,9 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
     setAllowedClientId(initialClientId);
     setGuestEnabled(!!config?.guest_enabled);
     setAllowedUserIds(config?.allowed_user_ids || []);
-    setAllowedEmailsText((config?.allowed_emails || []).join('\n'));
     setLoading(true);
     setError('');
-    Promise.all([fetch('/api/clients').then(r => r.json()), fetch(`/api/users?client_id=${initialClientId}`).then(r => r.json())])
+    Promise.all([fetch('/api/clients').then(r => r.json()), fetch('/api/users?role=client').then(r => r.json())])
       .then(([clientsJson, usersJson]) => {
         setClients(clientsJson.data || []);
         setUsers(usersJson.data || []);
@@ -63,18 +60,6 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
       .catch(() => setError('No se pudieron cargar los clientes'))
       .finally(() => setLoading(false));
   }, [open, clientId, config]);
-
-  useEffect(() => {
-    if (!open) return;
-    const initialClientId = config?.allowed_client_id || clientId;
-    setLoading(true);
-    if (allowedClientId !== initialClientId) setAllowedUserIds([]);
-    fetch(`/api/users?client_id=${allowedClientId}`)
-      .then(r => r.json())
-      .then(json => setUsers(json.data || []))
-      .catch(() => setError('No se pudieron cargar los usuarios cliente'))
-      .finally(() => setLoading(false));
-  }, [allowedClientId, open]);
 
   const toggleUser = (userId: string) => {
     setAllowedUserIds(current => current.includes(userId) ? current.filter(id => id !== userId) : [...current, userId]);
@@ -84,10 +69,6 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
     setSaving(true);
     setError('');
     try {
-      const allowedEmails = allowedEmailsText
-        .split(/[\n,;]/)
-        .map(email => email.trim().toLowerCase())
-        .filter(Boolean);
       const res = await fetch('/api/calendar-links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,7 +79,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
           allowed_client_id: allowedClientId,
           guest_enabled: guestEnabled,
           allowed_user_ids: guestEnabled ? allowedUserIds : [],
-          allowed_emails: guestEnabled ? allowedEmails : [],
+          allowed_emails: [],
         }),
       });
       const json = await res.json();
@@ -154,9 +135,10 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
             {loading ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
             ) : users.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No hay usuarios creados para este cliente. Podés habilitar acceso cargando emails abajo.</p>
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No hay usuarios cliente creados en Configuración.</p>
             ) : (
               <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Emails de clientes habilitados</p>
                 {users.map(user => (
                   <label key={user.id} className="flex items-center gap-3 rounded-xl border p-3 text-sm">
                     <Checkbox
@@ -172,18 +154,6 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
                 ))}
               </div>
             )}
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Emails autorizados</label>
-              <Textarea
-                value={allowedEmailsText}
-                disabled={!guestEnabled}
-                onChange={(event) => setAllowedEmailsText(event.target.value)}
-                placeholder="cliente@empresa.com&#10;otro@empresa.com"
-                className="min-h-24 disabled:opacity-60"
-              />
-              <p className="text-[11px] text-muted-foreground">Podés poner un email por línea o separarlos con coma. Esos mails podrán entrar como invitado.</p>
-            </div>
 
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
