@@ -542,6 +542,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
   const fetchCalendar = useCallback(() => {
     if (!token) return;
+    if (!viewer?.authToken && viewer?.type === 'guest' && !viewer.email) return;
     setFetchLoading(true);
     setError(null);
     const params = new URLSearchParams({ type: calendarType });
@@ -570,8 +571,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   }, [token, viewMonth, calendarType, viewer]);
 
   useEffect(() => {
-    if (authMode === 'authenticated') fetchCalendar();
-  }, [authMode, fetchCalendar]);
+    if (authMode === 'authenticated' && viewer) fetchCalendar();
+  }, [authMode, viewer, fetchCalendar]);
 
   const handleViewerEnter = (v: Viewer) => {
     setViewer(v);
