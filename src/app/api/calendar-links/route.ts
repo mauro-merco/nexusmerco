@@ -43,7 +43,7 @@ async function getLegacyClientToken(supabase: ReturnType<typeof getAdmin>, clien
 
 export async function POST(request: Request) {
   try {
-    const { client_id, calendar_type = 'social', month, allowed_client_id, guest_enabled, allowed_user_ids } = await request.json();
+    const { client_id, calendar_type = 'social', month, allowed_client_id, guest_enabled, allowed_user_ids, allowed_emails } = await request.json();
     if (!client_id || !month || !['social', 'ads'].includes(calendar_type)) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
     }
@@ -61,11 +61,12 @@ export async function POST(request: Request) {
     };
     if (guest_enabled !== undefined) payload.guest_enabled = !!guest_enabled;
     if (Array.isArray(allowed_user_ids)) payload.allowed_user_ids = allowed_user_ids;
+    if (Array.isArray(allowed_emails)) payload.allowed_emails = allowed_emails.map((email: string) => String(email).trim().toLowerCase()).filter(Boolean);
 
     const { data, error } = await supabase
       .from('calendar_share_links')
       .upsert(payload, { onConflict: 'client_id,calendar_type,month' })
-      .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, enabled')
+      .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, allowed_emails, enabled')
       .single();
 
     if (error) {

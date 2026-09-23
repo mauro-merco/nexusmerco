@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
-type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
+type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[]; allowed_emails?: string[] };
 
 const ECOMMERCE_COLORS = [
   { label: 'Rojo',    value: '#ef4444' },
@@ -368,7 +368,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
       .then(async r => {
         const json = await r.json();
         if (!r.ok) throw new Error(json.error || 'No se pudo generar el link');
-        setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
+        setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [], allowed_emails: json.data?.allowed_emails || [] });
       })
       .catch((err) => setShareError(err instanceof Error ? err.message : 'No se pudo generar el link'))
       .finally(() => setShareLoading(false));
@@ -500,7 +500,7 @@ export function AdsCalendar({ clientId, clientName: _clientName }: AdsCalendarPr
                     });
                     const json = await res.json();
                     if (!res.ok) throw new Error(json.error || 'No se pudo generar el link');
-                    setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
+                    setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [], allowed_emails: json.data?.allowed_emails || [] });
                   } catch (err) {
                     setShareError(err instanceof Error ? err.message : 'No se pudo generar el link');
                   } finally {

@@ -20,14 +20,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const supabase = getAdmin();
     const { data: link } = await supabase
       .from('calendar_share_links')
-      .select('allowed_client_id, guest_enabled, allowed_user_ids, enabled')
+      .select('allowed_client_id, guest_enabled, allowed_user_ids, allowed_emails, enabled')
       .eq('token', token)
       .maybeSingle();
 
     let allowedClientId = link?.allowed_client_id as string | undefined;
     if (link && !link.enabled) return NextResponse.json({ error: 'Calendario no disponible' }, { status: 404 });
-    if (link && (!link.guest_enabled || !link.allowed_user_ids?.length)) {
+    const allowedEmails = (link?.allowed_emails || []).map((item: string) => item.toLowerCase());
+    if (link && (!link.guest_enabled || (!link.allowed_user_ids?.length && !allowedEmails.length))) {
       return NextResponse.json({ error: 'El ingreso como invitado no está habilitado para este calendario' }, { status: 403 });
+    }
+
+    if (link && allowedEmails.includes(normalizedEmail)) {
+      return NextResponse.json({ ok: true, name: normalizedEmail, email: normalizedEmail });
     }
 
     if (!allowedClientId) {

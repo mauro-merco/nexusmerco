@@ -5,6 +5,7 @@ import { Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 type ClientUser = {
   id: string;
@@ -22,6 +23,7 @@ type CalendarShareConfig = {
   allowed_client_id?: string;
   guest_enabled: boolean;
   allowed_user_ids: string[];
+  allowed_emails?: string[];
 };
 
 interface CalendarGuestAccessDialogProps {
@@ -39,6 +41,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
   const [allowedClientId, setAllowedClientId] = useState(clientId);
   const [guestEnabled, setGuestEnabled] = useState(false);
   const [allowedUserIds, setAllowedUserIds] = useState<string[]>([]);
+  const [allowedEmailsText, setAllowedEmailsText] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -49,6 +52,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
     setAllowedClientId(initialClientId);
     setGuestEnabled(!!config?.guest_enabled);
     setAllowedUserIds(config?.allowed_user_ids || []);
+    setAllowedEmailsText((config?.allowed_emails || []).join('\n'));
     setLoading(true);
     setError('');
     Promise.all([fetch('/api/clients').then(r => r.json()), fetch(`/api/users?client_id=${initialClientId}`).then(r => r.json())])
@@ -80,6 +84,10 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
     setSaving(true);
     setError('');
     try {
+      const allowedEmails = allowedEmailsText
+        .split(/[\n,;]/)
+        .map(email => email.trim().toLowerCase())
+        .filter(Boolean);
       const res = await fetch('/api/calendar-links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,6 +98,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
           allowed_client_id: allowedClientId,
           guest_enabled: guestEnabled,
           allowed_user_ids: guestEnabled ? allowedUserIds : [],
+          allowed_emails: guestEnabled ? allowedEmails : [],
         }),
       });
       const json = await res.json();
@@ -99,6 +108,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
         allowed_client_id: json.data?.allowed_client_id || allowedClientId,
         guest_enabled: !!json.data?.guest_enabled,
         allowed_user_ids: json.data?.allowed_user_ids || [],
+        allowed_emails: json.data?.allowed_emails || [],
       });
       setOpen(false);
     } catch {
@@ -108,7 +118,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
     }
   };
 
-  const enabledCount = config?.guest_enabled ? config.allowed_user_ids.length : 0;
+  const enabledCount = config?.guest_enabled ? config.allowed_user_ids.length + (config.allowed_emails?.length || 0) : 0;
 
   return (
     <>
@@ -144,7 +154,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
             {loading ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
             ) : users.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No hay usuarios asociados al cliente seleccionado.</p>
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No hay usuarios creados para este cliente. Podés habilitar acceso cargando emails abajo.</p>
             ) : (
               <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                 {users.map(user => (
@@ -162,6 +172,18 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
                 ))}
               </div>
             )}
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Emails autorizados</label>
+              <Textarea
+                value={allowedEmailsText}
+                disabled={!guestEnabled}
+                onChange={(event) => setAllowedEmailsText(event.target.value)}
+                placeholder="cliente@empresa.com&#10;otro@empresa.com"
+                className="min-h-24 disabled:opacity-60"
+              />
+              <p className="text-[11px] text-muted-foreground">Podés poner un email por línea o separarlos con coma. Esos mails podrán entrar como invitado.</p>
+            </div>
 
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>

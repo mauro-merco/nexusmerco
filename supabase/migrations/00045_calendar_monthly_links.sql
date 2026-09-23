@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.calendar_share_links (
   allowed_client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
   guest_enabled BOOLEAN NOT NULL DEFAULT false,
   allowed_user_ids UUID[] NOT NULL DEFAULT '{}',
+  allowed_emails TEXT[] NOT NULL DEFAULT '{}',
   enabled BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
