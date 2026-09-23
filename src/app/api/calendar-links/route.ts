@@ -43,7 +43,7 @@ async function getLegacyClientToken(supabase: ReturnType<typeof getAdmin>, clien
 
 export async function POST(request: Request) {
   try {
-    const { client_id, calendar_type = 'social', month, allowed_client_id, guest_enabled, allowed_user_ids, allowed_emails } = await request.json();
+    const { client_id, calendar_type = 'social', month, allowed_client_id, guest_enabled, allowed_user_ids } = await request.json();
     if (!client_id || !month || !['social', 'ads'].includes(calendar_type)) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
     }
@@ -52,18 +52,21 @@ export async function POST(request: Request) {
     }
 
     const supabase = getAdmin();
-    const hasConfigUpdate = guest_enabled !== undefined || Array.isArray(allowed_user_ids) || Array.isArray(allowed_emails) || allowed_client_id !== undefined;
+    const hasConfigUpdate = guest_enabled !== undefined || Array.isArray(allowed_user_ids) || allowed_client_id !== undefined;
 
     const { data: existing, error: existingError } = await supabase
       .from('calendar_share_links')
-      .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, allowed_emails, enabled')
+      .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, enabled')
       .eq('client_id', client_id)
       .eq('calendar_type', calendar_type)
       .eq('month', month)
       .maybeSingle();
 
-    if (existingError && !(existingError.code === '42P01' || existingError.code === '42703' || existingError.message?.includes('calendar_share_links'))) {
+    if (existingError && !(existingError.code === '42P01' || existingError.message?.includes('calendar_share_links'))) {
       throw existingError;
+    }
+    if (existingError && hasConfigUpdate) {
+      return NextResponse.json({ error: 'Falta aplicar la migración de links de calendario en Supabase' }, { status: 500 });
     }
     if (existing && !hasConfigUpdate) return NextResponse.json({ data: existing });
 
@@ -76,16 +79,15 @@ export async function POST(request: Request) {
     };
     if (guest_enabled !== undefined) payload.guest_enabled = !!guest_enabled;
     if (Array.isArray(allowed_user_ids)) payload.allowed_user_ids = allowed_user_ids;
-    if (Array.isArray(allowed_emails)) payload.allowed_emails = allowed_emails.map((email: string) => String(email).trim().toLowerCase()).filter(Boolean);
 
     const { data, error } = await supabase
       .from('calendar_share_links')
       .upsert(payload, { onConflict: 'client_id,calendar_type,month' })
-      .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, allowed_emails, enabled')
+      .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, enabled')
       .single();
 
     if (error) {
-      if (error.code === '42P01' || error.code === '42703' || error.message?.includes('calendar_share_links')) {
+      if (!hasConfigUpdate && (error.code === '42P01' || error.message?.includes('calendar_share_links'))) {
         const legacy = await getLegacyClientToken(supabase, client_id, calendar_type, month);
         return NextResponse.json({ data: legacy });
       }

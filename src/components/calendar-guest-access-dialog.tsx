@@ -22,7 +22,6 @@ type CalendarShareConfig = {
   allowed_client_id?: string;
   guest_enabled: boolean;
   allowed_user_ids: string[];
-  allowed_emails?: string[];
 };
 
 interface CalendarGuestAccessDialogProps {
@@ -79,7 +78,6 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
           allowed_client_id: allowedClientId,
           guest_enabled: guestEnabled,
           allowed_user_ids: guestEnabled ? allowedUserIds : [],
-          allowed_emails: [],
         }),
       });
       const json = await res.json();
@@ -89,7 +87,6 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
         allowed_client_id: json.data?.allowed_client_id || allowedClientId,
         guest_enabled: !!json.data?.guest_enabled,
         allowed_user_ids: json.data?.allowed_user_ids || [],
-        allowed_emails: json.data?.allowed_emails || [],
       });
       setOpen(false);
     } catch {
@@ -99,7 +96,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
     }
   };
 
-  const enabledCount = config?.guest_enabled ? config.allowed_user_ids.length + (config.allowed_emails?.length || 0) : 0;
+  const enabledCount = config?.guest_enabled ? config.allowed_user_ids.length : 0;
 
   return (
     <>

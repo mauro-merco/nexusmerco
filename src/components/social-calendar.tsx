@@ -30,7 +30,7 @@ import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import { ChevronLeft, ChevronRight, Plus, Calendar, Loader2, GripVertical, Check, ChevronDown, Copy, Share, RefreshCw } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
-type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[]; allowed_emails?: string[] };
+type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
 
 function StatusDropdown({ idea, onStatusChange }: { idea: SocialIdea; onStatusChange: (id: string, status: IdeaStatus) => void }) {
   const stConfig = STATUS_CONFIG[idea.status];
@@ -283,7 +283,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'No se pudo generar el link');
-      setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [], allowed_emails: json.data?.allowed_emails || [] });
+      setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
     } catch (err) {
       setShareError(err instanceof Error ? err.message : 'No se pudo generar el link');
     } finally {
@@ -455,7 +455,7 @@ export function SocialCalendar({ clientId, clientName }: SocialCalendarProps) {
                   });
                   const json = await res.json();
                   if (!res.ok) throw new Error(json.error || 'No se pudo generar el link');
-                  setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [], allowed_emails: json.data?.allowed_emails || [] });
+                  setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
                 } catch (err) {
                   setShareError(err instanceof Error ? err.message : 'No se pudo generar el link');
                 } finally {
