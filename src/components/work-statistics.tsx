@@ -21,7 +21,7 @@ interface StatsResponse {
   items: WorkStatsItem[];
 }
 
-export function WorkStatistics({ clientId, userId }: { clientId?: string; userId?: string }) {
+export function WorkStatistics({ clientId, userId, compact }: { clientId?: string; userId?: string; compact?: boolean }) {
   const [data, setData] = useState<StatsResponse | null>(null);
   const [range, setRange] = useState<Range>('month');
   const [loading, setLoading] = useState(true);
@@ -39,6 +39,24 @@ export function WorkStatistics({ clientId, userId }: { clientId?: string; userId
 
   if (loading) return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!data) return null;
+
+  if (compact) {
+    return (
+      <div className="grid grid-cols-2 gap-2.5">
+        {[
+          { label: 'Piezas cerradas', value: data.summary.pieces },
+          { label: 'Tareas cerradas', value: data.summary.closed },
+          { label: 'Activos', value: data.summary.active },
+          { label: 'Historial total', value: data.summary.total },
+        ].map(item => (
+          <div key={item.label}>
+            <p className="text-lg font-bold leading-none">{item.value}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{item.label}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   const series = data.series[range] || [];
   const max = Math.max(1, ...series.map(item => item.completed));

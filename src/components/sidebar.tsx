@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
@@ -25,6 +24,7 @@ import {
   Users2,
   Lightbulb,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -57,6 +57,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Lightbulb,
 };
 
+const STORAGE_KEY = 'nexus-sidebar-collapsed';
+
 function TransitionOverlay({ label }: { label: string }) {
   return (
     <div
@@ -68,16 +70,11 @@ function TransitionOverlay({ label }: { label: string }) {
         className="pointer-events-none absolute bottom-1/4 right-1/4 h-72 w-72 animate-pulse rounded-full opacity-30 blur-[90px]"
         style={{ backgroundImage: 'radial-gradient(circle, rgba(34,211,238,0.5), transparent 70%)' }}
       />
-
       <div className="relative flex h-36 w-36 items-center justify-center">
         <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_both] rounded-full border border-cyan-400/50" />
         <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_0.35s_both] rounded-full border border-violet-500/50" />
         <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_0.7s_both] rounded-full border border-fuchsia-500/50" />
-
-        <svg
-          viewBox="0 0 80 80"
-          className="h-24 w-24 animate-[transition-pop_0.5s_cubic-bezier(0.22,1,0.36,1)_both]"
-        >
+        <svg viewBox="0 0 80 80" className="h-24 w-24 animate-[transition-pop_0.5s_cubic-bezier(0.22,1,0.36,1)_both]">
           <defs>
             <linearGradient id="transition-loader-grad" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#22d3ee" />
@@ -85,23 +82,10 @@ function TransitionOverlay({ label }: { label: string }) {
               <stop offset="100%" stopColor="#a855f7" />
             </linearGradient>
           </defs>
-          <circle
-            cx="40"
-            cy="40"
-            r="34"
-            fill="none"
-            stroke="url(#transition-loader-grad)"
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray="214"
-            strokeDashoffset="214"
-            style={{ animation: 'draw 1.4s ease-in-out infinite' }}
-          />
+          <circle cx="40" cy="40" r="34" fill="none" stroke="url(#transition-loader-grad)" strokeWidth="5" strokeLinecap="round" strokeDasharray="214" strokeDashoffset="214" style={{ animation: 'draw 1.4s ease-in-out infinite' }} />
         </svg>
-
         <div className="bg-gradient-tech pointer-events-none absolute h-10 w-10 animate-pulse rounded-full opacity-30 blur-2xl" />
       </div>
-
       <div className="space-y-1 text-center">
         <p className="text-xs text-muted-foreground">Cargando</p>
         <p className="text-gradient-tech text-2xl font-bold">{label}</p>
@@ -110,167 +94,107 @@ function TransitionOverlay({ label }: { label: string }) {
   );
 }
 
-function AppsDock({ onNavigate }: { onNavigate: (href: string, label: string) => void }) {
+function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolean; onToggle: () => void; onNavigate: (href: string, label: string) => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const _ = useT();
-  const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   const visibleItems = navItems.filter(
-    (item) =>
-      user &&
-      (user.visible_modules?.includes(item.moduleId) ||
-        DEFAULT_MODULES[user.role]?.includes(item.moduleId))
+    (item) => user && (user.visible_modules?.includes(item.moduleId) || DEFAULT_MODULES[user.role]?.includes(item.moduleId))
   );
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  const handleOpen = (href: string, label: string) => {
-    setOpen(false);
-    onNavigate(href, label);
-  };
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <>
-      {/* Launcher button */}
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        aria-label="Aplicaciones"
-        className="fixed bottom-6 left-6 z-50 hidden md:flex flex-col items-center gap-1.5 group transition-all duration-300 hover:scale-105 active:scale-95"
-      >
-        <span
-          className={cn(
-            'bg-gradient-tech glow-tech relative flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg transition-all duration-500 group-hover:-rotate-6 group-hover:scale-110',
-            open && 'rotate-[20deg] scale-105'
-          )}
-        >
-          <span className="bg-gradient-tech pointer-events-none absolute -inset-1 rounded-2xl opacity-40 blur-lg transition-opacity duration-300 group-hover:opacity-70" />
-          <LayoutGrid className="relative h-6 w-6 transition-transform duration-500 group-hover:rotate-180" />
-        </span>
-        <span className={cn('text-[10px] font-semibold transition-colors', open ? 'text-gradient-tech' : 'text-muted-foreground group-hover:text-foreground')}>
-          {_('nav.apps')}
-        </span>
-      </button>
-
-      {open && (
-        <div className="fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-black/55 backdrop-blur-sm animate-[transition-fade_0.2s_ease-out]"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            ref={panelRef}
-            className="absolute bottom-24 left-6 flex max-h-[72vh] w-[21rem] flex-col overflow-hidden rounded-3xl border border-primary/25 bg-popover shadow-2xl ring-1 ring-black/10 dark:ring-white/10 shadow-[0_24px_70px_-15px_rgba(0,0,0,0.55)] backdrop-blur-2xl animate-[apps-pop_0.35s_cubic-bezier(0.22,1,0.36,1)_both] origin-bottom-left"
-          >
-            {/* Header */}
-            <div className="flex items-center gap-3 border-b px-5 py-4">
-              <div className="bg-gradient-tech glow-tech flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl">
-                <span className="text-sm font-bold text-white">M</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-gradient-tech truncate">Nexus Marketing</p>
-                <p className="text-[10px] text-muted-foreground truncate">{user?.role === 'admin' ? 'Admin' : user?.role === 'operador' ? 'Operador' : 'Cliente'}</p>
-              </div>
-              <button type="button" onClick={() => setOpen(false)} className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Grid */}
-            <div className="sidebar-scroll flex-1 overflow-y-auto px-3 py-3">
-              <div className="grid grid-cols-4 gap-1.5">
-                {visibleItems.map((item, i) => {
-                  const Icon = iconMap[item.icon];
-                  const active = isActive(item.href);
-                  return (
-                    <button
-                      key={item.href}
-                      type="button"
-                      onClick={() => handleOpen(item.href, _(`nav.${item.label}`))}
-                      style={{ animationDelay: `${0.03 * i}s`, animationDuration: '0.35s', animationFillMode: 'both' }}
-                      className="group flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all active:scale-95 animate-[apps-item_cubic-bezier(0.22,1,0.36,1)]"
-                    >
-                      <span
-                        className={cn(
-                          'relative flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300',
-                          active
-                            ? 'bg-gradient-tech glow-tech scale-105 text-white'
-                            : 'bg-muted/50 text-muted-foreground group-hover:scale-110 group-hover:-rotate-6 group-hover:text-primary group-hover:shadow-[0_0_18px_rgba(34,211,238,0.3)]'
-                        )}
-                      >
-                        <span className={cn('bg-gradient-tech pointer-events-none absolute -inset-1 rounded-2xl opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-40', active && 'opacity-40')} />
-                        <Icon className="relative h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
-                      </span>
-                      <span
-                        className={cn(
-                          'text-[10px] font-medium leading-tight text-center line-clamp-2',
-                          active ? 'text-gradient-tech font-bold' : 'text-muted-foreground group-hover:text-foreground'
-                        )}
-                      >
-                        {_(`nav.${item.label}`)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t px-3 py-2.5 flex items-center justify-between gap-2">
-              {user && (
-                <div className="flex items-center gap-2 min-w-0">
-                  {user.avatar_url ? (
-                    <img src={user.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover border border-border" />
-                  ) : (
-                    <div className="bg-gradient-tech flex h-7 w-7 shrink-0 items-center justify-center rounded-full p-[2px]">
-                      <div className="flex h-full w-full items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground">
-                        {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
-                      </div>
-                    </div>
-                  )}
-                  <span className="text-[11px] font-semibold truncate max-w-[7rem]">{user.full_name || user.email}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                <LangToggle collapsed />
-                <ThemeToggle collapsed />
-                <button
-                  type="button"
-                  onClick={() => handleOpen('/settings', _('nav.settings'))}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-muted/60 transition-colors active:scale-95"
-                  aria-label={_('nav.settings')}
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl text-red-500 hover:bg-red-500/10 hover:text-red-400 transition-colors active:scale-95"
-                  aria-label={_('nav.logout')}
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div
+      className={cn(
+        'hidden md:flex flex-col shrink-0 h-screen bg-card border-r border-border/60 transition-[width] duration-200',
+        collapsed ? 'w-[72px]' : 'w-[224px]'
       )}
-    </>
+    >
+      <div className={cn('flex items-center gap-2.5 h-12 shrink-0 px-3', collapsed && 'justify-center px-0')}>
+        <button
+          type="button"
+          onClick={() => onNavigate('/dashboard', _('nav.dashboard'))}
+          className="bg-gradient-tech flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+        >
+          M
+        </button>
+        {!collapsed && <span className="text-sm font-bold text-foreground truncate">Nexus</span>}
+      </div>
+
+      <div className="sidebar-scroll flex-1 overflow-y-auto px-2.5 py-2 space-y-0.5">
+        {visibleItems.map((item) => {
+          const Icon = iconMap[item.icon];
+          const active = isActive(item.href);
+          return (
+            <button
+              key={item.href}
+              type="button"
+              title={collapsed ? _(`nav.${item.label}`) : undefined}
+              onClick={() => onNavigate(item.href, _(`nav.${item.label}`))}
+              className={cn(
+                'group w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors',
+                collapsed && 'justify-center px-0 h-11',
+                active ? 'bg-accent text-accent-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              {!collapsed && <span className="truncate">{_(`nav.${item.label}`)}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="px-2.5 pb-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+          className={cn('w-full flex items-center rounded-xl h-9 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors', collapsed ? 'justify-center' : 'justify-end px-2')}
+        >
+          {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+
+      <div className={cn('flex items-center gap-2 border-t border-border/60 px-2.5 py-2.5', collapsed && 'flex-col')}>
+        {!collapsed && user && (
+          <>
+            {user.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover border border-border shrink-0" />
+            ) : (
+              <div className="bg-gradient-tech flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white">
+                {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold truncate">{user.full_name}</p>
+              <p className="text-[9.5px] text-muted-foreground truncate">{user.role === 'admin' ? 'Admin' : user.role === 'operador' ? 'Operador' : 'Cliente'}</p>
+            </div>
+          </>
+        )}
+        <div className={cn('flex items-center gap-1', collapsed && 'flex-col gap-1.5 mt-1')}>
+          <LangToggle collapsed />
+          <ThemeToggle collapsed />
+          <button
+            type="button"
+            onClick={() => onNavigate('/settings', _('nav.settings'))}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+            aria-label={_('nav.settings')}
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={logout}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+            aria-label={_('nav.logout')}
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -281,10 +205,7 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
   const [open, setOpen] = useState(false);
 
   const visibleItems = navItems.filter(
-    (item) =>
-      user &&
-      (user.visible_modules?.includes(item.moduleId) ||
-        DEFAULT_MODULES[user.role]?.includes(item.moduleId))
+    (item) => user && (user.visible_modules?.includes(item.moduleId) || DEFAULT_MODULES[user.role]?.includes(item.moduleId))
   );
 
   const handleAppClick = (href: string, label: string) => {
@@ -295,11 +216,7 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
   return (
     <>
       <div className="md:hidden fixed inset-x-0 bottom-0 z-50 h-14 border-t bg-background/80 backdrop-blur-xl">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex h-full w-full items-center gap-3 px-4 transition-all active:scale-[0.97]"
-        >
+        <button type="button" onClick={() => setOpen(true)} className="flex h-full w-full items-center gap-3 px-4 transition-all active:scale-[0.97]">
           <span className="bg-gradient-tech glow-tech flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
             <LayoutGrid className="h-4 w-4 text-white" />
           </span>
@@ -308,30 +225,18 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
       </div>
 
       {open && (
-        <div
-          className="md:hidden fixed inset-0 z-[80] flex flex-col"
-          style={{ animation: 'transition-fade 0.2s ease-out' }}
-        >
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            className="relative mt-auto max-h-[80vh] overflow-y-auto rounded-t-3xl border-t bg-background/95 backdrop-blur-xl shadow-2xl"
-            style={{ animation: 'transition-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both' }}
-          >
+        <div className="md:hidden fixed inset-0 z-[80] flex flex-col" style={{ animation: 'transition-fade 0.2s ease-out' }}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="relative mt-auto max-h-[80vh] overflow-y-auto rounded-t-3xl border-t bg-background/95 backdrop-blur-xl shadow-2xl" style={{ animation: 'transition-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both' }}>
             <div className="flex justify-center pt-3 pb-1">
               <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
             </div>
-
             <div className="flex items-center gap-3 px-5 py-3 border-b">
               {user?.avatar_url ? (
                 <img src={user.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover border-2 border-border" />
               ) : (
-                <div className="bg-gradient-tech flex h-10 w-10 shrink-0 items-center justify-center rounded-full p-[2px]">
-                  <div className="flex h-full w-full items-center justify-center rounded-full bg-background text-sm font-bold text-foreground">
-                    {(user?.full_name || user?.email || '?').charAt(0).toUpperCase()}
-                  </div>
+                <div className="bg-gradient-tech flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
+                  {(user?.full_name || user?.email || '?').charAt(0).toUpperCase()}
                 </div>
               )}
               <div className="min-w-0">
@@ -339,68 +244,32 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
                 <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
-
             <div className="grid grid-cols-4 gap-2 p-4">
               {visibleItems.map((item) => {
                 const Icon = iconMap[item.icon];
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 return (
-                  <button
-                    key={item.href}
-                    onClick={() => handleAppClick(item.href, _(`nav.${item.label}`))}
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95"
-                  >
-                    <span
-                      className={cn(
-                        'flex h-12 w-12 items-center justify-center rounded-2xl transition-all',
-                        isActive ? 'bg-gradient-tech glow-tech text-white' : 'bg-muted/50 text-muted-foreground'
-                      )}
-                    >
+                  <button key={item.href} onClick={() => handleAppClick(item.href, _(`nav.${item.label}`))} className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95">
+                    <span className={cn('flex h-12 w-12 items-center justify-center rounded-2xl transition-all', isActive ? 'bg-gradient-tech glow-tech text-white' : 'bg-muted/50 text-muted-foreground')}>
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span
-                      className={cn(
-                        'text-[10px] font-medium leading-tight text-center line-clamp-2',
-                        isActive ? 'text-gradient-tech' : 'text-muted-foreground'
-                      )}
-                    >
-                      {_(`nav.${item.label}`)}
-                    </span>
+                    <span className={cn('text-[10px] font-medium leading-tight text-center line-clamp-2', isActive ? 'text-gradient-tech' : 'text-muted-foreground')}>{_(`nav.${item.label}`)}</span>
                   </button>
                 );
               })}
-              <button
-                onClick={() => handleAppClick('/settings', _('nav.settings'))}
-                className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95"
-              >
-                <span
-                  className={cn(
-                    'flex h-12 w-12 items-center justify-center rounded-2xl transition-all',
-                    pathname === '/settings' ? 'bg-gradient-tech glow-tech text-white' : 'bg-muted/50 text-muted-foreground'
-                  )}
-                >
+              <button onClick={() => handleAppClick('/settings', _('nav.settings'))} className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95">
+                <span className={cn('flex h-12 w-12 items-center justify-center rounded-2xl transition-all', pathname === '/settings' ? 'bg-gradient-tech glow-tech text-white' : 'bg-muted/50 text-muted-foreground')}>
                   <Settings className="h-5 w-5" />
                 </span>
-                <span
-                  className={cn(
-                    'text-[10px] font-medium leading-tight text-center',
-                    pathname === '/settings' ? 'text-gradient-tech' : 'text-muted-foreground'
-                  )}
-                >
-                  {_('nav.settings')}
-                </span>
+                <span className={cn('text-[10px] font-medium leading-tight text-center', pathname === '/settings' ? 'text-gradient-tech' : 'text-muted-foreground')}>{_('nav.settings')}</span>
               </button>
             </div>
-
             <div className="flex items-center justify-between border-t px-5 py-3 pb-5">
               <div className="flex items-center gap-2">
                 <LangToggle collapsed />
                 <ThemeToggle collapsed />
               </div>
-              <button
-                onClick={() => { setOpen(false); logout(); }}
-                className="flex items-center gap-2 text-xs text-red-500 hover:text-red-400 transition-colors active:scale-95"
-              >
+              <button onClick={() => { setOpen(false); logout(); }} className="flex items-center gap-2 text-xs text-red-500 hover:text-red-400 transition-colors active:scale-95">
                 <LogOut className="h-4 w-4" /> Cerrar sesión
               </button>
             </div>
@@ -413,8 +282,14 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
 
 export function Sidebar() {
   const [transition, setTransition] = useState<{ href: string; label: string } | null>(null);
+  const [collapsed, setCollapsed] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored !== null) setCollapsed(stored === '1');
+  }, []);
 
   useEffect(() => {
     if (!transition) return;
@@ -431,11 +306,17 @@ export function Sidebar() {
     setTransition({ href, label });
   };
 
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      localStorage.setItem(STORAGE_KEY, c ? '0' : '1');
+      return !c;
+    });
+  };
+
   return (
     <>
-      <AppsDock onNavigate={handleNavigate} />
+      <DesktopSidebar collapsed={collapsed} onToggle={toggleCollapsed} onNavigate={handleNavigate} />
       <MobileBottomNav onNavigate={handleNavigate} />
-
       {transition && <TransitionOverlay label={transition.label} />}
     </>
   );
