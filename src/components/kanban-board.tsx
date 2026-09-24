@@ -13,7 +13,7 @@ import type { Task, TaskStatus } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, taskPieceTotal, taskTypeInfo } from '@/lib/task-config';
 import { GripVertical, MessageSquare, Paperclip, Calendar, User, Layers } from 'lucide-react';
 
-function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
+function TaskCard({ task, onClick, showClient }: { task: Task; onClick: () => void; showClient?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { task } });
   const pConfig = TASK_PRIORITY_CONFIG[task.priority];
   const style = transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined;
@@ -33,6 +33,9 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
         </span>
         <div className="flex-1 min-w-0">
+          {showClient && task.client?.name && (
+            <p className="text-[10px] font-semibold text-primary/70 truncate mb-0.5">{task.client.name}</p>
+          )}
           <p className="text-sm font-semibold leading-snug">{task.title}</p>
         </div>
         <span className={cn('w-2 h-2 rounded-full shrink-0 mt-1.5', pConfig.dotColor)} />
@@ -99,7 +102,7 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
   );
 }
 
-function KanbanColumn({ status, tasks, onTaskClick }: { status: TaskStatus; tasks: Task[]; onTaskClick: (task: Task) => void }) {
+function KanbanColumn({ status, tasks, onTaskClick, showClient }: { status: TaskStatus; tasks: Task[]; onTaskClick: (task: Task) => void; showClient?: boolean }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const cfg = TASK_STATUS_CONFIG[status];
   const Icon = cfg.icon;
@@ -121,7 +124,7 @@ function KanbanColumn({ status, tasks, onTaskClick }: { status: TaskStatus; task
         </span>
       </div>
       <div className="flex-1 p-2 space-y-2 min-h-[100px] overflow-y-auto max-h-[calc(100vh-280px)]">
-        {tasks.map(task => <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />)}
+        {tasks.map(task => <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} showClient={showClient} />)}
         {tasks.length === 0 && <div className="text-center py-8 text-xs text-muted-foreground/50">Sin tareas</div>}
       </div>
     </div>
@@ -144,9 +147,10 @@ interface KanbanBoardProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
   onTaskMove: (taskId: string, newStatus: TaskStatus) => void;
+  showClient?: boolean;
 }
 
-export function KanbanBoard({ tasks, onTaskClick, onTaskMove }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTaskClick, onTaskMove, showClient }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -173,7 +177,7 @@ export function KanbanBoard({ tasks, onTaskClick, onTaskMove }: KanbanBoardProps
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {tasksByStatus.map(({ status, tasks: colTasks }) => (
-          <KanbanColumn key={status} status={status} tasks={colTasks} onTaskClick={onTaskClick} />
+          <KanbanColumn key={status} status={status} tasks={colTasks} onTaskClick={onTaskClick} showClient={showClient} />
         ))}
       </div>
       <DragOverlay>{activeTask ? <DragOverlayCard task={activeTask} /> : null}</DragOverlay>
