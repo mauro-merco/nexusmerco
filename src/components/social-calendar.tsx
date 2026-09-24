@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -27,7 +26,7 @@ import { SocialIdeaCard } from '@/components/social-idea-card';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
-import { ChevronLeft, ChevronRight, Plus, Calendar, Loader2, GripVertical, Check, ChevronDown, Copy, Share, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Loader2, GripVertical, Check, ChevronDown, Copy, Share } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
 type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
@@ -91,10 +90,10 @@ function DraggableIdeaPill({ idea, onClick, onStatusChange }: { idea: SocialIdea
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium cursor-pointer transition-opacity max-w-full truncate relative',
+        'flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium cursor-pointer transition-opacity max-w-full truncate relative',
         isPublished
-          ? 'bg-green-500/15 border-green-400/40 text-green-600'
-          : [ptConfig.bgColorClass, ptConfig.colorClass, ptConfig.borderColorClass],
+          ? 'bg-green-500/15 text-green-600'
+          : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
@@ -128,11 +127,10 @@ function DroppableDay({ date, ideas, isToday, onIdeaClick, onAddClick, onStatusC
     <div
       ref={setNodeRef}
       className={cn(
-        'min-h-[100px] rounded-lg border p-1.5 transition-colors relative group',
-        isToday && 'border-primary/50 bg-primary/5',
-        isOver && 'border-primary bg-primary/10',
-        !isToday && ideas.length === 0 && 'border-border/20 hover:border-border/40',
-        !isToday && ideas.length > 0 && 'border-border/30',
+        'min-h-[100px] rounded-xl p-1.5 transition-colors relative group',
+        isToday && 'bg-primary/8',
+        isOver && 'bg-primary/15',
+        !isToday && !isOver && 'bg-muted/25 hover:bg-muted/45',
       )}
     >
       <span className={cn(
@@ -173,9 +171,9 @@ function VerticalDayRow({ date, dayName, ideas, isToday, onIdeaClick, onAddClick
     <div
       ref={setNodeRef}
       className={cn(
-        'rounded-xl border p-3 transition-colors',
-        isToday ? 'border-primary/60 bg-primary/5' : 'border-border/40',
-        isOver && 'border-primary bg-primary/10',
+        'rounded-xl p-3 transition-colors',
+        isToday ? 'bg-primary/8' : 'bg-muted/25',
+        isOver && 'bg-primary/15',
       )}
     >
       <button
@@ -226,10 +224,10 @@ function DragOverlayPill({ idea }: { idea: SocialIdea }) {
   const isPublished = idea.status === 'posteado';
   return (
     <div className={cn(
-      'flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-semibold shadow-xl max-w-[140px] truncate',
+      'flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold shadow-xl max-w-[140px] truncate',
       isPublished
-        ? 'bg-green-500/15 border-green-400/40 text-green-600'
-        : [ptConfig.bgColorClass, ptConfig.colorClass, ptConfig.borderColorClass],
+        ? 'bg-green-500/15 text-green-600'
+        : [ptConfig.bgColorClass, ptConfig.colorClass],
     )}>
       {isPublished ? (
         <Check className="h-3 w-3 shrink-0 text-green-500" strokeWidth={3} />
@@ -414,7 +412,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
 
   if (loading) {
     return (
-      <Card>
+      <Card className="border-0 ring-0 shadow-none rounded-3xl">
         <CardContent className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin" />
           <p className="text-sm">Cargando calendario...</p>
@@ -441,7 +439,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
               </Button>
             </div>
           </div>
-          <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="cta" size="cta" className="gap-2">
+          <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="default" size="cta" className="gap-2 rounded-xl">
             <Plus className="h-4 w-4" /> Nueva Idea
           </Button>
 
@@ -449,9 +447,9 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
             <div className="flex items-center gap-2">
               <CalendarGuestAccessDialog clientId={clientId} calendarType="social" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} />
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
-                className="gap-1.5"
+                className="gap-1.5 rounded-lg"
                 onClick={async () => {
                   await navigator.clipboard.writeText(shareUrl);
                   setCopied(true);
@@ -465,7 +463,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
                 href={`/c/${shareConfig.token}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+                className="inline-flex items-center justify-center rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
               >
                 <Share className="h-3.5 w-3.5 mr-1" /> Ver landing
               </a>
@@ -474,9 +472,9 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
 
           {canManageShare && !shareConfig?.token && !shareLoading && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 rounded-lg"
               onClick={async () => {
                 setShareLoading(true);
                 setShareError('');
@@ -502,18 +500,18 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
         </div>
 
         {canManageShare && shareError && (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{shareError}</p>
+          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{shareError}</p>
         )}
 
         {canManageShare && shareConfig?.token && (
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="flex flex-col gap-3 p-3 md:flex-row md:items-center">
+          <Card className="border-0 ring-0 shadow-none bg-accent rounded-2xl">
+            <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-wide text-primary">Link único para compartir con cliente</p>
-                <p className="text-xs text-muted-foreground">Este link abre el calendario fuera de la app para ver, comentar y modificar según permisos.</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-accent-foreground">Link único para compartir con cliente</p>
+                <p className="text-xs text-accent-foreground/70">Este link abre el calendario fuera de la app para ver, comentar y modificar según permisos.</p>
               </div>
-              <Input value={shareUrl} readOnly className="h-9 min-w-0 md:max-w-md" onFocus={(e) => e.currentTarget.select()} />
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={async () => { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+              <Input value={shareUrl} readOnly className="h-9 min-w-0 md:max-w-md bg-background rounded-lg" onFocus={(e) => e.currentTarget.select()} />
+              <Button variant="secondary" size="sm" className="gap-1.5 rounded-lg shrink-0" onClick={async () => { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                 {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                 {copied ? 'Copiado' : 'Copiar link'}
               </Button>
@@ -549,7 +547,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
         </div>
 
         {/* Calendar Grid */}
-        <Card>
+        <Card className="border-0 ring-0 shadow-none rounded-3xl">
           <CardContent className="p-4">
             <DndContext
               sensors={sensors}

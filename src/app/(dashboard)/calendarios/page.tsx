@@ -18,6 +18,13 @@ import {
 
 type CalendarTab = 'redes' | 'ads';
 
+const CATEGORY_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+function colorForClient(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return CATEGORY_COLORS[hash % CATEGORY_COLORS.length];
+}
+
 export default function CalendariosPage() {
   const { user } = useAuthStore();
   const searchParams = useSearchParams();
@@ -79,7 +86,7 @@ export default function CalendariosPage() {
               <AvatarFallback className="rounded-lg text-xs">{client.name.charAt(0)}</AvatarFallback>
             </Avatar>
           ) : (
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center">
               <Building2 className="h-4 w-4 text-primary" />
             </div>
           )}
@@ -112,49 +119,52 @@ export default function CalendariosPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar clientes..."
-            className="pl-9"
+            className="pl-9 rounded-xl"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClients.map((client) => (
-            <Card
-              key={client.id}
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl"
-              onClick={() => setSelectedClientId(client.id)}
-            >
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {client.logo_url ? (
-                      <Avatar className="h-10 w-10 rounded-xl ring-2 ring-border/30">
-                        <AvatarImage src={client.logo_url} alt={client.name} />
-                        <AvatarFallback className="rounded-xl text-sm font-bold bg-gradient-to-br from-primary/20 to-primary/10">
+          {filteredClients.map((client) => {
+            const color = colorForClient(client.name);
+            return (
+              <Card
+                key={client.id}
+                className="group cursor-pointer border-0 ring-0 shadow-none transition-colors duration-200 hover:bg-muted/40 bg-card rounded-3xl"
+                onClick={() => setSelectedClientId(client.id)}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {client.logo_url ? (
+                        <Avatar className="h-10 w-10 rounded-2xl">
+                          <AvatarImage src={client.logo_url} alt={client.name} />
+                          <AvatarFallback className="rounded-2xl text-sm font-bold" style={{ background: `color-mix(in oklch, ${color} 18%, var(--card))`, color }}>
+                            {client.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <div className="h-10 w-10 rounded-2xl flex items-center justify-center font-bold text-sm" style={{ background: `color-mix(in oklch, ${color} 18%, var(--card))`, color }}>
                           {client.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center ring-2 ring-border/30">
-                        <Building2 className="h-5 w-5 text-primary" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm font-bold truncate max-w-[180px]">{client.name}</p>
-                      {client.industry && (
-                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">{client.industry}</p>
+                        </div>
                       )}
+                      <div>
+                        <p className="text-sm font-bold truncate max-w-[180px]">{client.name}</p>
+                        {client.industry && (
+                          <p className="text-xs text-muted-foreground truncate max-w-[180px]">{client.industry}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-full bg-emerald-500/10 p-2">
+                      <Calendar className="h-5 w-5 text-emerald-500" />
                     </div>
                   </div>
-                  <div className="rounded-full bg-emerald-500/10 p-2 group-hover:scale-105 transition-transform">
-                    <Calendar className="h-5 w-5 text-emerald-500" />
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all ml-auto mt-3" />
-              </CardContent>
-            </Card>
-          ))}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all ml-auto mt-3" />
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {filteredClients.length === 0 && (
@@ -187,7 +197,7 @@ export default function CalendariosPage() {
             <AvatarFallback className="rounded-lg text-xs">{selectedClient.name.charAt(0)}</AvatarFallback>
           </Avatar>
         ) : (
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center">
             <Building2 className="h-4 w-4 text-primary" />
           </div>
         )}
@@ -211,14 +221,14 @@ export default function CalendariosPage() {
 
 function CalendarTabs({ active, onChange }: { active: CalendarTab; onChange: (t: CalendarTab) => void }) {
   return (
-    <div className="flex gap-1 rounded-xl border bg-muted/30 p-1 w-fit">
+    <div className="flex gap-1 rounded-xl bg-muted/40 p-1 w-fit">
       <button
         type="button"
         onClick={() => onChange('redes')}
         className={cn(
           'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
           active === 'redes'
-            ? 'bg-background shadow text-foreground'
+            ? 'bg-background text-foreground'
             : 'text-muted-foreground hover:text-foreground',
         )}
       >
@@ -231,7 +241,7 @@ function CalendarTabs({ active, onChange }: { active: CalendarTab; onChange: (t:
         className={cn(
           'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
           active === 'ads'
-            ? 'bg-background shadow text-foreground'
+            ? 'bg-background text-foreground'
             : 'text-muted-foreground hover:text-foreground',
         )}
       >

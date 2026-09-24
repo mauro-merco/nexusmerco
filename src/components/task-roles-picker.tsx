@@ -60,7 +60,7 @@ export function TaskRolesPicker({ roles, onChange, users }: TaskRolesPickerProps
         const Icon = cfg.icon;
         const selected = roles[roleKey];
         return (
-          <div key={roleKey} className={cn('rounded-xl border bg-card/50 p-3', cfg.borderClass)}>
+          <div key={roleKey} className="rounded-xl bg-muted/30 p-3">
             <div className="flex items-center gap-2 mb-2">
               <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg', cfg.bgColorClass, cfg.colorClass)}>
                 <Icon className="h-3.5 w-3.5" />
@@ -76,8 +76,8 @@ export function TaskRolesPicker({ roles, onChange, users }: TaskRolesPickerProps
                 const isOn = selected.includes(u.id);
                 return (
                   <label key={u.id} className={cn(
-                    'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs cursor-pointer transition-colors',
-                    isOn ? cn(cfg.bgColorClass, 'border-transparent') : 'border-transparent hover:bg-muted/50',
+                    'flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs cursor-pointer transition-colors',
+                    isOn ? cfg.bgColorClass : 'hover:bg-muted/50',
                   )}>
                     <Checkbox
                       checked={isOn}

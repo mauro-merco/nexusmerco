@@ -105,7 +105,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-lg md:aspect-video md:w-[min(92vw,1120px)] md:max-w-none">
+      <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-lg md:aspect-video md:w-[min(92vw,1120px)] md:max-w-none rounded-2xl">
         <DialogTitle>{calendarType === 'ads' ? 'Nueva pieza ADS' : 'Nueva idea de publicación'}</DialogTitle>
         <DialogDescription>Creá contenido y definí quién responde, ejecuta y controla</DialogDescription>
 
@@ -121,12 +121,13 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
               type="date"
               value={publishDate}
               onChange={(e) => setPublishDate(e.target.value)}
+              className="rounded-lg"
             />
           </div>
 
           <div className="space-y-1.5">
             <Label>Tipo de publicación *</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {POST_TYPES.map(pt => {
                 const cfg = POST_TYPE_CONFIG[pt.value];
                 const Icon = cfg.icon;
@@ -136,10 +137,10 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
                     type="button"
                     onClick={() => setPostType(pt.value)}
                     className={cn(
-                      'flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors',
+                      'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors',
                       postType === pt.value
                         ? cfg.bgColorClass + ' ' + cfg.colorClass + ' font-medium'
-                        : 'border-border hover:border-border/60 text-muted-foreground',
+                        : 'bg-muted/40 text-muted-foreground hover:bg-muted/60',
                     )}
                   >
                     <Icon className="h-4 w-4" /> {pt.label}
@@ -155,13 +156,14 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
               placeholder="Ej: Promoción de verano, Tips de productividad..."
               value={ejeContenido}
               onChange={(e) => setEjeContenido(e.target.value)}
+              className="rounded-lg"
             />
           </div>
 
           <div className="space-y-1.5">
             <Label>Brief</Label>
             <textarea
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[60px] resize-none"
+              className="w-full rounded-lg bg-muted/30 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[60px] resize-none"
               placeholder="Descripción general de la publicación..."
               value={brief}
               onChange={(e) => setBrief(e.target.value)}
@@ -171,7 +173,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
           <div className="space-y-1.5">
             <Label>COPY</Label>
             <textarea
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[60px] resize-none"
+              className="w-full rounded-lg bg-muted/30 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[60px] resize-none"
               placeholder="Texto del copy para la publicación..."
               value={copyText}
               onChange={(e) => setCopyText(e.target.value)}
@@ -181,7 +183,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
           <div className="space-y-1.5">
             <Label>Guión / Descripción</Label>
             <textarea
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[80px] resize-none"
+              className="w-full rounded-lg bg-muted/30 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] resize-none"
               placeholder="Guión detallado o descripción del contenido..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -200,8 +202,8 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
                       type="button"
                       onClick={() => setStatus(key)}
                       className={cn(
-                        'rounded-lg border px-2.5 py-1.5 text-xs transition-colors font-medium',
-                        status === key ? s.colorClass : 'border-border text-muted-foreground hover:border-border/60',
+                        'rounded-lg px-2.5 py-1.5 text-xs transition-colors font-medium',
+                        status === key ? s.colorClass : 'bg-muted/40 text-muted-foreground hover:bg-muted/60',
                       )}
                     >
                       {s.label}
@@ -218,8 +220,8 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
                       type="button"
                       onClick={() => setStatus(key)}
                       className={cn(
-                        'rounded-lg border px-2.5 py-1.5 text-xs transition-colors font-medium',
-                        status === key ? s.colorClass : 'border-border text-muted-foreground hover:border-border/60',
+                        'rounded-lg px-2.5 py-1.5 text-xs transition-colors font-medium',
+                        status === key ? s.colorClass : 'bg-muted/40 text-muted-foreground hover:bg-muted/60',
                       )}
                     >
                       {s.label}
@@ -236,8 +238,8 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
         </div>
 
         <DialogFooter className="shrink-0">
-          <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
-          <Button onClick={handleSave} variant="cta" disabled={saving}>
+          <DialogClose render={<Button variant="outline" className="rounded-lg" />}>Cancelar</DialogClose>
+          <Button onClick={handleSave} variant="default" disabled={saving} className="rounded-lg">
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             {calendarType === 'ads' ? 'Crear pieza' : 'Crear idea'}
           </Button>
