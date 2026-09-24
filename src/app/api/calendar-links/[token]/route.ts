@@ -224,6 +224,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       ecommerceDates = eds || [];
     }
 
+    // Fetch all users for the idea modal (needed for assignees picker)
+    const { data: allUsers } = await supabase
+      .from('users')
+      .select('id, full_name, email, avatar_url, role')
+      .in('role', ['admin', 'operador'])
+      .order('full_name', { ascending: true });
+
     return NextResponse.json({
       client: { id: client.id, name: client.name, logo_url: client.logo_url },
       ideas: publicIdeas,
@@ -232,6 +239,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       ecommerce_dates: ecommerceDates,
       calendar_type: type,
       month,
+      users: allUsers || [],
     });
   } catch (e) {
     console.error('GET /api/calendar-links/[token] error:', e);

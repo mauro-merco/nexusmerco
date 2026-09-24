@@ -25,6 +25,7 @@ interface CalendarData {
   ecommerce_dates: EcommerceDate[];
   calendar_type: 'social' | 'ads';
   month?: string | null;
+  users: NexusUser[];
 }
 
 type AuthMode = 'loading' | 'authenticated' | 'gate';
@@ -305,190 +306,6 @@ function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick, onAddClick
 
 // ─── Idea modal ───────────────────────────────────────────────────────────────
 
-function IdeaModal({ idea, attachments, comments, viewer, calendarType, token, onClose, onCommentAdded }: {
-  idea: SocialIdea;
-  attachments: { url: string; name: string; type: string }[];
-  comments: SocialComment[];
-  viewer: Viewer;
-  calendarType: 'social' | 'ads';
-  token: string;
-  onClose: () => void;
-  onCommentAdded: () => void;
-}) {
-  const [newComment, setNewComment] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
-  const ptConfig = POST_TYPE_CONFIG[idea.post_type];
-  const stConfig = STATUS_CONFIG[idea.status];
-
-  const handleAddComment = async () => {
-    const content = newComment.trim();
-    if (!content) return;
-    setSending(true);
-    setSendError('');
-    try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (viewer.authToken) headers['Authorization'] = `Bearer ${viewer.authToken}`;
-      const res = await fetch(`/api/calendar-links/${token}/actions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          idea_id: idea.id,
-          content,
-          guest_name: viewer.type === 'guest' ? viewer.name : null,
-          action_type: 'comment',
-          calendar_type: calendarType,
-        }),
-      });
-      if (!res.ok) { const j = await res.json(); setSendError(j.error || 'Error al comentar'); return; }
-      setNewComment('');
-      onCommentAdded();
-    } catch {
-      setSendError('Error al enviar comentario');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const copyIdeaLink = async () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('idea', idea.id);
-    await navigator.clipboard.writeText(url.toString());
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 1800);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-background rounded-2xl shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="p-4 flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
-              <Badge variant="outline" className={cn('text-[10px] border-0', ptConfig.bgColorClass, ptConfig.colorClass)}>{ptConfig.label}</Badge>
-              <Badge variant="outline" className={cn('text-[10px] border-0', stConfig.colorClass)}>{stConfig.label}</Badge>
-              {idea.publish_date && <span className="text-muted-foreground/60">{idea.publish_date}</span>}
-            </div>
-            <h2 className="text-lg font-bold">{idea.eje_contenido || idea.title}</h2>
-          </div>
-          <button onClick={copyIdeaLink} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mt-0.5 shrink-0">
-            <Copy className="h-3.5 w-3.5" /> {copiedLink ? 'Copiado' : 'Link'}
-          </button>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0">
-            <span className="sr-only">Cerrar</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 pt-0">
-          <div className="grid gap-4 md:grid-cols-5">
-            <div className="space-y-4 md:col-span-3">
-              {(idea.assignees || []).length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground mb-2">Equipo asignado</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {TASK_ROLES.map(role => {
-                      const cfg = TASK_ROLE_CONFIG[role];
-                      const names = idea.assignees.filter(assignee => assignee.work_role === role).map(assignee => assignee.full_name);
-                      return (
-                        <div key={role} className="rounded-xl bg-muted/30 p-2.5">
-                          <p className={cn('text-[10px] font-semibold', cfg.colorClass)}>{cfg.question}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{names.join(', ') || 'Sin asignar'}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {idea.copy_text && (
-                <div><h3 className="text-xs font-semibold text-muted-foreground mb-1">Copy</h3>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{idea.copy_text}</p></div>
-              )}
-              {idea.brief && (
-                <div><h3 className="text-xs font-semibold text-muted-foreground mb-1">Brief</h3>
-                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.brief}</p></div>
-              )}
-              {idea.description && (
-                <div><h3 className="text-xs font-semibold text-muted-foreground mb-1">Guión / Descripción</h3>
-                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.description}</p></div>
-              )}
-              {!idea.copy_text && !idea.brief && !idea.description && (
-                <p className="text-sm text-muted-foreground italic">Sin contenido</p>
-              )}
-
-              {attachments.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground mb-2">Adjuntos</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {attachments.map((att, i) => (
-                      <a key={i} href={att.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-lg bg-muted/40 px-2 py-1 text-xs hover:bg-muted/60 transition-colors">
-                        🔗 {att.name || 'Link'}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="md:col-span-2 rounded-2xl bg-muted/25 p-3">
-              <h3 className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-1">
-                <MessageCircle className="h-3 w-3" /> Comentarios ({comments.length})
-              </h3>
-              <div className="space-y-3">
-                {comments.length === 0 ? (
-                  <p className="text-xs text-muted-foreground/60">Sé el primero en comentar</p>
-                ) : (
-                  comments.map(comment => {
-                    const authorName = comment.guest_name || (comment.user as { full_name?: string })?.full_name || 'Usuario';
-                    return (
-                      <div key={comment.id} className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6 shrink-0">
-                            <AvatarFallback className="text-[10px] font-bold" style={{ backgroundColor: viewer.color + '30', color: viewer.color }}>
-                              {authorName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-medium">{authorName}</span>
-                          <span className="text-[10px] text-muted-foreground/50">
-                            {new Date(comment.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className="text-xs text-foreground/80 leading-relaxed pl-8">{comment.content}</p>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-border/40 space-y-2">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7 shrink-0">
-              <AvatarFallback className="text-xs font-bold" style={{ backgroundColor: viewer.color + '30', color: viewer.color }}>
-                {viewer.name.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <Input
-              value={newComment}
-              onChange={e => setNewComment(e.target.value)}
-              placeholder={`Comentar como ${viewer.name}...`}
-              className="flex-1 h-9 text-sm rounded-lg bg-muted/35 border-0"
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
-            />
-            <Button size="sm" onClick={handleAddComment} disabled={sending || !newComment.trim()} className="h-9 w-9 p-0 shrink-0 rounded-lg">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-          {sendError && <p className="text-xs text-destructive pl-9">{sendError}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CalendarLanding({ params }: { params: Promise<{ token: string }> }) {
@@ -502,13 +319,6 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [viewMonth, setViewMonth] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [initialIdeaId, setInitialIdeaId] = useState<string | null>(null);
-  const [ideaTitle, setIdeaTitle] = useState('');
-  const [ideaType, setIdeaType] = useState('sugerencia');
-  const [ideaDescription, setIdeaDescription] = useState('');
-  const [ideaLinks, setIdeaLinks] = useState('');
-  const [ideaSending, setIdeaSending] = useState(false);
-  const [ideaError, setIdeaError] = useState('');
-  const [newIdeaDate, setNewIdeaDate] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -651,12 +461,9 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     fetchCalendar();
   };
 
-  const handleCreateContentIdea = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!viewer || !token) return;
-    if (!ideaTitle.trim()) { setIdeaError('Ingresá un título'); return; }
-    setIdeaSending(true);
-    setIdeaError('');
+  const handleAddNewIdea = useCallback(async (date: string) => {
+    if (!viewer || !token || !data) return;
+    // Create a minimal idea on the server first
     try {
       const res = await fetch(`/api/calendar-links/${token}/actions`, {
         method: 'POST',
@@ -664,25 +471,31 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         body: JSON.stringify({
           action_type: 'create_idea',
           calendar_type: calendarType,
-          title: ideaTitle,
-          post_type: ideaType,
-          description: ideaDescription,
-          links: ideaLinks.split(/[\n,;]/).map(link => link.trim()).filter(Boolean),
-          publish_date: newIdeaDate || (viewMonth ? `${viewMonth}-01` : undefined),
+          title: 'Nueva idea',
+          post_type: 'sugerencia',
+          description: '',
+          links: [],
+          publish_date: date,
           guest_name: viewer.name,
-          content: `Idea sugerida por ${viewer.name}`,
+          content: `Idea creada por ${viewer.name}`,
         }),
       });
       const json = await res.json();
-      if (!res.ok) { setIdeaError(json.error || 'No se pudo crear la idea'); return; }
-      setIdeaTitle(''); setIdeaType('sugerencia'); setIdeaDescription(''); setIdeaLinks(''); setNewIdeaDate(null);
-      fetchCalendar();
+      if (!res.ok) {
+        alert(json.error || 'No se pudo crear la idea');
+        return;
+      }
+      // Refresh calendar to get the new idea
+      await fetchCalendar();
+      // Find and open the newly created idea
+      const newIdea = json.data?.idea;
+      if (newIdea) {
+        setSelectedIdea(newIdea);
+      }
     } catch {
-      setIdeaError('No se pudo crear la idea');
-    } finally {
-      setIdeaSending(false);
+      alert('No se pudo crear la idea');
     }
-  };
+  }, [viewer, token, data, calendarType, fetchCalendar]);
 
   const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -775,7 +588,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           <CardContent className="p-3 md:p-4">
             {viewMonth && (
               <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={setNewIdeaDate} />
+                <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={handleAddNewIdea} />
                 <DragOverlay>{activeIdea ? <PublicIdeaDot idea={activeIdea} onClick={() => {}} /> : null}</DragOverlay>
               </DndContext>
             )}
@@ -791,49 +604,25 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         </div>
       </div>
 
-      {selectedIdea && viewer && (
-        <IdeaModal
+      {selectedIdea && data && (
+        <SocialIdeaModal
           idea={selectedIdea}
-          attachments={data.attachments_by_idea[selectedIdea.id] || []}
-          comments={data.comments_by_idea[selectedIdea.id] || []}
-          viewer={viewer}
+          open={!!selectedIdea}
+          onOpenChange={(open) => { if (!open) closeSelectedIdea(); }}
+          onIdeaUpdated={(updatedIdea) => {
+            setData({
+              ...data,
+              ideas: data.ideas.map(i => i.id === updatedIdea.id ? updatedIdea : i),
+            });
+            fetchCalendar();
+          }}
+          onIdeaDeleted={() => {
+            closeSelectedIdea();
+            fetchCalendar();
+          }}
+          users={data.users || []}
           calendarType={calendarType}
-          token={token}
-          onClose={closeSelectedIdea}
-          onCommentAdded={fetchCalendar}
         />
-      )}
-
-      {newIdeaDate && viewer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setNewIdeaDate(null)}>
-          <div className="w-full max-w-lg rounded-2xl bg-background p-5 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold">Nueva idea</h2>
-                <p className="text-xs text-muted-foreground">Fecha: {newIdeaDate}</p>
-              </div>
-              <button onClick={() => setNewIdeaDate(null)} className="text-muted-foreground hover:text-foreground">×</button>
-            </div>
-            <form onSubmit={handleCreateContentIdea} className="space-y-3">
-              <Input value={ideaTitle} onChange={e => setIdeaTitle(e.target.value)} placeholder="Título de sugerencia" className="h-10 rounded-xl bg-muted/35 border-0" autoFocus />
-              <select value={ideaType} onChange={e => setIdeaType(e.target.value)} className="h-10 w-full rounded-xl bg-muted/35 px-3 text-sm outline-none">
-                <option value="sugerencia">Sugerencia</option>
-                <option value="carrusel">Carrusel</option>
-                <option value="reel">Reel</option>
-                <option value="historia">Historia</option>
-              </select>
-              <textarea value={ideaDescription} onChange={e => setIdeaDescription(e.target.value)} placeholder="Descripción de la idea" className="min-h-24 w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none resize-none" />
-              <textarea value={ideaLinks} onChange={e => setIdeaLinks(e.target.value)} placeholder="Links de referencia, uno por línea" className="min-h-16 w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none resize-none" />
-              {ideaError && <p className="text-xs text-destructive">{ideaError}</p>}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" className="rounded-lg" onClick={() => setNewIdeaDate(null)}>Cancelar</Button>
-                <Button type="submit" variant="default" className="rounded-lg" disabled={ideaSending}>
-                  {ideaSending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />} Crear idea
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
     </div>
   );
