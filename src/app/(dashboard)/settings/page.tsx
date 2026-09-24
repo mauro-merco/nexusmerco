@@ -588,34 +588,54 @@ function UserRow({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-xs">Clientes permitidos ({editAllowedClients === null ? 'Todos' : editAllowedClients.length})</Label>
-            <button onClick={() => setEditAllowedClients(null)}
-              className="text-[10px] text-muted-foreground hover:text-foreground">
-              Permitir todos
+            <button 
+              onClick={() => setEditAllowedClients(prev => prev === null ? [] : null)}
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {editAllowedClients === null ? '🔒 Restringir' : '🔓 Permitir todos'}
             </button>
           </div>
           {editAllowedClients === null ? (
-            <p className="text-xs text-muted-foreground border rounded-lg p-3 bg-muted/30">
-              ✓ Este usuario puede acceder a todos los clientes
-            </p>
+            <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                ✓ Este usuario puede acceder a <strong>todos los clientes</strong>
+              </p>
+              <p className="text-[10px] text-muted-foreground/70">
+                Click en "🔒 Restringir" arriba para limitar el acceso a clientes específicos.
+              </p>
+            </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
-              {clients.map(c => (
-                <label key={c.id} className={cn(
-                  'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs cursor-pointer transition-colors',
-                  editAllowedClients.includes(c.id) ? 'border-primary/50 bg-primary/5' : 'border-border text-muted-foreground',
-                )}>
-                  <Checkbox 
-                    checked={editAllowedClients.includes(c.id)} 
-                    onCheckedChange={() => {
-                      setEditAllowedClients(prev => {
-                        if (prev === null) return [c.id];
-                        return prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id];
-                      });
-                    }} 
-                  />
-                  {c.name}
-                </label>
-              ))}
+            <div className="space-y-2">
+              {clients.length === 0 ? (
+                <p className="text-xs text-muted-foreground border rounded-lg p-3 bg-muted/30">
+                  Cargando clientes...
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-lg p-2">
+                  {clients.map(c => (
+                    <label key={c.id} className={cn(
+                      'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs cursor-pointer transition-colors',
+                      editAllowedClients.includes(c.id) ? 'border-primary/50 bg-primary/5' : 'border-border text-muted-foreground',
+                    )}>
+                      <Checkbox 
+                        checked={editAllowedClients.includes(c.id)} 
+                        onCheckedChange={() => {
+                          setEditAllowedClients(prev => {
+                            if (prev === null) return [c.id];
+                            return prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id];
+                          });
+                        }} 
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {editAllowedClients.length === 0 && clients.length > 0 && (
+                <p className="text-[10px] text-amber-600 dark:text-amber-500">
+                  ⚠️ Sin clientes seleccionados. El usuario no verá ningún cliente.
+                </p>
+              )}
             </div>
           )}
         </div>
