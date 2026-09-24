@@ -349,7 +349,7 @@ export default function DashboardPage() {
         {isAdminOrTeam && <ClientProfileSummary clientId={selectedClient.id} />}
 
         {!hasAnalysis && !hasCalendar && !hasAds && (
-          <Card className="border-dashed bg-card/30">
+          <Card className="border-0 ring-0 shadow-none bg-muted/40 rounded-3xl">
             <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
               <Building2 className="h-8 w-8 opacity-30" />
               <p className="text-sm">Este cliente no tiene módulos habilitados todavía.</p>
@@ -365,11 +365,11 @@ export default function DashboardPage() {
         <div className="space-y-4">
           {hasAnalysis && (
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl w-full"
+              className="group cursor-pointer border-0 ring-0 shadow-none transition-colors duration-200 hover:bg-muted/40 bg-card rounded-3xl w-full"
               onClick={() => setClientView('analysis')}
             >
               <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/10 p-5 shrink-0 self-start sm:self-center group-hover:scale-105 transition-transform">
+                <div className="rounded-2xl bg-blue-500/10 p-5 shrink-0 self-start sm:self-center">
                   <BarChart3 className="h-8 w-8 text-blue-500" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -390,11 +390,11 @@ export default function DashboardPage() {
 
           {hasCalendar && (
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl w-full"
+              className="group cursor-pointer border-0 ring-0 shadow-none transition-colors duration-200 hover:bg-muted/40 bg-card rounded-3xl w-full"
               onClick={() => setClientView('calendar')}
             >
               <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 p-5 shrink-0 self-start sm:self-center group-hover:scale-105 transition-transform">
+                <div className="rounded-2xl bg-emerald-500/10 p-5 shrink-0 self-start sm:self-center">
                   <Calendar className="h-8 w-8 text-emerald-500" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -414,11 +414,11 @@ export default function DashboardPage() {
 
           {hasAds && (
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-primary/30 bg-card/50 backdrop-blur-xl w-full"
+              className="group cursor-pointer border-0 ring-0 shadow-none transition-colors duration-200 hover:bg-muted/40 bg-card rounded-3xl w-full"
               onClick={() => setClientView('ads')}
             >
               <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 p-5 shrink-0 self-start sm:self-center group-hover:scale-105 transition-transform">
+                <div className="rounded-2xl bg-violet-500/10 p-5 shrink-0 self-start sm:self-center">
                   <ShoppingBag className="h-8 w-8 text-violet-500" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -477,7 +477,7 @@ export default function DashboardPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="bg-card border-0 shadow-sm rounded-2xl">
+            <Card key={i} className="bg-card border-0 ring-0 shadow-none rounded-2xl">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-10 w-10 rounded-xl bg-muted/30 animate-pulse" />
@@ -527,7 +527,7 @@ export default function DashboardPage() {
                 return (
                   <Card
                     key={client.id}
-                    className="relative group bg-card border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer rounded-3xl"
+                    className="relative group bg-card border-0 ring-0 shadow-none hover:bg-muted/40 transition-colors duration-200 cursor-pointer rounded-3xl"
                     onClick={() => handleSelectClient(client.id)}
                   >
                     <CardContent className="p-5 relative">
@@ -599,7 +599,7 @@ export default function DashboardPage() {
 
           {/* Client cards — compact list layout */}
           {layout === 'list' && (
-            <Card className="border-0 shadow-sm rounded-3xl overflow-hidden">
+            <Card className="border-0 ring-0 shadow-none rounded-3xl overflow-hidden">
               <div className="divide-y divide-border/60">
                 {activeClients.map((client) => {
                   const statusInfo = statusBadge[client.status] || statusBadge.onboarding;
@@ -669,7 +669,7 @@ export default function DashboardPage() {
                 {clients.filter(c => c.status !== 'active' && c.status !== 'onboarding').map((client) => {
                   const statusInfo = statusBadge[client.status] || statusBadge.onboarding;
                   return (
-                    <Card key={client.id} className="border-0 bg-card/60 rounded-2xl opacity-60 hover:opacity-100 transition-opacity cursor-default">
+                    <Card key={client.id} className="border-0 ring-0 shadow-none bg-muted/30 rounded-2xl opacity-60 hover:opacity-100 transition-opacity cursor-default">
                       <CardContent className="p-4 flex items-center gap-3">
                         <div className="h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -687,7 +687,7 @@ export default function DashboardPage() {
           )}
         </>
       ) : (
-        <Card className="border-0 bg-card/60 rounded-3xl">
+        <Card className="border-0 ring-0 shadow-none bg-muted/40 rounded-3xl">
           <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-4">
             <div className="p-4 rounded-2xl bg-accent">
               <Building2 className="h-10 w-10 text-primary" />

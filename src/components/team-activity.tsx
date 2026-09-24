@@ -146,7 +146,7 @@ export function TeamActivity({ tasks }: { tasks: Task[] }) {
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
           <History className="h-3.5 w-3.5" /> Historial del equipo
         </p>
-        <div className="flex items-center gap-1 rounded-lg border bg-background/40 p-0.5">
+        <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-0.5">
           {RANGE_OPTIONS.map(opt => {
             const Icon = opt.icon;
             return (
@@ -157,7 +157,7 @@ export function TeamActivity({ tasks }: { tasks: Task[] }) {
                 className={cn(
                   'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
                   range === opt.key
-                    ? 'bg-gradient-tech text-white shadow-sm'
+                    ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -173,13 +173,13 @@ export function TeamActivity({ tasks }: { tasks: Task[] }) {
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border bg-background/40 p-3.5">
+            <div className="rounded-xl bg-muted/40 p-3.5">
               <p className="text-2xl font-bold leading-none">{summary.total}</p>
               <p className="mt-1 text-[11px] text-muted-foreground flex items-center gap-1">
                 <Layers className="h-3 w-3 text-violet-500" /> Piezas diseñadas
               </p>
             </div>
-            <div className="rounded-xl border bg-background/40 p-3.5">
+            <div className="rounded-xl bg-muted/40 p-3.5">
               <p className="text-2xl font-bold leading-none">{closed.length}</p>
               <p className="mt-1 text-[11px] text-muted-foreground flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Tareas cerradas
@@ -189,7 +189,7 @@ export function TeamActivity({ tasks }: { tasks: Task[] }) {
               const count = pt.field === 'pieces_stories' ? summary.stories : pt.field === 'pieces_feed' ? summary.feed : summary.reels;
               const Icon = pt.icon;
               return (
-                <div key={pt.field} className="rounded-xl border bg-background/40 p-3.5">
+                <div key={pt.field} className="rounded-xl bg-muted/40 p-3.5">
                   <p className="text-2xl font-bold leading-none">{count}</p>
                   <p className="mt-1 text-[11px] text-muted-foreground flex items-center gap-1">
                     <Icon className={cn('h-3 w-3', pt.colorClass)} /> {pt.label}
@@ -199,7 +199,7 @@ export function TeamActivity({ tasks }: { tasks: Task[] }) {
             })}
           </div>
 
-          <div className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="rounded-xl bg-muted/30 p-4 space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               {PIECE_TYPES.map(pt => (
                 <span key={pt.field} className={cn('flex items-center gap-1.5 text-[10px] font-medium', pt.colorClass)}>
@@ -214,7 +214,7 @@ export function TeamActivity({ tasks }: { tasks: Task[] }) {
             ) : (
               <div className="space-y-2.5">
                 {buckets.map(b => (
-                  <div key={b.key} className="rounded-lg border p-3 space-y-2">
+                  <div key={b.key} className="rounded-lg bg-background/60 p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <span className="text-xs font-semibold text-foreground/80">{b.fullLabel}</span>
                       <div className="flex items-center gap-2.5">
@@ -278,7 +278,7 @@ export function TeamActivity({ tasks }: { tasks: Task[] }) {
           </div>
 
           {summary.members.length > 0 && (
-            <div className="rounded-xl border bg-card p-4 space-y-2.5">
+            <div className="rounded-xl bg-muted/30 p-4 space-y-2.5">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
                   <Users2 className="h-3.5 w-3.5" /> Producción por miembro
@@ -290,7 +290,7 @@ export function TeamActivity({ tasks }: { tasks: Task[] }) {
                   const totalMemberPieces = summary.total || 1;
                   const pct = Math.round((m.pieces / totalMemberPieces) * 100);
                   return (
-                    <div key={m.id} className="flex items-center gap-2 rounded-full border bg-background/40 pl-1 pr-3 py-1">
+                    <div key={m.id} className="flex items-center gap-2 rounded-full bg-background/60 pl-1 pr-3 py-1">
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={m.avatar} />
                         <AvatarFallback className="text-[10px] font-semibold">{m.name.charAt(0) || '?'}</AvatarFallback>

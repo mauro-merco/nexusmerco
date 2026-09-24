@@ -52,8 +52,7 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="relative h-12 shrink-0 border-b bg-background flex items-center justify-between px-4 gap-2">
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+        <header className="h-14 shrink-0 bg-background flex items-center justify-between px-4 gap-2">
           <div className="flex-1 flex justify-center px-2">
             <GlobalSearch />
           </div>

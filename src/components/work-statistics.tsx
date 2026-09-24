@@ -69,9 +69,9 @@ export function WorkStatistics({ clientId, userId, compact }: { clientId?: strin
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
           <History className="h-3.5 w-3.5" /> Estadísticas de trabajo
         </p>
-        <div className="flex rounded-lg border p-0.5">
+        <div className="flex rounded-lg bg-muted/50 p-0.5">
           {(['day', 'week', 'month'] as Range[]).map(value => (
-            <button key={value} type="button" onClick={() => setRange(value)} className={cn('rounded-md px-2.5 py-1 text-xs', range === value ? 'bg-gradient-tech text-white' : 'text-muted-foreground')}>
+            <button key={value} type="button" onClick={() => setRange(value)} className={cn('rounded-md px-2.5 py-1 text-xs', range === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
               {value === 'day' ? 'Días' : value === 'week' ? 'Semanas' : 'Meses'}
             </button>
           ))}
@@ -85,7 +85,7 @@ export function WorkStatistics({ clientId, userId, compact }: { clientId?: strin
           { label: 'Piezas cerradas', value: data.summary.pieces, icon: Layers, color: 'text-violet-500' },
           { label: 'Historial total', value: data.summary.total, icon: History, color: 'text-amber-500' },
         ].map(item => (
-          <div key={item.label} className="rounded-xl border bg-background/40 p-3">
+          <div key={item.label} className="rounded-xl bg-muted/40 p-3">
             <item.icon className={cn('h-4 w-4 mb-1', item.color)} />
             <p className="text-xl font-bold">{item.value}</p>
             <p className="text-[10px] text-muted-foreground">{item.label}</p>
@@ -100,12 +100,12 @@ export function WorkStatistics({ clientId, userId, compact }: { clientId?: strin
         })}
       </div>
 
-      <div className="rounded-xl border p-3 space-y-2">
+      <div className="rounded-xl bg-muted/40 p-3 space-y-2">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cierres por {range === 'day' ? 'día' : range === 'week' ? 'semana' : 'mes'}</p>
         {series.length === 0 ? <p className="text-xs text-muted-foreground italic">Sin cierres registrados.</p> : series.slice(-12).map(item => (
           <div key={item.period} className="grid grid-cols-[90px_1fr_auto] items-center gap-2 text-xs">
             <span className="text-muted-foreground">{item.period}</span>
-            <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-gradient-tech" style={{ width: `${(item.completed / max) * 100}%` }} /></div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${(item.completed / max) * 100}%` }} /></div>
             <span className="font-semibold">{item.completed}</span>
           </div>
         ))}
@@ -113,7 +113,7 @@ export function WorkStatistics({ clientId, userId, compact }: { clientId?: strin
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {[{ title: 'En curso', items: active }, { title: 'Historial', items: history }].map(section => (
-          <div key={section.title} className="rounded-xl border p-3">
+          <div key={section.title} className="rounded-xl bg-muted/40 p-3">
             <p className="text-xs font-semibold mb-2">{section.title} ({section.items.length})</p>
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {section.items.slice(0, 20).map(item => {

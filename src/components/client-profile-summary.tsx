@@ -87,7 +87,7 @@ function TaskRowInline({ task, onOpen, closed }: { task: Task; onOpen: () => voi
 
 function StatTile({ icon: Icon, iconClass, bgClass, value, label }: { icon: React.ComponentType<{ className?: string }>; iconClass: string; bgClass: string; value: number; label: string }) {
   return (
-    <Card className="border-0 shadow-sm rounded-2xl">
+    <Card className="border-0 ring-0 shadow-none rounded-2xl">
       <CardContent className="p-4">
         <div className={cn('h-9 w-9 rounded-xl flex items-center justify-center mb-2.5', bgClass)}>
           <Icon className={cn('h-4 w-4', iconClass)} />
@@ -112,7 +112,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
 
   if (loading) {
     return (
-      <Card className="border-0 shadow-sm rounded-2xl">
+      <Card className="border-0 ring-0 shadow-none rounded-2xl">
         <CardContent className="flex items-center justify-center py-10">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </CardContent>
@@ -140,7 +140,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatTile icon={KanbanSquare} iconClass="text-blue-600" bgClass="bg-blue-500/10" value={activeTasks.length} label="Tareas en curso" />
         <StatTile icon={CheckCircle2} iconClass="text-emerald-600" bgClass="bg-emerald-500/10" value={historyTasks.length} label="Finalizadas (historial)" />
-        <Card className="border-0 shadow-sm rounded-2xl sm:col-span-1">
+        <Card className="border-0 ring-0 shadow-none rounded-2xl sm:col-span-1">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2.5">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
@@ -172,7 +172,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
 
       {/* Row 2 — tasks tabs + piezas */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
-        <Card className="border-0 shadow-sm rounded-2xl">
+        <Card className="border-0 ring-0 shadow-none rounded-2xl">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex gap-1.5">
@@ -196,7 +196,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm rounded-2xl">
+        <Card className="border-0 ring-0 shadow-none rounded-2xl">
           <CardContent className="p-4">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Piezas &amp; producción</p>
             <WorkStatistics clientId={clientId} compact />
@@ -205,7 +205,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
       </div>
 
       {/* Row 3 — actividad del equipo */}
-      <Card className="border-0 shadow-sm rounded-2xl">
+      <Card className="border-0 ring-0 shadow-none rounded-2xl">
         <CardContent className="p-4">
           <TeamActivity tasks={tasks} />
         </CardContent>
@@ -218,7 +218,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
       </div>
 
       {/* Row 5 — muro */}
-      <Card className="border-0 shadow-sm rounded-2xl">
+      <Card className="border-0 ring-0 shadow-none rounded-2xl">
         <CardContent className="p-4">
           <ClientWall clientId={clientId} />
         </CardContent>
@@ -301,7 +301,7 @@ function DriveFoldersSection({ clientId }: { clientId: string }) {
   };
 
   return (
-    <Card className="border-0 shadow-sm rounded-2xl">
+    <Card className="border-0 ring-0 shadow-none rounded-2xl">
       <CardContent className="p-4 space-y-3">
         <p className="text-sm font-bold flex items-center gap-2">
           <FolderOpen className="h-4 w-4 text-amber-500" /> Carpetas en Drive
@@ -382,7 +382,7 @@ function DocumentsSection({ clientId }: { clientId: string }) {
   }, [clientId, authHeaders, router]);
 
   return (
-    <Card className="border-0 shadow-sm rounded-2xl">
+    <Card className="border-0 ring-0 shadow-none rounded-2xl">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold flex items-center gap-2">
