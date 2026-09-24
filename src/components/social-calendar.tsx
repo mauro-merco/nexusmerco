@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuRadioGroup, DropdownMenuRadioItem,
@@ -22,14 +20,14 @@ import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
-import { SocialIdeaCard } from '@/components/social-idea-card';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
-import type { SocialIdea, IdeaStatus } from '@/lib/types';
+import type { SocialIdea, IdeaStatus, PostType } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
-import { ChevronLeft, ChevronRight, Plus, Loader2, GripVertical, Check, ChevronDown, Copy, Share } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Loader2, GripVertical, Check, ChevronDown, Copy, Share2, Users, ExternalLink, LayoutGrid, List as ListIcon, ChevronRight as ChevronRightIcon } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
 type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
+type ViewMode = 'month' | 'agenda';
 
 function StatusDropdown({ idea, onStatusChange }: { idea: SocialIdea; onStatusChange: (id: string, status: IdeaStatus) => void }) {
   const stConfig = STATUS_CONFIG[idea.status];
@@ -39,10 +37,7 @@ function StatusDropdown({ idea, onStatusChange }: { idea: SocialIdea; onStatusCh
         render={
           <button
             type="button"
-            className={cn(
-              'flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[9px] font-medium shrink-0 transition-colors hover:opacity-80',
-              stConfig.colorClass,
-            )}
+            className={cn('flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium shrink-0 transition-colors hover:opacity-80', stConfig.colorClass)}
             onClick={(e) => e.stopPropagation()}
           />
         }
@@ -51,10 +46,7 @@ function StatusDropdown({ idea, onStatusChange }: { idea: SocialIdea; onStatusCh
         <ChevronDown className="h-2.5 w-2.5 opacity-50" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={4}>
-        <DropdownMenuRadioGroup
-          value={idea.status}
-          onValueChange={(val) => onStatusChange(idea.id, val as IdeaStatus)}
-        >
+        <DropdownMenuRadioGroup value={idea.status} onValueChange={(val) => onStatusChange(idea.id, val as IdeaStatus)}>
           {STATUS_ORDER.map(key => {
             const s = STATUS_CONFIG[key];
             return (
@@ -70,172 +62,111 @@ function StatusDropdown({ idea, onStatusChange }: { idea: SocialIdea; onStatusCh
   );
 }
 
-function DraggableIdeaPill({ idea, onClick, onStatusChange }: { idea: SocialIdea; onClick: () => void; onStatusChange: (id: string, status: IdeaStatus) => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: idea.id,
-    data: { idea },
-  });
-
+function DraggableDot({ idea, onClick }: { idea: SocialIdea; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: idea.id, data: { idea } });
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
-  const PtIcon = ptConfig.icon;
   const isPublished = idea.status === 'posteado';
-
-  const style = transform ? {
-    transform: CSS.Translate.toString(transform),
-    zIndex: 50,
-  } : undefined;
-
+  const style = transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined;
   return (
-    <div
+    <button
       ref={setNodeRef}
       style={style}
+      {...listeners}
+      {...attributes}
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      title={idea.title}
       className={cn(
-        'flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium cursor-pointer transition-opacity max-w-full truncate relative',
-        isPublished
-          ? 'bg-green-500/15 text-green-600'
-          : [ptConfig.bgColorClass, ptConfig.colorClass],
+        'flex items-center gap-1 w-full rounded-md px-1.5 py-1 text-[10.5px] font-medium truncate transition-opacity text-left',
+        isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
     >
-      <span {...listeners} {...attributes} className="cursor-grab active:cursor-grabbing shrink-0">
-        <GripVertical className="h-3 w-3 opacity-40" />
-      </span>
-      {isPublished ? (
-        <Check className="h-3 w-3 shrink-0 text-green-500" strokeWidth={3} />
-      ) : (
-        <PtIcon className="h-3 w-3 shrink-0" />
-      )}
+      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isPublished ? 'bg-green-500' : ptConfig.dotColor)} />
       <span className="truncate">{idea.title}</span>
-      <StatusDropdown idea={idea} onStatusChange={onStatusChange} />
-    </div>
+    </button>
   );
 }
 
-function DroppableDay({ date, ideas, isToday, onIdeaClick, onAddClick, onStatusChange }: {
+function MonthDayCell({ date, ideas, isToday, isCurrentMonth, onIdeaClick, onAddClick }: {
   date: string;
   ideas: SocialIdea[];
   isToday: boolean;
+  isCurrentMonth: boolean;
   onIdeaClick: (idea: SocialIdea) => void;
   onAddClick: (date: string) => void;
-  onStatusChange: (id: string, status: IdeaStatus) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: date });
-  const day = new Date(date + 'T12:00:00').getDate();
+  const day = Number(date.split('-')[2]);
+  const shown = ideas.slice(0, 3);
+  const overflow = ideas.length - shown.length;
 
   return (
     <div
       ref={setNodeRef}
+      onClick={() => onAddClick(date)}
       className={cn(
-        'min-h-[100px] rounded-xl p-1.5 transition-colors relative group',
-        isToday && 'bg-primary/8',
-        isOver && 'bg-primary/15',
-        !isToday && !isOver && 'bg-muted/25 hover:bg-muted/45',
+        'min-h-[104px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
+        !isCurrentMonth && 'opacity-40',
+        isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : 'bg-muted/25 hover:bg-muted/45',
       )}
     >
-      <span className={cn(
-        'text-xs font-medium block mb-1 pl-0.5',
-        isToday ? 'text-primary font-bold' : 'text-muted-foreground/60',
-      )}>
-        {day}
-      </span>
-      <div className="space-y-1">
-        {ideas.map(idea => (
-          <DraggableIdeaPill key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} onStatusChange={onStatusChange} />
-        ))}
-      </div>
-      <button
-        type="button"
-        className="absolute bottom-1.5 right-1.5 h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20"
-        onClick={(e) => { e.stopPropagation(); onAddClick(date); }}
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
-
-function VerticalDayRow({ date, dayName, ideas, isToday, onIdeaClick, onAddClick, onStatusChange }: {
-  date: string;
-  dayName: string;
-  ideas: SocialIdea[];
-  isToday: boolean;
-  onIdeaClick: (idea: SocialIdea) => void;
-  onAddClick: (date: string) => void;
-  onStatusChange: (id: string, status: IdeaStatus) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: date });
-  const day = new Date(date + 'T12:00:00').getDate();
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'rounded-xl p-3 transition-colors',
-        isToday ? 'bg-primary/8' : 'bg-muted/25',
-        isOver && 'bg-primary/15',
-      )}
-    >
-      <button
-        type="button"
-        onClick={() => onAddClick(date)}
-        className="w-full flex items-center justify-between gap-2"
-      >
-        <div className="flex items-center gap-3">
-          <span className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-base font-bold',
-            isToday ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground',
-          )}>
-            {day}
-          </span>
-          <div className="text-left">
-            <span className={cn('block text-sm font-semibold', isToday ? 'text-primary' : 'text-foreground')}>
-              {dayName}
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              {ideas.length} idea{ideas.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-        </div>
-        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary opacity-60 hover:opacity-100 transition-opacity">
-          <Plus className="h-4 w-4" />
+      <div className="flex items-center justify-between mb-1">
+        <span className={cn(
+          'flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold',
+          isToday ? 'bg-primary text-primary-foreground' : 'text-muted-foreground/70',
+        )}>
+          {day}
         </span>
-      </button>
-
-      {ideas.length > 0 && (
-        <div className="mt-3 flex flex-col gap-2">
-          {ideas.map(idea => (
-            <DraggableIdeaPill
-              key={idea.id}
-              idea={idea}
-              onClick={() => onIdeaClick(idea)}
-              onStatusChange={onStatusChange}
-            />
-          ))}
-        </div>
-      )}
+        <span
+          role="button"
+          onClick={(e) => { e.stopPropagation(); onAddClick(date); }}
+          className="h-5 w-5 rounded-md flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 hover:bg-primary/15 transition-opacity"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </span>
+      </div>
+      <div className="space-y-1 flex-1">
+        {shown.map(idea => <DraggableDot key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} />)}
+        {overflow > 0 && <p className="text-[10px] text-muted-foreground pl-1.5">+{overflow} más</p>}
+      </div>
     </div>
   );
 }
 
 function DragOverlayPill({ idea }: { idea: SocialIdea }) {
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
-  const PtIcon = ptConfig.icon;
   const isPublished = idea.status === 'posteado';
   return (
-    <div className={cn(
-      'flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold shadow-xl max-w-[140px] truncate',
-      isPublished
-        ? 'bg-green-500/15 text-green-600'
-        : [ptConfig.bgColorClass, ptConfig.colorClass],
-    )}>
-      {isPublished ? (
-        <Check className="h-3 w-3 shrink-0 text-green-500" strokeWidth={3} />
-      ) : (
-        <PtIcon className="h-3 w-3 shrink-0" />
-      )}
+    <div className={cn('flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold shadow-xl max-w-[160px] truncate', isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass])}>
+      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isPublished ? 'bg-green-500' : ptConfig.dotColor)} />
       <span className="truncate">{idea.title}</span>
     </div>
+  );
+}
+
+function AgendaRow({ idea, onClick, onStatusChange }: { idea: SocialIdea; onClick: () => void; onStatusChange: (id: string, status: IdeaStatus) => void }) {
+  const ptConfig = POST_TYPE_CONFIG[idea.post_type];
+  const PtIcon = ptConfig.icon;
+  const date = new Date(idea.publish_date + 'T12:00:00');
+  return (
+    <button type="button" onClick={onClick} className="group w-full flex items-center gap-3 rounded-2xl bg-muted/30 hover:bg-muted/55 transition-colors p-3 text-left">
+      <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-background">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase leading-none">{date.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '')}</span>
+        <span className="text-base font-bold leading-none mt-0.5">{date.getDate()}</span>
+      </div>
+      <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', ptConfig.bgColorClass, ptConfig.colorClass)}>
+        <PtIcon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold truncate">{idea.title}</p>
+        <p className="text-xs text-muted-foreground truncate">{ptConfig.label}{idea.eje_contenido ? ` · ${idea.eje_contenido}` : ''}</p>
+      </div>
+      <div onClick={(e) => e.stopPropagation()}>
+        <StatusDropdown idea={idea} onStatusChange={onStatusChange} />
+      </div>
+      <ChevronRightIcon className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+    </button>
   );
 }
 
@@ -251,6 +182,10 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
   const today = new Date();
   const [viewYear, setViewYear] = useState(initialMonth ? Number(initialMonth.split('-')[0]) : today.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialMonth ? Number(initialMonth.split('-')[1]) - 1 : today.getMonth());
+  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [activeTypes, setActiveTypes] = useState<Set<PostType>>(new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]));
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareBtnRef = useRef<HTMLDivElement>(null);
   const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
 
   const { ideas, loading, createIdea, updateIdea, deleteIdea, patchIdea } = useSocialIdeas(clientId, monthStr);
@@ -264,14 +199,9 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [dismissedIdeaId, setDismissedIdeaId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
-  const [attachmentsByIdea, setAttachmentsByIdea] = useState<Record<string, { url: string }[]>>({});
 
-  const syncIdea = useCallback((updated: SocialIdea) => {
-    setSelectedIdea(updated);
-    patchIdea(updated);
-  }, [patchIdea]);
+  const syncIdea = useCallback((updated: SocialIdea) => { setSelectedIdea(updated); patchIdea(updated); }, [patchIdea]);
 
-  // Fetch/create share token for the visible month
   const fetchShareToken = useCallback(async () => {
     if (!clientId) return;
     setShareLoading(true);
@@ -292,9 +222,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
     }
   }, [clientId, monthStr]);
 
-  useEffect(() => {
-    fetchShareToken();
-  }, [fetchShareToken]);
+  useEffect(() => { fetchShareToken(); }, [fetchShareToken]);
 
   useEffect(() => {
     if (!initialMonth) return;
@@ -310,54 +238,51 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
 
   useEffect(() => {
     if (!selectedIdea) return;
-    const stillVisible = ideas.some(idea => idea.id === selectedIdea.id);
-    if (!stillVisible) setSelectedIdea(null);
+    if (!ideas.some(idea => idea.id === selectedIdea.id)) setSelectedIdea(null);
   }, [ideas, selectedIdea]);
 
-  useEffect(() => {
-    if (ideas.length === 0) { setAttachmentsByIdea({}); return; }
-    const ids = ideas.map(i => i.id).join(',');
-    fetch(`/api/social-attachments?idea_ids=${ids}`)
-      .then(r => r.json())
-      .then(json => {
-        const map: Record<string, { url: string }[]> = {};
-        for (const att of json.data || []) {
-          if (!map[att.idea_id]) map[att.idea_id] = [];
-          map[att.idea_id].push(att);
-        }
-        setAttachmentsByIdea(map);
-      })
-      .catch(() => {});
-  }, [ideas]);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
-
-  const prevMonth = useCallback(() => {
-    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
-    else setViewMonth(m => m - 1);
-  }, [viewMonth]);
-
-  const nextMonth = useCallback(() => {
-    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
-    else setViewMonth(m => m + 1);
-  }, [viewMonth]);
+  const goToday = useCallback(() => { setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); }, [today]);
+  const prevMonth = useCallback(() => { if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); } else setViewMonth(m => m - 1); }, [viewMonth]);
+  const nextMonth = useCallback(() => { if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); } else setViewMonth(m => m + 1); }, [viewMonth]);
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
+  const filteredIdeas = useMemo(() => ideas.filter(i => activeTypes.has(i.post_type)), [ideas, activeTypes]);
+
   const ideasByDate = useMemo(() => {
     const map = new Map<string, SocialIdea[]>();
-    for (const idea of ideas) {
+    for (const idea of filteredIdeas) {
       const existing = map.get(idea.publish_date) || [];
       existing.push(idea);
       map.set(idea.publish_date, existing);
     }
     return map;
-  }, [ideas]);
+  }, [filteredIdeas]);
+
+  const agendaGroups = useMemo(() => {
+    const sorted = [...filteredIdeas].filter(i => i.publish_date.startsWith(monthStr)).sort((a, b) => a.publish_date.localeCompare(b.publish_date));
+    const groups: { label: string; items: SocialIdea[] }[] = [];
+    let currentWeekStart = '';
+    for (const idea of sorted) {
+      const d = new Date(idea.publish_date + 'T12:00:00');
+      const monday = new Date(d);
+      const dow = (d.getDay() + 6) % 7;
+      monday.setDate(d.getDate() - dow);
+      const key = monday.toISOString().split('T')[0];
+      if (key !== currentWeekStart) {
+        const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+        groups.push({ label: `${monday.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} – ${sunday.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`, items: [] });
+        currentWeekStart = key;
+      }
+      groups[groups.length - 1].items.push(idea);
+    }
+    return groups;
+  }, [filteredIdeas, monthStr]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const idea = (event.active.data.current as { idea?: SocialIdea })?.idea;
@@ -368,32 +293,13 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
     setActiveIdea(null);
     const { active, over } = event;
     if (!over) return;
-
     const idea = (active.data.current as { idea?: SocialIdea })?.idea;
     const newDate = over.id as string;
-
-    if (idea && idea.publish_date !== newDate) {
-      await updateIdea(idea.id, { publish_date: newDate });
-    }
+    if (idea && idea.publish_date !== newDate) await updateIdea(idea.id, { publish_date: newDate });
   }, [updateIdea]);
 
-  const handleDayClick = useCallback((date: string) => {
-    setSelectedDate(date);
-    setShowNewIdea(true);
-  }, []);
-
-  const handleStatusChange = useCallback(async (id: string, status: IdeaStatus) => {
-    await updateIdea(id, { status });
-  }, [updateIdea]);
-
-  const stats = useMemo(() => {
-    const total = ideas.length;
-    const byStatus = new Map<string, number>();
-    for (const idea of ideas) {
-      byStatus.set(idea.status, (byStatus.get(idea.status) || 0) + 1);
-    }
-    return { total, byStatus };
-  }, [ideas]);
+  const handleDayClick = useCallback((date: string) => { setSelectedDate(date); setShowNewIdea(true); }, []);
+  const handleStatusChange = useCallback(async (id: string, status: IdeaStatus) => { await updateIdea(id, { status }); }, [updateIdea]);
 
   const shareUrl = shareConfig?.token && typeof window !== 'undefined' ? `${window.location.origin}/c/${shareConfig.token}` : '';
   const canManageShare = user?.role === 'admin' || user?.role === 'operador';
@@ -403,261 +309,199 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
     setSelectedIdea(null);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      if (url.searchParams.has('idea')) {
-        url.searchParams.delete('idea');
-        window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
-      }
+      if (url.searchParams.has('idea')) { url.searchParams.delete('idea'); window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`); }
     }
   }, [selectedIdea]);
 
+  const toggleType = (t: PostType) => {
+    setActiveTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next.size === 0 ? new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]) : next;
+    });
+  };
+
+  const monthCells = useMemo(() => {
+    const cells: { date: string; inMonth: boolean }[] = [];
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      const d = new Date(viewYear, viewMonth, -firstDayOfWeek + i + 1);
+      cells.push({ date: d.toISOString().split('T')[0], inMonth: false });
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      cells.push({ date: `${monthStr}-${String(day).padStart(2, '0')}`, inMonth: true });
+    }
+    while (cells.length % 7 !== 0) {
+      const last = new Date(cells[cells.length - 1].date + 'T12:00:00');
+      last.setDate(last.getDate() + 1);
+      cells.push({ date: last.toISOString().split('T')[0], inMonth: false });
+    }
+    return cells;
+  }, [firstDayOfWeek, daysInMonth, monthStr, viewYear, viewMonth]);
+
   if (loading) {
-    return (
-      <Card className="border-0 ring-0 shadow-none rounded-3xl">
-        <CardContent className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <p className="text-sm">Cargando calendario...</p>
-        </CardContent>
-      </Card>
-    );
+    return <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /><p className="text-sm">Cargando calendario...</p></div>;
   }
 
   return (
     <>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-lg font-bold min-w-[160px] text-center">
-                {monthNames[viewMonth]} {viewYear}
-              </span>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="default" size="cta" className="gap-2 rounded-xl">
-            <Plus className="h-4 w-4" /> Nueva Idea
-          </Button>
-
-          {canManageShare && shareConfig?.token && (
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
+        <div className="space-y-4 min-w-0">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <CalendarGuestAccessDialog clientId={clientId} calendarType="social" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} />
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-1.5 rounded-lg"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(shareUrl);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? '¡Copiado!' : 'Compartir calendario'}
-              </Button>
-              <a
-                href={`/c/${shareConfig.token}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
-              >
-                <Share className="h-3.5 w-3.5 mr-1" /> Ver landing
-              </a>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+              <button type="button" onClick={goToday} className="text-lg font-bold min-w-[150px] text-center hover:text-primary transition-colors capitalize">
+                {monthNames[viewMonth]} {viewYear}
+              </button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
             </div>
-          )}
 
-          {canManageShare && !shareConfig?.token && !shareLoading && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="gap-1.5 rounded-lg"
-              onClick={async () => {
-                setShareLoading(true);
-                setShareError('');
-                try {
-                  const res = await fetch('/api/calendar-links', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ client_id: clientId, calendar_type: 'social', month: monthStr }),
-                  });
-                  const json = await res.json();
-                  if (!res.ok) throw new Error(json.error || 'No se pudo generar el link');
-                  setShareConfig({ token: json.data?.token || null, allowed_client_id: json.data?.allowed_client_id, guest_enabled: !!json.data?.guest_enabled, allowed_user_ids: json.data?.allowed_user_ids || [] });
-                } catch (err) {
-                  setShareError(err instanceof Error ? err.message : 'No se pudo generar el link');
-                } finally {
-                  setShareLoading(false);
-                }
-              }}
-            >
-              {shareLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share className="h-3.5 w-3.5" />} Generar link
-            </Button>
-          )}
-        </div>
+            <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1">
+              <button type="button" onClick={() => setViewMode('month')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', viewMode === 'month' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+                <LayoutGrid className="h-3.5 w-3.5" /> Mes
+              </button>
+              <button type="button" onClick={() => setViewMode('agenda')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', viewMode === 'agenda' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+                <ListIcon className="h-3.5 w-3.5" /> Agenda
+              </button>
+            </div>
 
-        {canManageShare && shareError && (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{shareError}</p>
-        )}
-
-        {canManageShare && shareConfig?.token && (
-          <Card className="border-0 ring-0 shadow-none bg-accent rounded-2xl">
-            <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-wide text-accent-foreground">Link único para compartir con cliente</p>
-                <p className="text-xs text-accent-foreground/70">Este link abre el calendario fuera de la app para ver, comentar y modificar según permisos.</p>
+            <div className="flex items-center gap-2 ml-auto">
+              <div className="relative" ref={shareBtnRef}>
+                <Button variant="secondary" size="sm" className="gap-1.5 rounded-lg" onClick={() => setShareOpen(o => !o)}>
+                  <Share2 className="h-3.5 w-3.5" /> Compartir
+                </Button>
+                {shareOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-popover p-4 shadow-xl z-50 space-y-3">
+                      <p className="text-xs font-semibold text-muted-foreground">Link para el cliente</p>
+                      {shareConfig?.token ? (
+                        <>
+                          <div className="flex gap-1.5">
+                            <Input value={shareUrl} readOnly className="h-8 text-xs rounded-lg" onFocus={(e) => e.currentTarget.select()} />
+                            <Button size="icon-sm" variant="secondary" className="rounded-lg shrink-0" onClick={async () => { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                              {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1"><CalendarGuestAccessDialog clientId={clientId} calendarType="social" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} /></div>
+                            <a href={`/c/${shareConfig.token}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors">
+                              <ExternalLink className="h-3 w-3" /> Ver landing
+                            </a>
+                          </div>
+                        </>
+                      ) : (
+                        <Button size="sm" variant="secondary" className="w-full gap-1.5 rounded-lg" disabled={shareLoading} onClick={fetchShareToken}>
+                          {shareLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} Generar link
+                        </Button>
+                      )}
+                      {shareError && <p className="text-xs text-destructive">{shareError}</p>}
+                    </div>
+                  </>
+                )}
               </div>
-              <Input value={shareUrl} readOnly className="h-9 min-w-0 md:max-w-md bg-background rounded-lg" onFocus={(e) => e.currentTarget.select()} />
-              <Button variant="secondary" size="sm" className="gap-1.5 rounded-lg shrink-0" onClick={async () => { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
-                {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? 'Copiado' : 'Copiar link'}
+              <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="default" className="gap-2 rounded-xl">
+                <Plus className="h-4 w-4" /> Nueva Idea
               </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-          <span className="font-medium">{stats.total} idea{stats.total !== 1 ? 's' : ''}</span>
-          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-            const count = stats.byStatus.get(key) || 0;
-            if (count === 0) return null;
-            return (
-              <span key={key} className="flex items-center gap-1">
-                <span className={cn('w-2 h-2 rounded-full', cfg.dotColor)} /> {count} {cfg.label.toLowerCase()}{count !== 1 ? 's' : ''}
-              </span>
-            );
-          })}
-        </div>
-
-        {/* Post type legend */}
-        <div className="flex items-center gap-4 text-xs">
-          {Object.entries(POST_TYPE_CONFIG).map(([key, cfg]) => {
-            const Icon = cfg.icon;
-            return (
-              <span key={key} className={cn('flex items-center gap-1.5 font-medium', cfg.colorClass)}>
-                <span className={cn('w-2.5 h-2.5 rounded-full', cfg.dotColor)} />
-                <Icon className="h-3.5 w-3.5" /> {cfg.label}
-              </span>
-            );
-          })}
-        </div>
-
-        {/* Calendar Grid */}
-        <Card className="border-0 ring-0 shadow-none rounded-3xl">
-          <CardContent className="p-4">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              {/* Day names */}
-              <div className="hidden md:grid grid-cols-7 gap-1.5 mb-1.5">
-                {dayNames.map(n => (
-                  <div key={n} className="text-center text-xs font-semibold text-muted-foreground py-1.5">{n}</div>
-                ))}
-              </div>
-
-              {/* Days grid - desktop */}
-              <div className="hidden md:grid grid-cols-7 gap-1.5">
-                {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                  <div key={`empty-${i}`} />
-                ))}
-                {Array.from({ length: daysInMonth }).map((_, idx) => {
-                  const day = idx + 1;
-                  const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
-                  const dayIdeas = ideasByDate.get(dateStr) || [];
-                  const isToday = today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === day;
-
-                  return (
-                    <DroppableDay
-                      key={dateStr}
-                      date={dateStr}
-                      ideas={dayIdeas}
-                      isToday={isToday}
-                      onIdeaClick={setSelectedIdea}
-                      onAddClick={handleDayClick}
-                      onStatusChange={handleStatusChange}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Vertical list - mobile */}
-              <div className="md:hidden flex flex-col gap-2">
-                {Array.from({ length: daysInMonth }).map((_, idx) => {
-                  const day = idx + 1;
-                  const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
-                  const dayIdeas = ideasByDate.get(dateStr) || [];
-                  const isToday = today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === day;
-                  const dateObj = new Date(viewYear, viewMonth, day);
-                  const dayName = dayNames[dateObj.getDay()];
-
-                  return (
-                    <VerticalDayRow
-                      key={dateStr}
-                      date={dateStr}
-                      dayName={dayName}
-                      ideas={dayIdeas}
-                      isToday={isToday}
-                      onIdeaClick={setSelectedIdea}
-                      onAddClick={handleDayClick}
-                      onStatusChange={handleStatusChange}
-                    />
-                  );
-                })}
-              </div>
-
-              <DragOverlay>
-                {activeIdea ? <DragOverlayPill idea={activeIdea} /> : null}
-              </DragOverlay>
-            </DndContext>
-          </CardContent>
-        </Card>
-
-        {/* Idea Cards */}
-        {ideas.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground">Ideas del mes</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {[...ideas]
-                .filter(i => i.publish_date.startsWith(monthStr))
-                .sort((a, b) => a.publish_date.localeCompare(b.publish_date))
-                .map(idea => (
-                  <SocialIdeaCard key={idea.id} idea={idea} attachments={attachmentsByIdea[idea.id] || []} onClick={() => setSelectedIdea(idea)} onStatusChange={handleStatusChange} />
-                ))}
             </div>
           </div>
-        )}
+
+          {viewMode === 'month' ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <div className="grid grid-cols-7 gap-1.5">
+                {dayNames.map(n => <div key={n} className="text-center text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide py-1">{n}</div>)}
+                {monthCells.map(cell => {
+                  const isToday = cell.date === today.toISOString().split('T')[0];
+                  return (
+                    <MonthDayCell
+                      key={cell.date}
+                      date={cell.date}
+                      ideas={ideasByDate.get(cell.date) || []}
+                      isToday={isToday}
+                      isCurrentMonth={cell.inMonth}
+                      onIdeaClick={setSelectedIdea}
+                      onAddClick={handleDayClick}
+                    />
+                  );
+                })}
+              </div>
+              <DragOverlay>{activeIdea ? <DragOverlayPill idea={activeIdea} /> : null}</DragOverlay>
+            </DndContext>
+          ) : (
+            <div className="space-y-5">
+              {agendaGroups.length === 0 ? (
+                <div className="rounded-2xl bg-muted/25 py-16 flex flex-col items-center gap-2 text-muted-foreground">
+                  <ListIcon className="h-8 w-8 opacity-40" />
+                  <p className="text-sm">No hay ideas planificadas este mes.</p>
+                  <Button size="sm" variant="secondary" className="rounded-lg gap-1.5 mt-1" onClick={() => { setSelectedDate(null); setShowNewIdea(true); }}><Plus className="h-3.5 w-3.5" /> Agregar la primera</Button>
+                </div>
+              ) : agendaGroups.map(group => (
+                <div key={group.label} className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 px-1">Semana del {group.label}</p>
+                  <div className="space-y-1.5">
+                    {group.items.map(idea => <AgendaRow key={idea.id} idea={idea} onClick={() => setSelectedIdea(idea)} onStatusChange={handleStatusChange} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-muted/25 p-4 space-y-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Filtrar por tipo</p>
+            {Object.entries(POST_TYPE_CONFIG).map(([key, cfg]) => {
+              const Icon = cfg.icon;
+              const on = activeTypes.has(key as PostType);
+              const count = ideas.filter(i => i.post_type === key).length;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleType(key as PostType)}
+                  className={cn('w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-medium transition-colors', on ? cn(cfg.bgColorClass, cfg.colorClass) : 'text-muted-foreground/50 hover:bg-muted/40')}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 text-left">{cfg.label}</span>
+                  <span className="text-[10px] opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rounded-2xl bg-muted/25 p-4 space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Este mes</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold">{ideas.filter(i => i.publish_date.startsWith(monthStr)).length}</span>
+              <span className="text-xs text-muted-foreground">ideas planificadas</span>
+            </div>
+            <div className="space-y-1 pt-1">
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                const count = ideas.filter(i => i.status === key && i.publish_date.startsWith(monthStr)).length;
+                if (count === 0) return null;
+                return (
+                  <div key={key} className="flex items-center gap-1.5 text-xs">
+                    <span className={cn('w-1.5 h-1.5 rounded-full', cfg.dotColor)} />
+                    <span className="text-muted-foreground flex-1">{cfg.label}</span>
+                    <span className="font-semibold">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* New Idea Dialog */}
-      <SocialNewIdeaDialog
-        open={showNewIdea}
-        onOpenChange={setShowNewIdea}
-        initialDate={selectedDate}
-        onCreateIdea={createIdea}
-        users={internalUsers}
-        calendarType="social"
-      />
+      <SocialNewIdeaDialog open={showNewIdea} onOpenChange={setShowNewIdea} initialDate={selectedDate} onCreateIdea={createIdea} users={internalUsers} calendarType="social" />
 
-      {/* Idea Detail Modal */}
       {selectedIdea && (
         <SocialIdeaModal
           idea={selectedIdea}
           open={!!selectedIdea}
           onOpenChange={(open) => { if (!open) closeSelectedIdea(); }}
-          onIdeaUpdated={(updated) => {
-            syncIdea(updated);
-          }}
-          onIdeaDeleted={() => {
-            deleteIdea(selectedIdea!.id);
-            setSelectedIdea(null);
-          }}
+          onIdeaUpdated={(updated) => { syncIdea(updated); }}
+          onIdeaDeleted={() => { deleteIdea(selectedIdea!.id); setSelectedIdea(null); }}
           users={internalUsers}
           calendarType="social"
         />
