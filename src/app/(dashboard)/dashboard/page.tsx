@@ -28,6 +28,7 @@ import {
   Building2, Upload, BarChart3, Users, Plus,
   LayoutDashboard, Search, Megaphone, Globe, Activity, Share2,
   ArrowLeft, HelpCircle, Sparkles, ChevronRight, Calendar, Settings, Pencil, Trash2, Loader2, ShoppingBag, KanbanSquare,
+  LayoutGrid, List,
 } from 'lucide-react';
 
 const TAB_TOOLTIPS: Record<string, string> = {
@@ -45,6 +46,14 @@ const statusBadge: Record<string, { label: string; variant: 'default' | 'seconda
   onboarding: { label: 'Onboarding', variant: 'outline' },
 };
 
+// Flat, harmonious category colors reused from the chart palette — one per hue family.
+const CATEGORY_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+function colorForClient(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return CATEGORY_COLORS[hash % CATEGORY_COLORS.length];
+}
+
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const router = useRouter();
@@ -58,6 +67,7 @@ export default function DashboardPage() {
   const [clientView, setClientView] = useState<'menu' | 'analysis' | 'calendar' | 'ads' | null>(null);
   const selectedClient = clients.find(c => c.id === selectedClientId);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [confirmText, setConfirmText] = useState('');
@@ -435,7 +445,7 @@ export default function DashboardPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-gradient-tech text-2xl md:text-3xl font-bold tracking-tight">Centro de Control</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Centro de Control</h1>
           <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Bienvenido, {user?.full_name}
           </p>
@@ -444,10 +454,10 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {isAdminOrTeam && (
             <>
-              <Button onClick={() => router.push('/clients/new')} variant="cta" className="gap-2">
+              <Button onClick={() => router.push('/clients/new')} variant="default" size="cta" className="gap-2 rounded-2xl">
                 <Plus className="h-4 w-4" /> Nuevo Cliente
               </Button>
-              <Button onClick={() => router.push('/wizard')} variant="cta" className="gap-2">
+              <Button onClick={() => router.push('/wizard')} variant="secondary" size="cta" className="gap-2 rounded-2xl">
                 <Upload className="h-4 w-4" /> Cargar CSV
               </Button>
             </>
@@ -467,7 +477,7 @@ export default function DashboardPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="bg-card/50 backdrop-blur border-0 shadow-sm">
+            <Card key={i} className="bg-card border-0 shadow-sm rounded-2xl">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-10 w-10 rounded-xl bg-muted/30 animate-pulse" />
@@ -484,97 +494,169 @@ export default function DashboardPage() {
         </div>
       ) : clients.length > 0 ? (
         <>
-          {/* Section intro */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground bg-card/30 backdrop-blur border border-border/20 rounded-2xl px-5 py-4">
+          {/* Section intro + layout toggle */}
+          <div className="flex items-center gap-3 bg-accent rounded-2xl px-5 py-4">
             <Sparkles className="h-5 w-5 text-primary shrink-0" />
-            <span>Seleccioná un cliente para explorar sus métricas de marketing digital, campañas y análisis de rendimiento.</span>
+            <span className="text-sm text-accent-foreground flex-1">Seleccioná un cliente para explorar sus métricas de marketing digital, campañas y análisis de rendimiento.</span>
+            <div className="hidden sm:flex items-center gap-1 bg-background/60 rounded-xl p-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setLayout('grid')}
+                aria-label="Vista grilla"
+                className={cn('flex h-7 w-7 items-center justify-center rounded-lg transition-colors', layout === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayout('list')}
+                aria-label="Vista lista"
+                className={cn('flex h-7 w-7 items-center justify-center rounded-lg transition-colors', layout === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <List className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
 
-          {/* Client cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activeClients.map((client) => {
-              const statusInfo = statusBadge[client.status] || statusBadge.onboarding;
-              return (
-                <Card
-                  key={client.id}
-                  className="relative group bg-card/50 backdrop-blur-xl border border-border/30 hover:border-primary/30 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden"
-                  onClick={() => handleSelectClient(client.id)}
-                >
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5" />
-                  <div className="absolute top-0 right-0 w-32 h-32 opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-full blur-2xl bg-gradient-to-br from-primary to-purple-500" />
-                  <CardContent className="p-5 relative">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        {client.logo_url ? (
-                          <Avatar className="h-10 w-10 rounded-xl ring-2 ring-border/30">
-                            <AvatarImage src={client.logo_url} alt={client.name} />
-                            <AvatarFallback className="rounded-xl text-sm font-bold bg-gradient-to-br from-primary/20 to-primary/10">
+          {/* Client cards — grid layout */}
+          {layout === 'grid' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeClients.map((client) => {
+                const statusInfo = statusBadge[client.status] || statusBadge.onboarding;
+                const color = colorForClient(client.name);
+                return (
+                  <Card
+                    key={client.id}
+                    className="relative group bg-card border-0 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer rounded-3xl"
+                    onClick={() => handleSelectClient(client.id)}
+                  >
+                    <CardContent className="p-5 relative">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          {client.logo_url ? (
+                            <Avatar className="h-11 w-11 rounded-2xl">
+                              <AvatarImage src={client.logo_url} alt={client.name} />
+                              <AvatarFallback className="rounded-2xl text-sm font-bold" style={{ background: `color-mix(in oklch, ${color} 18%, var(--card))`, color }}>
+                                {client.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div className="h-11 w-11 rounded-2xl flex items-center justify-center font-bold text-sm" style={{ background: `color-mix(in oklch, ${color} 18%, var(--card))`, color }}>
                               {client.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center ring-2 ring-border/30">
-                            <Building2 className="h-5 w-5 text-primary" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-sm font-bold truncate max-w-[180px]">{client.name}</p>
-                          {client.industry && (
-                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">{client.industry}</p>
+                            </div>
                           )}
+                          <div>
+                            <p className="text-sm font-bold truncate max-w-[180px]">{client.name}</p>
+                            {client.industry && (
+                              <p className="text-xs text-muted-foreground truncate max-w-[180px]">{client.industry}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="rounded-lg"
+                            onClick={(e) => { e.stopPropagation(); router.push(`/clients/${client.id}/edit`); }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="rounded-lg text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget({ id: client.id, name: client.name });
+                              setConfirmText('');
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all" />
-                    </div>
 
-                    {client.description && (
-                      <p className="text-xs text-muted-foreground/70 line-clamp-2 mb-3 leading-relaxed">{client.description}</p>
-                    )}
+                      {client.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{client.description}</p>
+                      )}
 
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant={statusInfo.variant} className="text-[10px] px-2 py-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge variant={statusInfo.variant} className="text-[10px] px-2.5 py-0 rounded-full">
+                          {statusInfo.label}
+                        </Badge>
+                        {client.campaign_types && client.campaign_types.length > 0 && client.campaign_types.slice(0, 3).map(t => (
+                          <span key={t} className="text-[10px] font-medium px-2.5 py-0.5 rounded-full" style={{ background: `color-mix(in oklch, ${color} 14%, var(--card))`, color }}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Client cards — compact list layout */}
+          {layout === 'list' && (
+            <Card className="border-0 shadow-sm rounded-3xl overflow-hidden">
+              <div className="divide-y divide-border/60">
+                {activeClients.map((client) => {
+                  const statusInfo = statusBadge[client.status] || statusBadge.onboarding;
+                  const color = colorForClient(client.name);
+                  return (
+                    <div
+                      key={client.id}
+                      className="group flex items-center gap-4 px-5 py-3.5 hover:bg-accent/40 transition-colors cursor-pointer"
+                      onClick={() => handleSelectClient(client.id)}
+                    >
+                      <div className="h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0" style={{ background: `color-mix(in oklch, ${color} 18%, var(--card))`, color }}>
+                        {client.name.charAt(0)}
+                      </div>
+                      <div className="w-40 shrink-0 min-w-0">
+                        <p className="text-sm font-bold truncate">{client.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{client.industry || '—'}</p>
+                      </div>
+                      <p className="flex-1 text-xs text-muted-foreground truncate hidden md:block">{client.description || ''}</p>
+                      <Badge variant={statusInfo.variant} className="text-[10px] px-2.5 py-0 rounded-full shrink-0">
                         {statusInfo.label}
                       </Badge>
-                      {client.campaign_types && client.campaign_types.length > 0 && (
-                        <div className="flex gap-1 flex-wrap">
-                          {client.campaign_types.slice(0, 3).map(t => (
-                            <Badge key={t} variant="outline" className="text-[10px] px-2 py-0 border-border/30">
-                              {t}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
+                      <div className="hidden sm:flex gap-1 w-20 shrink-0">
+                        {client.campaign_types?.slice(0, 2).map(t => (
+                          <span key={t} className="text-[9.5px] font-medium px-2 py-0.5 rounded-full" style={{ background: `color-mix(in oklch, ${color} 14%, var(--card))`, color }}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="rounded-lg"
+                          onClick={(e) => { e.stopPropagation(); router.push(`/clients/${client.id}/edit`); }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="rounded-lg text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget({ id: client.id, name: client.name });
+                            setConfirmText('');
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                     </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 gap-1.5 text-[11px]"
-                        onClick={(e) => { e.stopPropagation(); router.push(`/clients/${client.id}/edit`); }}
-                      >
-                        <Pencil className="h-3 w-3" /> Editar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget({ id: client.id, name: client.name });
-                          setConfirmText('');
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" /> Eliminar
-                      </Button>
-                    </div>
-
-                    <div className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-gradient-to-r from-primary/40 via-purple-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
 
           {/* Paused or onboarding clients */}
           {clients.filter(c => c.status !== 'active' && c.status !== 'onboarding').length > 0 && (
@@ -587,14 +669,14 @@ export default function DashboardPage() {
                 {clients.filter(c => c.status !== 'active' && c.status !== 'onboarding').map((client) => {
                   const statusInfo = statusBadge[client.status] || statusBadge.onboarding;
                   return (
-                    <Card key={client.id} className="bg-card/30 border border-border/20 opacity-60 hover:opacity-100 transition-opacity cursor-default">
+                    <Card key={client.id} className="border-0 bg-card/60 rounded-2xl opacity-60 hover:opacity-100 transition-opacity cursor-default">
                       <CardContent className="p-4 flex items-center gap-3">
                         <div className="h-8 w-8 rounded-lg bg-muted/30 flex items-center justify-center">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium truncate">{client.name}</p>
-                          <Badge variant={statusInfo.variant} className="text-[10px] px-2 py-0 mt-0.5">{statusInfo.label}</Badge>
+                          <Badge variant={statusInfo.variant} className="text-[10px] px-2 py-0 mt-0.5 rounded-full">{statusInfo.label}</Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -605,15 +687,15 @@ export default function DashboardPage() {
           )}
         </>
       ) : (
-        <Card className="border-dashed bg-card/30">
+        <Card className="border-0 bg-card/60 rounded-3xl">
           <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10">
-              <Building2 className="h-10 w-10 text-primary/60" />
+            <div className="p-4 rounded-2xl bg-accent">
+              <Building2 className="h-10 w-10 text-primary" />
             </div>
             <p className="text-base font-semibold">No hay clientes todavía</p>
             <p className="text-sm text-center max-w-md">Creá un cliente para empezar a cargar datos de campañas y ver métricas de marketing digital.</p>
             {isAdminOrTeam && (
-              <Button onClick={() => router.push('/clients/new')} variant="cta" className="gap-2 mt-2">
+              <Button onClick={() => router.push('/clients/new')} variant="default" size="cta" className="gap-2 mt-2 rounded-2xl">
                 <Plus className="h-4 w-4" /> Crear Cliente
               </Button>
             )}
