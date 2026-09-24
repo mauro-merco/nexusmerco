@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { useClients, deleteClient } from '@/lib/hooks/use-clients';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess, getAllowedClientIds } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -56,13 +58,23 @@ function colorForClient(key: string) {
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'dashboard')) {
+    return <NoAccess message="No tienes permiso para acceder al Centro de Control." />;
+  }
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clients, loading, refetch } = useClients();
   const isAdminOrTeam = user?.role === 'admin' || user?.role === 'operador';
   const canView = user?.role === 'admin' || user?.role === 'operador' || user?.role === 'client';
 
-  const activeClients = clients.filter(c => c.status === 'active' || c.status === 'onboarding');
+  const allowedClientIds = getAllowedClientIds(user);
+  const allClients = clients.filter(c => {
+    if (allowedClientIds === null) return true; // null = all clients
+    return allowedClientIds.includes(c.id);
+  });
+  const activeClients = allClients.filter(c => c.status === 'active' || c.status === 'onboarding');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientView, setClientView] = useState<'menu' | 'analysis' | 'calendar' | 'ads' | null>(null);
   const selectedClient = clients.find(c => c.id === selectedClientId);

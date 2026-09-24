@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuthStore } from '@/store/auth-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess } from '@/lib/permissions';
 import { useT } from '@/lib/use-t';
 import { cn } from '@/lib/utils';
 import { Bot, Send, Sparkles, User, TrendingUp, TrendingDown, Lightbulb, AlertTriangle } from 'lucide-react';
@@ -22,6 +25,12 @@ const presetQueries = [
 ];
 
 export default function InsightsPage() {
+  const { user } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'insights')) {
+    return <NoAccess message="No tienes permiso para acceder a Insights IA." />;
+  }
+
   const _ = useT();
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: _('insights.welcome') },

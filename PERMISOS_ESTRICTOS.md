@@ -107,17 +107,18 @@ getAllowedClientIds(user) // → string[] | null
 
 ## Probar el Sistema
 
-### Escenario 1: Usuario solo con "calendario semanal"
+### Escenario 1: Usuario interno restringido (ej: "nico" solo con LOF)
 1. Ir a **Settings → Gestión de Usuarios**
 2. Editar usuario "nico"
-3. **Módulos visibles:** Seleccionar SOLO "Calendario de clientes"
-4. **Clientes permitidos:** Click "Restringir" y seleccionar solo "Multipoint"
-5. Guardar
+3. **Módulos visibles:** Seleccionar SOLO "Calendario de clientes" (deseleccionar todo lo demás, incluyendo "Centro de Control")
+4. **Clientes permitidos:** Click "Restringir" y seleccionar solo "LOF" (o el cliente que corresponda)
+5. Guardar con ✓
 6. Cerrar sesión e ingresar como "nico"
 7. **Resultado esperado:**
    - Sidebar muestra SOLO "Calendario de clientes"
-   - Al entrar al calendario, solo ve el cliente "Multipoint"
-   - No puede acceder a /dashboard, /analysis, etc. (muestra "Sin acceso")
+   - Al entrar al calendario, solo ve el cliente "LOF"
+   - Si intenta acceder manualmente a `/dashboard` o `/analysis`, ve "Sin acceso"
+   - **Importante:** El Centro de Control NO debe aparecer en el sidebar
 
 ### Escenario 2: Admin con todos los permisos
 1. Editar un usuario admin
@@ -157,6 +158,8 @@ getAllowedClientIds(user) // → string[] | null
 
 ⚠️ **Clientes permitidos:** `null` = todos los clientes. Array vacío = ningún cliente. Esto es diferente a `visible_modules` donde array vacío = sin acceso.
 
+⚠️ **Centro de Control:** La página `/dashboard` ahora también filtra clientes según `allowed_client_ids`. Si un usuario interno (admin/operador) tiene `allowed_client_ids` configurado, solo verá esos clientes en el Centro de Control.
+
 ✅ **Build OK:** El código compila sin errores TypeScript.
 
 ---
@@ -168,7 +171,9 @@ getAllowedClientIds(user) // → string[] | null
 3. **Permissions:** `src/lib/permissions.ts` (nuevos helpers)
 4. **Sidebar:** `src/components/sidebar.tsx` (lógica estricta)
 5. **NoAccess:** `src/components/no-access.tsx` (componente de "Sin acceso")
-6. **Páginas:** 
+6. **Páginas (TODAS con validación):** 
+   - `src/app/(dashboard)/dashboard/page.tsx` ✨ NUEVO
+   - `src/app/(dashboard)/wizard/page.tsx` ✨ NUEVO
    - `src/app/(dashboard)/analysis/page.tsx`
    - `src/app/(dashboard)/team/page.tsx`
    - `src/app/(dashboard)/operations/page.tsx`
@@ -176,10 +181,14 @@ getAllowedClientIds(user) // → string[] | null
    - `src/app/(dashboard)/documentos/page.tsx`
    - `src/app/(dashboard)/messages/page.tsx`
    - `src/app/(dashboard)/sugerencias/page.tsx`
+   - `src/app/(dashboard)/insights/page.tsx` ✨ NUEVO
+   - `src/app/(dashboard)/integrations/page.tsx` ✨ NUEVO
 7. **APIs:**
    - `src/app/api/users/route.ts` (GET/POST con `allowed_client_ids`)
    - `src/app/api/users/[id]/route.ts` (PUT con `allowed_client_ids`)
+   - `src/app/api/auth/profile/route.ts` (devuelve `allowed_client_ids`) ✨ NUEVO
 8. **Settings:** `src/app/(dashboard)/settings/page.tsx` (UI de gestión)
+9. **Auth Store:** `src/store/auth-store.ts` (persiste `allowed_client_ids`) ✨ NUEVO
 
 ---
 

@@ -1,13 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuthStore } from '@/store/auth-store';
 import { WizardForm } from '@/components/wizard-form';
 import { FolderUpload } from '@/components/folder-upload';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess } from '@/lib/permissions';
 import { useT } from '@/lib/use-t';
 import { Upload, FolderOpen } from 'lucide-react';
 
 export default function WizardPage() {
+  const { user } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'wizard')) {
+    return <NoAccess message="No tienes permiso para acceder al Asistente Semanal." />;
+  }
+
   const _ = useT();
   const [tab, setTab] = useState('single');
 

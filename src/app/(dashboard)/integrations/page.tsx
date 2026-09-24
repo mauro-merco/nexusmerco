@@ -1,12 +1,21 @@
 'use client';
 
+import { useAuthStore } from '@/store/auth-store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess } from '@/lib/permissions';
 import { useT } from '@/lib/use-t';
 import { Cable, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function IntegrationsPage() {
+  const { user } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'integrations')) {
+    return <NoAccess message="No tienes permiso para acceder a Integraciones." />;
+  }
+
   const _ = useT();
   const router = useRouter();
 
