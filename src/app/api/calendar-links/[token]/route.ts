@@ -174,7 +174,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       }
     }
 
-    // Fetch comments
+    // Fetch comments with user information
     let comments: Record<string, unknown[]> = {};
     if (ideas && ideas.length > 0) {
       const commentTable = type === 'ads' ? 'ads_comments' : 'social_comments';
@@ -185,9 +185,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
         .order('created_at', { ascending: true });
 
       if (comms) {
+        // Fetch user information for all comment authors
+        const userIds = [...new Set(comms.map(c => c.user_id).filter(Boolean))];
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, full_name, avatar_url, email')
+          .in('id', userIds);
+        
+        const usersMap = Object.fromEntries((users || []).map(u => [u.id, u]));
+
         for (const comm of comms) {
           if (!comments[comm.idea_id]) comments[comm.idea_id] = [];
-          comments[comm.idea_id].push(comm);
+          comments[comm.idea_id].push({
+            ...comm,
+            user: comm.user_id ? usersMap[comm.user_id] || null : null,
+          });
         }
       }
     }

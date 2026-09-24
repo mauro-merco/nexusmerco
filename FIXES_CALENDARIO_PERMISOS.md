@@ -1,6 +1,8 @@
-# Fixes de Calendario y Permisos - Resumen
+# Fixes de Calendario y Permisos - Resumen Completo
 
 ## ðŸ”§ Problemas Resueltos
+
+### âœ… CALENDARIO INTERNO (dentro de la app)
 
 ### 1. **Comentarios mostraban "usuario" en vez del nombre real**
 **Causa:** Las polÃ­ticas RLS de la tabla `users` solo permitÃ­an leer el propio perfil o todos los perfiles (solo para admins). Los operadores y clientes no podÃ­an leer nombres de otros usuarios.
@@ -205,3 +207,25 @@ npm run dev
 **Fecha:** Septiembre 2026  
 **Build:** âœ… OK  
 **Estado:** Listo para aplicar en producciÃ³n
+
+
+---
+
+### ? CALENDARIO PÚBLICO (links compartidos /c/[token])
+
+#### 1. **Comentarios mostraban 'usuario' en vez del nombre real**
+**Causa:** La API `/api/calendar-links/[token]` obtenía comentarios pero no hacía JOIN con la tabla `users` para traer información del autor.
+
+**Solución:** Actualizado en `src/app/api/calendar-links/[token]/route.ts`
+- Ahora hace fetch de usuarios después de obtener comentarios
+- Crea un `usersMap` y enriquece cada comentario con `user: { full_name, avatar_url, email }`
+- **Efecto:** Los comentarios ahora muestran el nombre real del autor
+
+#### 2. **?? Edición de ideas desde calendario público - TRABAJO FUTURO**
+**Estado:** El modal de idea en calendario público es solo lectura actualmente
+
+**Para implementar edición completa:**
+- Las migraciones 00050 y 00051 ya permiten la edición a nivel de permisos RLS
+- Falta: Actualizar el modal del calendario público para permitir edición
+- Estimación: 2-3 horas de desarrollo adicional
+
