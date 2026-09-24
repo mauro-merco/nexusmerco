@@ -34,12 +34,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const body = await request.json();
-    const { full_name, role, visible_modules } = body;
+    const { full_name, role, visible_modules, allowed_client_ids, client_id } = body;
 
     const updates: Record<string, unknown> = {};
     if (full_name !== undefined) updates.full_name = full_name;
     if (role !== undefined) updates.role = role;
     if (visible_modules !== undefined) updates.visible_modules = visible_modules;
+    if (allowed_client_ids !== undefined) updates.allowed_client_ids = allowed_client_ids;
+    if (client_id !== undefined) updates.client_id = client_id;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 });
@@ -49,7 +51,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .from('users')
       .update(updates)
       .eq('id', id)
-      .select('id, email, full_name, avatar_url, role, visible_modules')
+      .select('id, email, full_name, avatar_url, role, visible_modules, allowed_client_ids, client_id')
       .single();
     if (error) throw error;
 

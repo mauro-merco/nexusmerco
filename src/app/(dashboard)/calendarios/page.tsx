@@ -11,6 +11,8 @@ import { useT } from '@/lib/use-t';
 import { useClients } from '@/lib/hooks/use-clients';
 import { SocialCalendar } from '@/components/social-calendar';
 import { AdsCalendar } from '@/components/ads-calendar';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess, getAllowedClientIds } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
   Building2, Search, Calendar, ArrowLeft, Loader2, ChevronRight, ShoppingBag,
@@ -42,11 +44,23 @@ export default function CalendariosPage() {
     if (type === 'social') setActiveTab('redes');
   }, [searchParams]);
 
+  // Check module access
+  if (!hasModuleAccess(user, 'calendarios')) {
+    return <NoAccess message="No tienes permiso para acceder al calendario." />;
+  }
+
   const isClientUser = user?.role === 'client';
   const urlMonth = searchParams.get('month');
   const urlIdea = searchParams.get('idea');
 
-  const calendarClients = clients.filter(c => c.social_calendar_enabled || c.ads_calendar_enabled);
+  const allowedClientIds = getAllowedClientIds(user);
+  const calendarClients = clients.filter(c => {
+    // Filter by calendar enabled
+    if (!c.social_calendar_enabled && !c.ads_calendar_enabled) return false;
+    // Filter by allowed clients
+    if (allowedClientIds === null) return true; // null = all clients
+    return allowedClientIds.includes(c.id);
+  });
   const filteredClients = calendarClients.filter(
     (c) => c.name.toLowerCase().includes(search.toLowerCase())
   );

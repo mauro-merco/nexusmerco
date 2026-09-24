@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const supabase = getAdmin();
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, role, visible_modules, totp_enabled, client_id, bio, headline, is_public')
+      .select('id, email, full_name, avatar_url, role, visible_modules, allowed_client_ids, totp_enabled, client_id, bio, headline, is_public')
       .eq('id', userId)
       .single();
 

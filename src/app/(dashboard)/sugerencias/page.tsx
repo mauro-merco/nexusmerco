@@ -1,10 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useAuthStore } from '@/store/auth-store';
 import { useSuggestions } from '@/lib/hooks/use-suggestions';
 import { SuggestionComposeDialog } from '@/components/suggestion-compose-dialog';
 import { SuggestionDetailModal } from '@/components/suggestion-detail-modal';
 import { ActivityLog } from '@/components/activity-log';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess } from '@/lib/permissions';
 import { SUGGESTION_TYPE_CONFIG, SUGGESTION_STATUS_CONFIG, SUGGESTION_STATUSES } from '@/lib/suggestion-config';
 import { cn } from '@/lib/utils';
 import { MentionedText } from '@/components/mention';
@@ -12,6 +15,12 @@ import type { Suggestion, SuggestionType, SuggestionStatus } from '@/lib/types';
 import { Lightbulb, Bug, Plus, Heart, MessageSquare, Loader2, Megaphone, ClipboardList } from 'lucide-react';
 
 export default function SuggestionsPage() {
+  const { user } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'sugerencias')) {
+    return <NoAccess message="No tienes permiso para acceder a sugerencias y bugs." />;
+  }
+
   const {
     suggestions, loading, error, refetch, create, update, remove, toggleLike,
   } = useSuggestions();

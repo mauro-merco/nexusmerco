@@ -22,6 +22,8 @@ interface ManagedUser {
   full_name: string;
   role: UserRole;
   visible_modules: ModuleId[];
+  allowed_client_ids?: string[] | null;
+  client_id?: string | null;
 }
 
 const MODULE_LABELS: Record<ModuleId, string> = {
@@ -498,11 +500,23 @@ function UserRow({
 }) {
   const [editRole, setEditRole] = useState<UserRole>(u.role);
   const [editModules, setEditModules] = useState<ModuleId[]>(u.visible_modules);
+  const [editAllowedClients, setEditAllowedClients] = useState<string[] | null>(u.allowed_client_ids || null);
+  const [clients, setClients] = useState<{ id: string; name: string; }[]>([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/clients').then(r => r.json()).then(json => {
+      if (json.data) setClients(json.data);
+    }).catch(() => {});
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave(u.id, { role: editRole, visible_modules: editModules });
+    await onSave(u.id, { 
+      role: editRole, 
+      visible_modules: editModules,
+      allowed_client_ids: editAllowedClients,
+    });
     setSaving(false);
   };
 
@@ -552,10 +566,10 @@ function UserRow({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-xs">Módulos visibles en sidebar</Label>
-            <button onClick={() => setEditModules(DEFAULT_MODULES[editRole])}
+            <Label className="text-xs">Módulos visibles (sidebar vacío si no se selecciona ninguno)</Label>
+            <button onClick={() => setEditModules([])}
               className="text-[10px] text-muted-foreground hover:text-foreground">
-              Restaurar defaults
+              Limpiar todos
             </button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -569,6 +583,41 @@ function UserRow({
               </label>
             ))}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Clientes permitidos ({editAllowedClients === null ? 'Todos' : editAllowedClients.length})</Label>
+            <button onClick={() => setEditAllowedClients(null)}
+              className="text-[10px] text-muted-foreground hover:text-foreground">
+              Permitir todos
+            </button>
+          </div>
+          {editAllowedClients === null ? (
+            <p className="text-xs text-muted-foreground border rounded-lg p-3 bg-muted/30">
+              ✓ Este usuario puede acceder a todos los clientes
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+              {clients.map(c => (
+                <label key={c.id} className={cn(
+                  'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs cursor-pointer transition-colors',
+                  editAllowedClients.includes(c.id) ? 'border-primary/50 bg-primary/5' : 'border-border text-muted-foreground',
+                )}>
+                  <Checkbox 
+                    checked={editAllowedClients.includes(c.id)} 
+                    onCheckedChange={() => {
+                      setEditAllowedClients(prev => {
+                        if (prev === null) return [c.id];
+                        return prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id];
+                      });
+                    }} 
+                  />
+                  {c.name}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -613,9 +662,19 @@ function CreateUserDialog({
   const [emailLocal, setEmailLocal] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('operador');
-  const [modules, setModules] = useState<ModuleId[]>(DEFAULT_MODULES.operador);
+  const [modules, setModules] = useState<ModuleId[]>([]);
+  const [allowedClients, setAllowedClients] = useState<string[] | null>(null);
+  const [clients, setClients] = useState<{ id: string; name: string; }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      fetch('/api/clients').then(r => r.json()).then(json => {
+        if (json.data) setClients(json.data);
+      }).catch(() => {});
+    }
+  }, [open]);
 
   const emailDomain = role === 'client' ? '@mercouser.com' : '@mercodigital.com';
   const fullEmail = `${emailLocal.trim()}${emailDomain}`;
@@ -626,7 +685,7 @@ function CreateUserDialog({
 
   const applyRoleDefaults = (r: UserRole) => {
     setRole(r);
-    setModules(DEFAULT_MODULES[r]);
+    // Don't auto-set modules anymore - user must explicitly select
   };
 
   const handleCreate = async () => {
@@ -655,6 +714,7 @@ function CreateUserDialog({
           password: password.trim(),
           role,
           visible_modules: modules,
+          allowed_client_ids: allowedClients,
         }),
       });
       const json = await res.json();
@@ -724,8 +784,8 @@ function CreateUserDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs">Módulos visibles en sidebar</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <Label className="text-xs">Módulos visibles (sidebar vacío si no se selecciona ninguno)</Label>
+            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
               {ALL_MODULES.map(m => (
                 <label key={m} className={cn(
                   'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs cursor-pointer transition-colors',
@@ -736,6 +796,43 @@ function CreateUserDialog({
                 </label>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Clientes permitidos</Label>
+              <button 
+                onClick={() => setAllowedClients(prev => prev === null ? [] : null)}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                {allowedClients === null ? 'Restringir' : 'Permitir todos'}
+              </button>
+            </div>
+            {allowedClients === null ? (
+              <p className="text-xs text-muted-foreground border rounded-lg p-3 bg-muted/30">
+                ✓ Acceso a todos los clientes
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                {clients.map(c => (
+                  <label key={c.id} className={cn(
+                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs cursor-pointer transition-colors',
+                    allowedClients.includes(c.id) ? 'border-primary/50 bg-primary/5' : 'border-border text-muted-foreground',
+                  )}>
+                    <Checkbox 
+                      checked={allowedClients.includes(c.id)} 
+                      onCheckedChange={() => {
+                        setAllowedClients(prev => {
+                          if (prev === null) return [c.id];
+                          return prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id];
+                        });
+                      }} 
+                    />
+                    {c.name}
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

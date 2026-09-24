@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserTasksModal } from '@/components/user-tasks-modal';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess } from '@/lib/permissions';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import type { Task, TaskRole, User } from '@/lib/types';
 import {
@@ -31,6 +33,11 @@ const PIE_COLORS: Record<TaskRole, string> = {
 
 export default function TeamPage() {
   const { user } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'equipo')) {
+    return <NoAccess message="No tienes permiso para acceder a la gestión de equipo." />;
+  }
+
   const isAdminOrTeam = user?.role === 'admin' || user?.role === 'operador';
 
   const [users, setUsers] = useState<User[]>([]);

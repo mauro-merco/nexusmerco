@@ -10,11 +10,11 @@ interface TaskTypePickerProps {
 
 export function TaskTypePicker({ value, onChange }: TaskTypePickerProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
       {TASK_TYPE_CATEGORIES.map(cat => {
         const Icon = cat.icon;
         return (
-          <div key={cat.id} className={cn('rounded-xl border bg-card/50 p-3', cat.borderClass)}>
+          <div key={cat.id} className="rounded-xl bg-muted/30 p-3">
             <div className="flex items-center gap-2 mb-2">
               <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg', cat.bgColorClass, cat.colorClass)}>
                 <Icon className="h-3.5 w-3.5" />
@@ -31,8 +31,8 @@ export function TaskTypePicker({ value, onChange }: TaskTypePickerProps) {
                     title={t.description}
                     onClick={() => onChange(isOn ? '' : t.id)}
                     className={cn(
-                      'w-full text-left rounded-lg border px-2 py-1.5 text-[11px] font-medium transition-colors',
-                      isOn ? 'bg-gradient-tech text-white border-transparent' : 'border-transparent hover:bg-muted/50',
+                      'w-full text-left rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors',
+                      isOn ? cn(cat.bgColorClass, cat.colorClass, 'font-semibold') : 'hover:bg-muted/50 text-foreground/80',
                     )}
                   >
                     {t.label}

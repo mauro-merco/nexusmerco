@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, role, client_id, visible_modules')
+      .select('id, email, full_name, avatar_url, role, client_id, visible_modules, allowed_client_ids')
       .eq('app_id', appFilter)
       .order('full_name', { ascending: true });
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, password, full_name: fullName, role: newRole, visible_modules } = body;
+    const { email, password, full_name: fullName, role: newRole, visible_modules, allowed_client_ids, client_id } = body;
 
     if (!email || !password || !fullName || !newRole) {
       return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
@@ -104,11 +104,8 @@ export async function POST(request: Request) {
     if (createError) throw new Error(createError.message);
     if (!newAuthUser.user) throw new Error('No se pudo crear el usuario');
 
-    const modules = visible_modules || (
-      newRole === 'admin' ? ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights'] :
-      newRole === 'operador' ? ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'insights'] :
-      ['dashboard', 'analysis', 'insights']
-    );
+    const modules = visible_modules || [];
+    const allowedClients = allowed_client_ids || null;
 
     const { error: insertError } = await supabase
       .from('users')
@@ -119,6 +116,8 @@ export async function POST(request: Request) {
         role: newRole,
         app_id: APP_ID,
         visible_modules: modules,
+        allowed_client_ids: allowedClients,
+        client_id: client_id || null,
       }, { onConflict: 'id' });
 
     if (insertError) throw insertError;
@@ -130,6 +129,8 @@ export async function POST(request: Request) {
         full_name: fullName,
         role: newRole,
         visible_modules: modules,
+        allowed_client_ids: allowedClients,
+        client_id: client_id || null,
       }
     });
   } catch (e) {

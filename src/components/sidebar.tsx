@@ -100,7 +100,7 @@ function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolea
   const _ = useT();
 
   const visibleItems = navItems.filter(
-    (item) => user && (user.visible_modules?.includes(item.moduleId) || DEFAULT_MODULES[user.role]?.includes(item.moduleId))
+    (item) => user && user.visible_modules?.includes(item.moduleId)
   );
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
@@ -205,7 +205,7 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
   const [open, setOpen] = useState(false);
 
   const visibleItems = navItems.filter(
-    (item) => user && (user.visible_modules?.includes(item.moduleId) || DEFAULT_MODULES[user.role]?.includes(item.moduleId))
+    (item) => user && user.visible_modules?.includes(item.moduleId)
   );
 
   const handleAppClick = (href: string, label: string) => {

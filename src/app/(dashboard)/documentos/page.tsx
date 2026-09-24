@@ -18,6 +18,8 @@ import { DocumentEditor } from '@/components/document-editor';
 import { DocumentShareDialog } from '@/components/document-share-dialog';
 import { DocumentAiDialog, type AiInsertMode } from '@/components/document-ai-dialog';
 import { StickyNotes } from '@/components/sticky-notes';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess } from '@/lib/permissions';
 import { Label } from '@/components/ui/label';
 import type { NexusDocument } from '@/lib/types';
 import {
@@ -36,6 +38,11 @@ function formatDate(iso: string) {
 
 export default function DocumentosPage() {
   const { user } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'documentos')) {
+    return <NoAccess message="No tienes permiso para acceder a los documentos." />;
+  }
+
   const { documents, loading, createDocument, getDocument, updateDocument, deleteDocument, refetch } = useDocuments();
   const { clients: clientOptions } = useClients();
   const [search, setSearch] = useState('');

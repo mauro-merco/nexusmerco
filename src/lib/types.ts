@@ -16,6 +16,7 @@ export interface User {
   avatar_url: string;
   email: string;
   visible_modules: ModuleId[];
+  allowed_client_ids?: string[] | null;
   client_id?: string | null;
   totp_enabled?: boolean;
   bio?: string;

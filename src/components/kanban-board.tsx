@@ -14,24 +14,16 @@ import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, taskPieceTotal
 import { GripVertical, MessageSquare, Paperclip, Calendar, User, Layers } from 'lucide-react';
 
 function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task.id,
-    data: { task },
-  });
-
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { task } });
   const pConfig = TASK_PRIORITY_CONFIG[task.priority];
-
-  const style = transform ? {
-    transform: CSS.Translate.toString(transform),
-    zIndex: 50,
-  } : undefined;
+  const style = transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'bg-card rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md group',
+        'bg-card rounded-2xl p-3 cursor-pointer transition-shadow hover:shadow-md group shadow-[0_1px_2px_rgba(20,20,43,.06)]',
         isDragging && 'opacity-50 shadow-xl',
       )}
       onClick={onClick}
@@ -93,19 +85,13 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           {(task.comment_count || 0) > 0 && (
-            <span className="flex items-center gap-0.5">
-              <MessageSquare className="h-3 w-3" /> {task.comment_count}
-            </span>
+            <span className="flex items-center gap-0.5"><MessageSquare className="h-3 w-3" /> {task.comment_count}</span>
           )}
           {(task.attachment_count || 0) > 0 && (
-            <span className="flex items-center gap-0.5">
-              <Paperclip className="h-3 w-3" /> {task.attachment_count}
-            </span>
+            <span className="flex items-center gap-0.5"><Paperclip className="h-3 w-3" /> {task.attachment_count}</span>
           )}
           {taskPieceTotal(task) > 0 && (
-            <span className="flex items-center gap-0.5 text-violet-500">
-              <Layers className="h-3 w-3" /> {taskPieceTotal(task)}
-            </span>
+            <span className="flex items-center gap-0.5 text-violet-500"><Layers className="h-3 w-3" /> {taskPieceTotal(task)}</span>
           )}
         </div>
       </div>
@@ -113,11 +99,7 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
   );
 }
 
-function KanbanColumn({ status, tasks, onTaskClick }: {
-  status: TaskStatus;
-  tasks: Task[];
-  onTaskClick: (task: Task) => void;
-}) {
+function KanbanColumn({ status, tasks, onTaskClick }: { status: TaskStatus; tasks: Task[]; onTaskClick: (task: Task) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const cfg = TASK_STATUS_CONFIG[status];
   const Icon = cfg.icon;
@@ -126,27 +108,21 @@ function KanbanColumn({ status, tasks, onTaskClick }: {
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col rounded-xl min-w-[280px] max-w-[320px] w-full transition-colors',
+        'flex flex-col rounded-2xl min-w-[280px] max-w-[320px] w-full transition-colors',
         cfg.bgColorClass,
         isOver && 'ring-2 ring-primary/30',
       )}
     >
-      <div className="flex items-center gap-2 px-3 py-3 border-b border-border/30">
+      <div className="flex items-center gap-2 px-3 py-3">
         <Icon className={cn('h-4 w-4', cfg.colorClass)} />
         <span className={cn('text-sm font-semibold', cfg.colorClass)}>{cfg.label}</span>
-        <span className="ml-auto text-xs text-muted-foreground font-medium bg-background/50 rounded-full px-2 py-0.5">
+        <span className="ml-auto text-xs text-muted-foreground font-medium bg-background/60 rounded-full px-2 py-0.5">
           {tasks.length}
         </span>
       </div>
       <div className="flex-1 p-2 space-y-2 min-h-[100px] overflow-y-auto max-h-[calc(100vh-280px)]">
-        {tasks.map(task => (
-          <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
-        ))}
-        {tasks.length === 0 && (
-          <div className="text-center py-8 text-xs text-muted-foreground/50">
-            Sin tareas
-          </div>
-        )}
+        {tasks.map(task => <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />)}
+        {tasks.length === 0 && <div className="text-center py-8 text-xs text-muted-foreground/50">Sin tareas</div>}
       </div>
     </div>
   );
@@ -155,7 +131,7 @@ function KanbanColumn({ status, tasks, onTaskClick }: {
 function DragOverlayCard({ task }: { task: Task }) {
   const pConfig = TASK_PRIORITY_CONFIG[task.priority];
   return (
-    <div className="bg-card rounded-lg border p-3 shadow-xl max-w-[300px]">
+    <div className="bg-card rounded-2xl p-3 shadow-xl max-w-[300px]">
       <div className="flex items-start gap-2">
         <p className="text-sm font-semibold">{task.title}</p>
         <span className={cn('w-2 h-2 rounded-full shrink-0 mt-1.5', pConfig.dotColor)} />
@@ -172,10 +148,7 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ tasks, onTaskClick, onTaskMove }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const tasksByStatus = TASK_STATUSES.map(status => ({
     status,
@@ -191,35 +164,19 @@ export function KanbanBoard({ tasks, onTaskClick, onTaskMove }: KanbanBoardProps
     setActiveTask(null);
     const { active, over } = event;
     if (!over) return;
-
     const task = (active.data.current as { task?: Task })?.task;
     const newStatus = over.id as TaskStatus;
-
-    if (task && TASK_STATUSES.includes(newStatus) && task.status !== newStatus) {
-      onTaskMove(task.id, newStatus);
-    }
+    if (task && TASK_STATUSES.includes(newStatus) && task.status !== newStatus) onTaskMove(task.id, newStatus);
   }, [onTaskMove]);
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {tasksByStatus.map(({ status, tasks: colTasks }) => (
-          <KanbanColumn
-            key={status}
-            status={status}
-            tasks={colTasks}
-            onTaskClick={onTaskClick}
-          />
+          <KanbanColumn key={status} status={status} tasks={colTasks} onTaskClick={onTaskClick} />
         ))}
       </div>
-      <DragOverlay>
-        {activeTask ? <DragOverlayCard task={activeTask} /> : null}
-      </DragOverlay>
+      <DragOverlay>{activeTask ? <DragOverlayCard task={activeTask} /> : null}</DragOverlay>
     </DndContext>
   );
 }

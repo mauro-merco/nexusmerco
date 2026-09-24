@@ -93,13 +93,13 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-        title, description, status, priority,
-        assignees: rolesToList(roles),
-        due_date: dueDate || null,
-        task_type: taskType || null,
-        pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
-        pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
-        pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
+          title, description, status, priority,
+          assignees: rolesToList(roles),
+          due_date: dueDate || null,
+          task_type: taskType || null,
+          pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
+          pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
+          pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
         }),
       });
       const json = await res.json();
@@ -116,48 +116,27 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const handleQuickStatus = useCallback(async (newStatus: TaskStatus) => {
     if (newStatus === status) return;
     try {
-      const res = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const res = await fetch(`/api/tasks/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
       const json = await res.json();
-      if (res.ok) {
-        setStatus(newStatus);
-        onTaskUpdated(json.data);
-      }
+      if (res.ok) { setStatus(newStatus); onTaskUpdated(json.data); }
     } catch { /* */ }
   }, [task.id, status, onTaskUpdated]);
 
   const handleAddComment = useCallback(async () => {
     if (!newComment.trim() || !user?.id) return;
     setSendingComment(true);
-    try {
-      await addComment(user.id, newComment.trim(), replyTo || undefined);
-      setNewComment('');
-      setReplyTo(null);
-    } catch { /* */ } finally {
-      setSendingComment(false);
-    }
+    try { await addComment(user.id, newComment.trim(), replyTo || undefined); setNewComment(''); setReplyTo(null); } catch { /* */ } finally { setSendingComment(false); }
   }, [newComment, user?.id, addComment, replyTo]);
 
   const handleAddAttachment = useCallback(async () => {
     if (!newAttachUrl.trim()) return;
     setAddingAttach(true);
-    try {
-      await addAttachment(newAttachUrl.trim());
-      setNewAttachUrl('');
-    } catch { /* */ } finally {
-      setAddingAttach(false);
-    }
+    try { await addAttachment(newAttachUrl.trim()); setNewAttachUrl(''); } catch { /* */ } finally { setAddingAttach(false); }
   }, [newAttachUrl, addAttachment]);
 
   const handleDelete = useCallback(async () => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
-    try {
-      const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
-      if (res.ok) { onTaskDeleted(); onOpenChange(false); }
-    } finally { setConfirmDelete(false); }
+    try { const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' }); if (res.ok) { onTaskDeleted(); onOpenChange(false); } } finally { setConfirmDelete(false); }
   }, [task.id, confirmDelete, onTaskDeleted, onOpenChange]);
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/t/${task.share_token}` : '';
@@ -165,36 +144,25 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const handleTogglePublic = useCallback(async () => {
     setTogglingPublic(true);
     try {
-      const res = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_public: !task.is_public }),
-      });
+      const res = await fetch(`/api/tasks/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_public: !task.is_public }) });
       const json = await res.json();
       if (res.ok) onTaskUpdated(json.data);
-    } finally {
-      setTogglingPublic(false);
-    }
+    } finally { setTogglingPublic(false); }
   }, [task.id, task.is_public, onTaskUpdated]);
 
   const handleCopyLink = useCallback(() => {
     if (!shareUrl) return;
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    navigator.clipboard.writeText(shareUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }, [shareUrl]);
-
-  const sConfig = TASK_STATUS_CONFIG[status];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 shrink-0 pr-10">
           <div className="flex-1 min-w-0">
             {editing ? (
-              <Input value={title} onChange={e => setTitle(e.target.value)} className="text-lg font-bold" />
+              <Input value={title} onChange={e => setTitle(e.target.value)} className="text-lg font-bold rounded-lg bg-muted/35 border-0" />
             ) : (
               <DialogTitle className="text-lg">{task.title}</DialogTitle>
             )}
@@ -207,79 +175,53 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                 const isOverdue = diffDays < 0;
                 const isSoon = diffDays >= 0 && diffDays <= 3;
                 return (
-                  <span className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                    isOverdue && 'bg-red-500/15 text-red-500',
-                    isSoon && !isOverdue && 'bg-amber-500/15 text-amber-500',
-                    !isOverdue && !isSoon && 'bg-blue-500/15 text-blue-500',
-                  )}>
+                  <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                    isOverdue && 'bg-red-500/15 text-red-500', isSoon && !isOverdue && 'bg-amber-500/15 text-amber-500', !isOverdue && !isSoon && 'bg-blue-500/15 text-blue-500')}>
                     <Calendar className="h-3.5 w-3.5" />
                     FECHA LÍMITE: {due.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </span>
                 );
               })()}
               {task.assignees && task.assignees.length > 0 && (
-                <span className="flex items-center gap-1">
-                  <User className="h-3 w-3" /> {task.assignees.map(a => a.full_name).join(', ')}
-                </span>
+                <span className="flex items-center gap-1"><User className="h-3 w-3" /> {task.assignees.map(a => a.full_name).join(', ')}</span>
               )}
             </DialogDescription>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <div className="relative">
-              <Button variant="ghost" size="sm" onClick={() => setShareOpen(v => !v)} className="gap-1.5">
-                <Share2 className="h-3.5 w-3.5" />
-              </Button>
+              <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setShareOpen(v => !v)}><Share2 className="h-3.5 w-3.5" /></Button>
               {shareOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border bg-popover shadow-xl z-50 p-3 space-y-3" onClick={e => e.stopPropagation()}>
+                  <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-popover shadow-xl z-50 p-3 space-y-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold flex items-center gap-1.5">
-                        <Share2 className="h-3.5 w-3.5" /> Compartir tarea
-                      </span>
-                      <button onClick={() => setShareOpen(false)} className="text-muted-foreground hover:text-foreground">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                      <span className="text-sm font-semibold flex items-center gap-1.5"><Share2 className="h-3.5 w-3.5" /> Compartir tarea</span>
+                      <button onClick={() => setShareOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={handleTogglePublic}
-                      disabled={togglingPublic}
-                      className="w-full flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left hover:bg-muted/40 transition-colors"
-                    >
+                    <button type="button" onClick={handleTogglePublic} disabled={togglingPublic}
+                      className="w-full flex items-center justify-between gap-2 rounded-xl bg-muted/35 px-3 py-2 text-left hover:bg-muted/55 transition-colors">
                       <span className="flex items-center gap-2 text-xs">
                         {task.is_public ? <Globe className="h-3.5 w-3.5 text-emerald-500" /> : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                         <span>
                           <span className="font-medium">{task.is_public ? 'Pública' : 'Privada'}</span>
-                          <span className="block text-[10px] text-muted-foreground">
-                            {task.is_public ? 'Cualquiera con el link puede verla' : 'Solo usuarios @mercodigital.com'}
-                          </span>
+                          <span className="block text-[10px] text-muted-foreground">{task.is_public ? 'Cualquiera con el link puede verla' : 'Solo usuarios @mercodigital.com'}</span>
                         </span>
                       </span>
-                      {togglingPublic ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : (
-                        <span className="text-[10px] text-primary shrink-0">Cambiar</span>
-                      )}
+                      {togglingPublic ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : <span className="text-[10px] text-primary shrink-0">Cambiar</span>}
                     </button>
-
                     <div className="flex items-center gap-2">
-                      <Input value={shareUrl} readOnly className="h-8 text-xs" onFocus={e => e.target.select()} />
-                      <Button size="sm" onClick={handleCopyLink} className="h-8 shrink-0 gap-1">
-                        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      </Button>
+                      <Input value={shareUrl} readOnly className="h-8 text-xs rounded-lg bg-muted/35 border-0" onFocus={e => e.target.select()} />
+                      <Button size="sm" onClick={handleCopyLink} className="h-8 shrink-0 gap-1 rounded-lg">{copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}</Button>
                     </div>
                   </div>
                 </>
               )}
             </div>
             {!editing ? (
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-                <Edit3 className="h-3.5 w-3.5" />
-              </Button>
+              <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /></Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => {
+                <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => {
                   setEditing(false); setSaveError(null);
                   setTitle(task.title); setDescription(task.description);
                   setStatus(task.status); setPriority(task.priority);
@@ -289,9 +231,8 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
                   setPiecesReels(task.pieces_reels != null ? String(task.pieces_reels) : '');
                 }}>Cancelar</Button>
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-                  Guardar
+                <Button size="sm" className="rounded-lg" onClick={handleSave} disabled={saving}>
+                  {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />} Guardar
                 </Button>
               </>
             )}
@@ -300,15 +241,15 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
         {/* Status pills */}
         <div className="shrink-0">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap">
             {TASK_STATUSES.map(key => {
               const s = TASK_STATUS_CONFIG[key];
               const Icon = s.icon;
               const isActive = status === key;
               return (
                 <button key={key} type="button" onClick={() => handleQuickStatus(key)}
-                  className={cn('flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 text-sm font-semibold transition-all',
-                    isActive ? [s.bgColorClass, s.colorClass, 'shadow-md ring-1 ring-current/20 scale-[1.02]'] : 'border-border/40 text-muted-foreground/60 hover:border-border hover:text-muted-foreground')}>
+                  className={cn('flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors',
+                    isActive ? cn(s.bgColorClass, s.colorClass, 'font-semibold') : 'bg-muted/35 text-muted-foreground/70 hover:bg-muted/55')}>
                   <Icon className="h-4 w-4" /> {s.label}
                 </button>
               );
@@ -323,17 +264,14 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             <div className="md:col-span-3 space-y-4">
               {editing ? (
                 <div className="space-y-3">
-                  {saveError && <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
+                  {saveError && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
                   <div className="space-y-1.5">
-                    <Label>
-                      Tipo de tarea{' '}
-                      {taskType && <span className="text-muted-foreground font-normal">· {taskTypeInfo(taskType)?.label}</span>}
-                    </Label>
+                    <Label>Tipo de tarea {taskType && <span className="text-muted-foreground font-normal">· {taskTypeInfo(taskType)?.label}</span>}</Label>
                     <TaskTypePicker value={taskType} onChange={setTaskType} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Descripción</Label>
-                    <textarea className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm min-h-[100px] resize-none"
+                    <textarea className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm min-h-[100px] resize-none outline-none"
                       value={description} onChange={e => setDescription(e.target.value)} placeholder="Descripción..." />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -344,8 +282,8 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                           const p = TASK_PRIORITY_CONFIG[key];
                           return (
                             <button key={key} type="button" onClick={() => setPriority(key)}
-                              className={cn('flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
-                                priority === key ? 'border-current bg-current/10 ' + p.colorClass : 'border-border text-muted-foreground')}>
+                              className={cn('flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+                                priority === key ? cn('bg-current/10 font-semibold', p.colorClass) : 'bg-muted/35 text-muted-foreground hover:bg-muted/55')}>
                               <span className={cn('w-2 h-2 rounded-full', p.dotColor)} /> {p.label}
                             </button>
                           );
@@ -354,8 +292,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     </div>
                     <div className="space-y-1.5">
                       <Label>Fecha límite</Label>
-                      <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                        className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                      <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
@@ -367,21 +304,15 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                         const setValue = pt.field === 'pieces_stories' ? setPiecesStories : pt.field === 'pieces_feed' ? setPiecesFeed : setPiecesReels;
                         return (
                           <div key={pt.field} className="space-y-1">
-                            <span className={cn('flex items-center gap-1 text-[11px] font-medium', pt.colorClass)}>
-                              <Icon className="h-3 w-3" /> {pt.label}
-                            </span>
-                            <input type="number" min="0" placeholder="0" value={value}
-                              onChange={e => setValue(e.target.value)}
-                              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                            <span className={cn('flex items-center gap-1 text-[11px] font-medium', pt.colorClass)}><Icon className="h-3 w-3" /> {pt.label}</span>
+                            <input type="number" min="0" placeholder="0" value={value} onChange={e => setValue(e.target.value)} className="w-full rounded-lg bg-muted/35 px-3 py-2 text-sm outline-none" />
                           </div>
                         );
                       })}
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>
-                      Equipo y roles {totalPeople(roles) > 0 && <span className="text-muted-foreground font-normal">({totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''})</span>}
-                    </Label>
+                    <Label>Equipo y roles {totalPeople(roles) > 0 && <span className="text-muted-foreground font-normal">({totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''})</span>}</Label>
                     <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
                   </div>
                 </div>
@@ -392,23 +323,16 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Descripción</p>
                       <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{task.description}</p>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">Sin descripción</p>
-                  )}
+                  ) : <p className="text-sm text-muted-foreground italic">Sin descripción</p>}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                     {taskTypeInfo(task.task_type) && (() => {
                       const info = taskTypeInfo(task.task_type)!;
                       const cat = info.category;
                       const Icon = cat.icon;
-                      return (
-                        <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', cat.bgColorClass, cat.colorClass)}>
-                          <Icon className="h-3 w-3" /> {info.label}
-                        </span>
-                      );
+                      return <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', cat.bgColorClass, cat.colorClass)}><Icon className="h-3 w-3" /> {info.label}</span>;
                     })()}
                     <span className={cn('flex items-center gap-1 font-medium', TASK_PRIORITY_CONFIG[task.priority].colorClass)}>
-                      <span className={cn('w-2 h-2 rounded-full', TASK_PRIORITY_CONFIG[task.priority].dotColor)} />
-                      Prioridad {TASK_PRIORITY_CONFIG[task.priority].label}
+                      <span className={cn('w-2 h-2 rounded-full', TASK_PRIORITY_CONFIG[task.priority].dotColor)} /> Prioridad {TASK_PRIORITY_CONFIG[task.priority].label}
                     </span>
                     {task.due_date && (() => {
                       const due = new Date(task.due_date + 'T12:00:00');
@@ -417,21 +341,14 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                       const isOverdue = diffDays < 0;
                       const isSoon = diffDays >= 0 && diffDays <= 3;
                       return (
-                        <span className={cn(
-                          'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                          isOverdue && 'bg-red-500/15 text-red-500',
-                          isSoon && !isOverdue && 'bg-amber-500/15 text-amber-500',
-                          !isOverdue && !isSoon && 'bg-blue-500/15 text-blue-500',
-                        )}>
-                          <Calendar className="h-3 w-3" />
-                          {isOverdue ? 'VENCIDA' : 'FECHA LÍMITE'} {due.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                          isOverdue && 'bg-red-500/15 text-red-500', isSoon && !isOverdue && 'bg-amber-500/15 text-amber-500', !isOverdue && !isSoon && 'bg-blue-500/15 text-blue-500')}>
+                          <Calendar className="h-3 w-3" /> {isOverdue ? 'VENCIDA' : 'FECHA LÍMITE'} {due.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       );
                     })()}
                     {taskPieceTotal(task) > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-semibold text-violet-500">
-                        <Layers className="h-3 w-3" /> {taskPieceTotal(task)} pieza{taskPieceTotal(task) !== 1 ? 's' : ''}
-                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-semibold text-violet-500"><Layers className="h-3 w-3" /> {taskPieceTotal(task)} pieza{taskPieceTotal(task) !== 1 ? 's' : ''}</span>
                     )}
                   </div>
                   {(task.pieces_stories || task.pieces_feed || task.pieces_reels) ? (
@@ -440,15 +357,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                         const count = task[pt.field];
                         if (!count) return null;
                         const Icon = pt.icon;
-                        return (
-                          <span key={pt.field} className={cn('flex items-center gap-1 font-medium', pt.colorClass)}>
-                            <Icon className="h-3 w-3" /> {count} {pt.label.toLowerCase()}
-                          </span>
-                        );
+                        return <span key={pt.field} className={cn('flex items-center gap-1 font-medium', pt.colorClass)}><Icon className="h-3 w-3" /> {count} {pt.label.toLowerCase()}</span>;
                       })}
                     </div>
                   ) : null}
-
                   {task.assignees && task.assignees.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Equipo del proyecto</p>
@@ -459,7 +371,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                           const Icon = cfg.icon;
                           if (members.length === 0) return null;
                           return (
-                            <div key={roleKey} className={cn('flex flex-wrap items-center gap-1.5 rounded-lg border px-2.5 py-1.5', cfg.borderClass)}>
+                            <div key={roleKey} className="flex flex-wrap items-center gap-1.5 rounded-xl bg-muted/30 px-2.5 py-1.5">
                               <Icon className={cn('h-3.5 w-3.5', cfg.colorClass)} />
                               <span className={cn('text-[11px] font-semibold', cfg.colorClass)}>{cfg.label}:</span>
                               <span className="text-xs text-foreground/80">{members.map(m => m.full_name).join(', ')}</span>
@@ -474,28 +386,24 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
               {/* Attachments */}
               <div className="space-y-3">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1">
-                  <Paperclip className="h-3 w-3" /> Adjuntos ({attachments.length})
-                </p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1"><Paperclip className="h-3 w-3" /> Adjuntos ({attachments.length})</p>
                 <div className="flex items-center gap-2">
-                  <Input placeholder="Pegá un link..." value={newAttachUrl}
-                    onChange={e => setNewAttachUrl(e.target.value)}
+                  <Input placeholder="Pegá un link..." value={newAttachUrl} onChange={e => setNewAttachUrl(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddAttachment(); } }}
-                    className="h-8 text-xs" />
-                  <Button size="sm" onClick={handleAddAttachment} disabled={addingAttach || !newAttachUrl.trim()} className="h-8 shrink-0">
+                    className="h-8 text-xs rounded-lg bg-muted/35 border-0" />
+                  <Button size="sm" onClick={handleAddAttachment} disabled={addingAttach || !newAttachUrl.trim()} className="h-8 shrink-0 rounded-lg">
                     {addingAttach ? <Loader2 className="h-3 w-3 animate-spin" /> : <Paperclip className="h-3 w-3" />}
                   </Button>
                 </div>
                 {attachments.length > 0 && (
                   <div className="space-y-1.5">
                     {attachments.map(att => (
-                      <div key={att.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 hover:bg-muted/50">
+                      <div key={att.id} className="flex items-center justify-between gap-2 rounded-xl bg-muted/30 p-2 hover:bg-muted/50">
                         <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0 flex-1">
                           <LinkIcon className="h-3.5 w-3.5 text-green-500 shrink-0" />
                           <span className="text-xs font-medium truncate underline decoration-dotted underline-offset-2">{att.url}</span>
                         </a>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 hover:text-red-600 shrink-0"
-                          onClick={() => removeAttachment(att.id)}>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-lg text-red-400 hover:text-red-600 shrink-0" onClick={() => removeAttachment(att.id)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -506,14 +414,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             </div>
 
             {/* RIGHT — Comments */}
-            <div className="md:col-span-2 flex flex-col min-h-0 rounded-xl bg-muted/30 border border-border/40 p-4">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1.5 mb-3 shrink-0">
-                <MessageSquare className="h-3.5 w-3.5" /> Comentarios ({comments.length})
-              </p>
+            <div className="md:col-span-2 flex flex-col min-h-0 rounded-2xl bg-muted/25 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1.5 mb-3 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Comentarios ({comments.length})</p>
               <div className="flex-1 overflow-y-auto min-h-0 space-y-4 mb-3">
-                {comments.length === 0 && (
-                  <p className="text-sm text-muted-foreground/50 italic text-center py-6">Sin comentarios</p>
-                )}
+                {comments.length === 0 && <p className="text-sm text-muted-foreground/50 italic text-center py-6">Sin comentarios</p>}
                 {comments.map(c => (
                   <TaskCommentItem
                     key={c.id}
@@ -538,33 +442,22 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               <div className="space-y-2 shrink-0 border-t border-border/30 pt-3">
                 {replyTo && (() => {
                   const findReplyTarget = (list: typeof comments): typeof comments[0] | undefined => {
-                    for (const c of list) {
-                      if (c.id === replyTo) return c;
-                      if (c.replies) { const found = findReplyTarget(c.replies); if (found) return found; }
-                    }
+                    for (const c of list) { if (c.id === replyTo) return c; if (c.replies) { const found = findReplyTarget(c.replies); if (found) return found; } }
                     return undefined;
                   };
                   const target = findReplyTarget(comments);
                   return target ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-1.5">
-                      <Reply className="h-3 w-3" />
-                      <span>Respondiendo a <strong>{target.user?.full_name || 'Usuario'}</strong></span>
-                      <button onClick={() => setReplyTo(null)} className="ml-auto hover:text-foreground">
-                        <X className="h-3 w-3" />
-                      </button>
+                      <Reply className="h-3 w-3" /><span>Respondiendo a <strong>{target.user?.full_name || 'Usuario'}</strong></span>
+                      <button onClick={() => setReplyTo(null)} className="ml-auto hover:text-foreground"><X className="h-3 w-3" /></button>
                     </div>
                   ) : null;
                 })()}
                 <div className="flex items-center gap-2">
-                  <MentionInput
-                    value={newComment}
-                    onChange={setNewComment}
-                    users={users}
+                  <MentionInput value={newComment} onChange={setNewComment} users={users}
                     placeholder={replyTo ? 'Escribí tu respuesta...' : 'Escribí un comentario... (usá @ para mencionar)'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
-                    disabled={sendingComment}
-                  />
-                  <Button size="sm" onClick={handleAddComment} disabled={sendingComment || !newComment.trim()} className="h-9 w-9 p-0 shrink-0">
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }} disabled={sendingComment} />
+                  <Button size="sm" onClick={handleAddComment} disabled={sendingComment || !newComment.trim()} className="h-9 w-9 p-0 shrink-0 rounded-lg">
                     {sendingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -574,22 +467,18 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         </div>
 
         {/* Footer */}
-        <DialogFooter className="shrink-0 border-t pt-3 mt-2">
+        <DialogFooter className="shrink-0 border-t border-border/40 pt-3 mt-2">
           <div className="flex items-center justify-between w-full">
             {confirmDelete ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">¿Seguro?</span>
-                <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>No</Button>
-                <Button variant="destructive" size="sm" onClick={handleDelete} className="gap-1">
-                  <Trash2 className="h-3.5 w-3.5" /> Sí, eliminar
-                </Button>
+                <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setConfirmDelete(false)}>No</Button>
+                <Button variant="destructive" size="sm" className="rounded-lg gap-1" onClick={handleDelete}><Trash2 className="h-3.5 w-3.5" /> Sí, eliminar</Button>
               </div>
             ) : (
-              <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={handleDelete}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Eliminar
-              </Button>
+              <Button variant="ghost" size="sm" className="rounded-lg text-red-500 hover:text-red-600" onClick={handleDelete}><Trash2 className="h-3.5 w-3.5 mr-1" /> Eliminar</Button>
             )}
-            <DialogClose render={<Button variant="outline" />}>Cerrar</DialogClose>
+            <DialogClose render={<Button variant="outline" className="rounded-lg" />}>Cerrar</DialogClose>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -598,18 +487,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 }
 
 function TaskCommentItem({
-  comment,
-  currentUserId,
-  onReply,
-  onDelete,
-  editingCommentId,
-  setEditingCommentId,
-  editCommentContent,
-  setEditCommentContent,
-  saveCommentEdit,
-  cancelCommentEdit,
-  savingCommentEdit,
-  isReply,
+  comment, currentUserId, onReply, onDelete,
+  editingCommentId, setEditingCommentId, editCommentContent, setEditCommentContent,
+  saveCommentEdit, cancelCommentEdit, savingCommentEdit, isReply,
 }: {
   comment: TaskComment;
   currentUserId?: string;
@@ -633,9 +513,7 @@ function TaskCommentItem({
       <div className="flex items-start gap-3">
         <Avatar className={cn('shrink-0 mt-0.5', isReply ? 'h-7 w-7' : 'h-9 w-9')}>
           <AvatarImage src={comment.user?.avatar_url} />
-          <AvatarFallback className={cn('font-semibold', isReply ? 'text-[10px]' : 'text-xs')}>
-            {comment.user?.full_name?.charAt(0) || '?'}
-          </AvatarFallback>
+          <AvatarFallback className={cn('font-semibold', isReply ? 'text-[10px]' : 'text-xs')}>{comment.user?.full_name?.charAt(0) || '?'}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -644,69 +522,46 @@ function TaskCommentItem({
           </div>
           {isEditing ? (
             <div className="mt-1.5 space-y-1.5">
-              <Input
-                value={editCommentContent}
-                onChange={(e) => setEditCommentContent(e.target.value)}
+              <Input value={editCommentContent} onChange={(e) => setEditCommentContent(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveCommentEdit(comment.id); } if (e.key === 'Escape') cancelCommentEdit(); }}
-                className="h-9 text-sm"
-                autoFocus
-              />
+                className="h-9 text-sm rounded-lg bg-muted/35 border-0" autoFocus />
               <div className="flex gap-1.5">
-                <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs" onClick={() => saveCommentEdit(comment.id)} disabled={savingCommentEdit || !editCommentContent.trim()}>
+                <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs rounded-lg" onClick={() => saveCommentEdit(comment.id)} disabled={savingCommentEdit || !editCommentContent.trim()}>
                   {savingCommentEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                 </Button>
-                <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs" onClick={cancelCommentEdit}>
-                  <X className="h-3 w-3" />
-                </Button>
+                <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs rounded-lg" onClick={cancelCommentEdit}><X className="h-3 w-3" /></Button>
               </div>
             </div>
           ) : (
             <MentionedText text={comment.content} className={cn('text-foreground/80 mt-1 leading-relaxed', isReply ? 'text-sm' : 'text-sm')} />
           )}
-
           {!isEditing && (
             <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
               {!isReply && (
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
-                  onClick={() => onReply(comment.id)}>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground gap-1" onClick={() => onReply(comment.id)}>
                   <Reply className="h-3 w-3" /> Responder
                 </Button>
               )}
               {isOwn && (
                 <>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
-                    onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(comment.content); }}>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground gap-1" onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(comment.content); }}>
                     <Edit3 className="h-3 w-3" /> Editar
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-red-400 hover:text-red-600 gap-1"
-                    onClick={() => onDelete(comment.id)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-red-400 hover:text-red-600 gap-1" onClick={() => onDelete(comment.id)}><Trash2 className="h-3 w-3" /></Button>
                 </>
               )}
             </div>
           )}
         </div>
       </div>
-
       {comment.replies && comment.replies.length > 0 && (
         <div className="ml-12 mt-2 space-y-3 border-l-2 border-border/30 pl-4">
           {comment.replies.map(reply => (
-            <TaskCommentItem
-              key={reply.id}
-              comment={reply}
-              currentUserId={currentUserId}
-              isReply
-              onReply={onReply}
-              onDelete={onDelete}
-              editingCommentId={editingCommentId}
-              setEditingCommentId={setEditingCommentId}
-              editCommentContent={editCommentContent}
-              setEditCommentContent={setEditCommentContent}
-              saveCommentEdit={saveCommentEdit}
-              cancelCommentEdit={cancelCommentEdit}
-              savingCommentEdit={savingCommentEdit}
-            />
+            <TaskCommentItem key={reply.id} comment={reply} currentUserId={currentUserId} isReply
+              onReply={onReply} onDelete={onDelete}
+              editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}
+              editCommentContent={editCommentContent} setEditCommentContent={setEditCommentContent}
+              saveCommentEdit={saveCommentEdit} cancelCommentEdit={cancelCommentEdit} savingCommentEdit={savingCommentEdit} />
           ))}
         </div>
       )}

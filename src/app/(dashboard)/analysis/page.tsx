@@ -10,6 +10,8 @@ import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
 import { DashboardFullbai } from '@/components/dashboard-fullbai';
 import { UploadCalendar } from '@/components/upload-calendar';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess } from '@/lib/permissions';
 import { useRouter } from 'next/navigation';
 import { BarChart3, Upload, Building2 } from 'lucide-react';
 
@@ -17,6 +19,11 @@ export default function AnalysisPage() {
   const _ = useT();
   const router = useRouter();
   const { user } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'analysis')) {
+    return <NoAccess message="No tienes permiso para acceder al módulo de análisis." />;
+  }
+
   const { clients } = useClients();
   const isAdminOrTeam = user?.role === 'admin' || user?.role === 'operador';
 

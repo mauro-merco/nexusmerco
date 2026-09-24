@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { NoAccess } from '@/components/no-access';
+import { hasModuleAccess } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
   Mail, Send, Loader2, Search, X, MessageSquarePlus, ChevronLeft, Inbox, Trash2,
@@ -22,6 +24,11 @@ interface Conversation {
 
 export default function MessagesPage() {
   const { user, token } = useAuthStore();
+  
+  if (!hasModuleAccess(user, 'mensajes')) {
+    return <NoAccess message="No tienes permiso para acceder a los mensajes." />;
+  }
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
