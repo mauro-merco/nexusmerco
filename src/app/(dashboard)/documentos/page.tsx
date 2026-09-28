@@ -46,6 +46,7 @@ export default function DocumentosPage() {
   const { documents, loading, createDocument, getDocument, updateDocument, deleteDocument, refetch } = useDocuments();
   const { clients: clientOptions } = useClients();
   const [search, setSearch] = useState('');
+  const [clientFilter, setClientFilter] = useState<string>('');
   const [view, setView] = useState<'list' | 'editor'>('list');
   const [tab, setTab] = useState<'docs' | 'notes'>('docs');
   const [currentDoc, setCurrentDoc] = useState<NexusDocument | null>(null);
@@ -64,9 +65,12 @@ export default function DocumentosPage() {
 
   const isOwner = (doc: NexusDocument | null) => !!doc && doc.owner_id === user?.id;
 
-  const filtered = documents.filter((d) =>
-    d.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = documents.filter((d) => {
+    const matchesSearch = d.title.toLowerCase().includes(search.toLowerCase());
+    const matchesClient = !clientFilter || 
+      (clientFilter === 'none' ? !d.client_id : d.client_id === clientFilter);
+    return matchesSearch && matchesClient;
+  });
 
   const openEditor = useCallback(async (doc: NexusDocument) => {
     try {
@@ -289,7 +293,12 @@ export default function DocumentosPage() {
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="text-2xl font-bold h-auto py-2 px-0 border-0 shadow-none focus-visible:ring-0"
+          className={cn(
+            "text-2xl font-bold h-auto py-2 px-3 border shadow-none transition-all",
+            canEdit 
+              ? "border-border/50 hover:border-border focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 bg-background" 
+              : "border-0 bg-transparent cursor-default"
+          )}
           placeholder="Título del documento..."
           readOnly={!canEdit}
         />
@@ -381,15 +390,32 @@ export default function DocumentosPage() {
          <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
        )}
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar documentos..."
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-       </div>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar documentos..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+          <select
+            value={clientFilter}
+            onChange={(e) => setClientFilter(e.target.value)}
+            className="h-10 rounded-lg border bg-background px-3 text-sm min-w-[200px]"
+          >
+            <option value="">Todos los clientes</option>
+            <option value="none">Sin cliente</option>
+            {clientOptions.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
         {tab === 'notes' ? (
           <StickyNotes triggerStartNew={triggerStartNew} onTriggerNew={() => setTriggerStartNew(false)} />
