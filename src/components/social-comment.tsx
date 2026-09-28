@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { SocialComment as SocialCommentType } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { MentionedText } from '@/components/mention';
+import { MentionedText, MentionInput, type MentionUser } from '@/components/mention';
+import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { Send, Trash2, Loader2, Pencil, Check, X, Reply } from 'lucide-react';
 
 interface SocialCommentProps {
@@ -31,6 +31,7 @@ function CommentItem({
   saveEdit,
   cancelEdit,
   savingEdit,
+  users,
 }: {
   comment: SocialCommentType;
   currentUserId?: string;
@@ -44,6 +45,7 @@ function CommentItem({
   saveEdit: (id: string) => void;
   cancelEdit: () => void;
   savingEdit: boolean;
+  users: MentionUser[];
 }) {
   const isOwn = currentUserId === comment.user_id;
   const isEditing = editingId === comment.id;
@@ -65,9 +67,11 @@ function CommentItem({
           </div>
           {isEditing ? (
             <div className="mt-1.5 space-y-1.5">
-              <Input
+              <MentionInput
                 value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
+                onChange={setEditContent}
+                users={users}
+                placeholder="Editá tu comentario..."
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(comment.id); } if (e.key === 'Escape') cancelEdit(); }}
                 className="h-9 text-sm"
                 autoFocus
@@ -128,6 +132,7 @@ function CommentItem({
               saveEdit={saveEdit}
               cancelEdit={cancelEdit}
               savingEdit={savingEdit}
+              users={users}
             />
           ))}
         </div>
@@ -143,6 +148,7 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
   const [editContent, setEditContent] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const mentionUsers = useInternalUsers();
 
   const handleSend = async () => {
     if (!newComment.trim() || !currentUserId) return;
@@ -202,6 +208,7 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
               saveEdit={saveEdit}
               cancelEdit={cancelEdit}
               savingEdit={savingEdit}
+              users={mentionUsers}
             />
           ))}
         </div>
@@ -219,12 +226,13 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Input
-              placeholder={replyTo ? 'Escribí tu respuesta...' : 'Escribí un comentario...'}
+            <MentionInput
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={setNewComment}
+              users={mentionUsers}
+              placeholder={replyTo ? 'Escribí tu respuesta...' : 'Escribí un comentario...'}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              className="flex-1 h-9 text-sm"
+              className="h-9 text-sm"
               disabled={sending}
             />
             <Button

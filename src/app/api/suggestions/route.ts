@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { decodeJwt } from 'jose';
+import { createMentionNotifications } from '@/lib/mentions';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -106,6 +107,13 @@ export async function POST(request: Request) {
       .select()
       .single();
     if (error) throw error;
+
+    await createMentionNotifications(
+      supabase,
+      `${title.trim()}\n${content.trim()}`,
+      userId,
+      { link: `/sugerencias?s=${data.id}`, entityLabel: 'una sugerencia' }
+    );
 
     const { data: author } = await supabase.from('users').select('id, email, full_name, avatar_url, role').eq('id', userId).single();
 

@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useSuggestionDetail } from '@/lib/hooks/use-suggestions';
-import { MentionedText } from '@/components/mention';
+import { MentionedText, MentionInput } from '@/components/mention';
+import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { SUGGESTION_TYPE_CONFIG, SUGGESTION_STATUS_CONFIG, SUGGESTION_STATUSES } from '@/lib/suggestion-config';
 import type { Suggestion, SuggestionComment } from '@/lib/types';
 import { Heart, MessageSquare, Trash2, Loader2, Send, Reply, Calendar } from 'lucide-react';
@@ -32,6 +33,7 @@ export function SuggestionDetailModal({ suggestion, open, onOpenChange, onUpdate
 
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState<SuggestionComment | null>(null);
+  const mentionUsers = useInternalUsers();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -187,10 +189,15 @@ export function SuggestionDetailModal({ suggestion, open, onOpenChange, onUpdate
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <input value={commentText} onChange={e => setCommentText(e.target.value)}
+                <MentionInput
+                  value={commentText}
+                  onChange={setCommentText}
+                  users={mentionUsers}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSend(); } }}
                   placeholder={replyTo ? 'Escribí tu respuesta...' : 'Sumá un comentario o sugerencia...'}
-                  className="flex-1 rounded-lg border border-input bg-transparent px-3 py-2 text-sm" />
+                  className="rounded-lg py-2"
+                  disabled={busy}
+                />
                 <Button size="sm" onClick={handleSend} disabled={busy || !commentText.trim()} className="shrink-0">
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 </Button>

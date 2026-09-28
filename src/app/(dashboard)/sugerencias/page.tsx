@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useSuggestions } from '@/lib/hooks/use-suggestions';
 import { SuggestionComposeDialog } from '@/components/suggestion-compose-dialog';
@@ -31,6 +32,32 @@ export default function SuggestionsPage() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [defaultType, setDefaultType] = useState<SuggestionType>('suggestion');
   const [selected, setSelected] = useState<Suggestion | null>(null);
+
+  // Deep link from a mention notification: /sugerencias?s=<id>
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const deepLinkId = searchParams.get('s');
+
+  useEffect(() => {
+    if (!deepLinkId || selected?.id === deepLinkId) return;
+    const inList = suggestions.find(s => s.id === deepLinkId);
+    if (inList) {
+      setSelected(inList);
+      router.replace('/sugerencias');
+      return;
+    }
+    if (loading) return;
+    let cancelled = false;
+    fetch(`/api/suggestions/${deepLinkId}`)
+      .then(r => r.json())
+      .then(json => {
+        if (cancelled || !json.data) return;
+        setSelected(json.data as Suggestion);
+        router.replace('/sugerencias');
+      })
+      .catch(() => { /* ignore */ });
+    return () => { cancelled = true; };
+  }, [deepLinkId, suggestions, loading, selected, router]);
 
   const filtered = useMemo(() => {
     return suggestions.filter(s =>

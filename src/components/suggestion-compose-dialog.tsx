@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { SuggestionType } from '@/lib/types';
 import { SUGGESTION_TYPE_CONFIG } from '@/lib/suggestion-config';
+import { MentionTextarea } from '@/components/mention';
+import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { Loader2, MessageSquarePlus } from 'lucide-react';
 
 interface SuggestionComposeDialogProps {
@@ -23,6 +25,7 @@ export function SuggestionComposeDialog({ open, onOpenChange, defaultType, onSub
   const [type, setType] = useState<SuggestionType>(defaultType);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const mentionUsers = useInternalUsers();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,8 +84,15 @@ export function SuggestionComposeDialog({ open, onOpenChange, defaultType, onSub
 
         <div className="space-y-1.5">
           <Label>Detalle *</Label>
-          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Explicá qué idea tenés o qué falla, pasos para reproducirlo si es un bug..."
-            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm min-h-[110px] resize-none" />
+          <MentionTextarea
+            value={content}
+            onChange={setContent}
+            users={mentionUsers}
+            rows={4}
+            dropdownPlacement="below"
+            placeholder="Explicá qué idea tenés o qué falla, pasos para reproducirlo si es un bug..."
+            className="min-h-[110px]"
+          />
         </div>
 
         {error && <p className="text-xs text-destructive">{error}</p>}
