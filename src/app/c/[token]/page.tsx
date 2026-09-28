@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy } from 'lucide-react';
+import { Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy, Sun, Moon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
+import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment, User as NexusUser } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
@@ -63,6 +64,7 @@ function AuthGate({ token, client, calendarType, onEnter }: {
   const [showGuestPassword, setShowGuestPassword] = useState(false);
   const [guestError, setGuestError] = useState('');
   const [guestLoading, setGuestLoading] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const calLabel = calendarType === 'ads' ? 'Piezas para ADS' : 'Calendario de Redes';
 
@@ -115,7 +117,16 @@ function AuthGate({ token, client, calendarType, onEnter }: {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-4 right-4 h-9 w-9 rounded-xl hover:bg-accent"
+        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      >
+        {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      </Button>
       <div className="w-full max-w-md space-y-6">
         {client.logo_url ? (
           <img src={client.logo_url} alt={client.name} className="h-12 mx-auto object-contain" />
@@ -321,6 +332,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [initialIdeaId, setInitialIdeaId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => { params.then(p => setToken(p.token)); }, [params]);
 
@@ -554,6 +566,15 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
           <div className="flex items-center gap-2 flex-wrap">
             <span className="rounded-xl bg-muted/40 px-3 py-2 text-sm font-semibold">{monthLabel}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg hover:bg-accent"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <Button variant="secondary" size="sm" className="gap-1.5 text-xs h-8 rounded-lg" onClick={handleLogout}>
               <LogOut className="h-3.5 w-3.5" /> Salir
             </Button>
