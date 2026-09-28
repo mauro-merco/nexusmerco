@@ -1,29 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { MarkdownBody, type RenderMention } from '@/lib/markdown';
+import { readPastedMarkdown, spliceAtSelection } from '@/lib/paste';
 
-const MENTION_TOKEN = /@[\p{L}\p{N}'.-]+/gu;
+const mentionChip: RenderMention = (token, key) => (
+  <span
+    key={key}
+    className="bg-gradient-tech mx-0.5 inline-block rounded-md px-1.5 py-px align-baseline font-semibold text-white"
+  >
+    {token}
+  </span>
+);
 
-/** Renders text highlighting @Mentions as gradient chips. */
+/**
+ * Renders comment text: @mentions become gradient chips and the rest is
+ * rendered as markdown, so bold / italic / lists pasted from Word or Google
+ * Docs keep their shape.
+ */
 export function MentionedText({ text, className }: { text: string; className?: string }) {
-  const parts = text.split(MENTION_TOKEN);
-  const tokens = text.match(MENTION_TOKEN) || [];
-
-  const out: React.ReactNode[] = [];
-  for (let i = 0; i < parts.length; i++) {
-    if (parts[i]) out.push(<span key={`t${i}`}>{parts[i]}</span>);
-    if (i < tokens.length) {
-      out.push(
-        <span key={`m${i}`} className="bg-gradient-tech mx-0.5 inline-block rounded-md px-1.5 py-px align-baseline font-semibold text-white">
-          {tokens[i]}
-        </span>
-      );
-    }
-  }
-
-  return <span className={cn('whitespace-pre-wrap', className)}>{out}</span>;
+  return (
+    <span className={className}>
+      <MarkdownBody text={text} renderMention={mentionChip} />
+    </span>
+  );
 }
 
 export interface MentionUser {
@@ -32,24 +34,21 @@ export interface MentionUser {
   email: string | null;
 }
 
-type MentionKeyHandler<E extends HTMLInputElement | HTMLTextAreaElement> = (e: React.KeyboardEvent<E>) => void;
+type MentionKeyHandler = (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 
-interface MentionAutocompleteOptions<E extends HTMLInputElement | HTMLTextAreaElement> {
+interface MentionAutocompleteOptions {
   value: string;
   onChange: (v: string) => void;
   users: MentionUser[];
   disabled?: boolean;
-  onKeyDown?: MentionKeyHandler<E>;
+  onKeyDown?: MentionKeyHandler;
 }
 
 /**
  * Shared "@" autocomplete: tracks the word after the last @ in the field and
- * exposes the ranked matches, insertion and key handling. Used by both
- * MentionInput and MentionTextarea so any comment box behaves the same.
+ * exposes the ranked matches, insertion and key handling.
  */
-function useMentionAutocomplete<E extends HTMLInputElement | HTMLTextAreaElement>({
-  value, onChange, users, disabled, onKeyDown,
-}: MentionAutocompleteOptions<E>) {
+function useMentionAutocomplete({ value, onChange, users, disabled, onKeyDown }: MentionAutocompleteOptions) {
   const [mentionQuery, setMentionQuery] = useState('');
   const [caret, setCaret] = useState(-1);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -97,7 +96,7 @@ function useMentionAutocomplete<E extends HTMLInputElement | HTMLTextAreaElement
     setCaret(-1);
   };
 
-  const handleKeyDown: MentionKeyHandler<E> = (e) => {
+  const handleKeyDown: MentionKeyHandler = (e) => {
     if (open) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => (i + 1) % matches.length); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => (i - 1 + matches.length) % matches.length); return; }
@@ -148,59 +147,10 @@ function MentionDropdown({
           </Avatar>
           <span className="font-medium">{u.full_name || u.email}</span>
           {u.email && u.full_name && (
-            <span className="ml-auto text-muted-foreground truncate">{u.email}</span>
+            <span className="ml-auto truncate text-muted-foreground">{u.email}</span>
           )}
         </button>
       ))}
-    </div>
-  );
-}
-
-interface MentionInputProps {
-  value: string;
-  onChange: (v: string) => void;
-  users: MentionUser[];
-  placeholder?: string;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  disabled?: boolean;
-  className?: string;
-  autoFocus?: boolean;
-  /** Where to render the suggestion dropdown. Defaults to above the field. */
-  dropdownPlacement?: 'above' | 'below';
-}
-
-export function MentionInput({
-  value, onChange, users, placeholder, onKeyDown, disabled, className, autoFocus, dropdownPlacement = 'above',
-}: MentionInputProps) {
-  const { open, matches, activeIdx, setActiveIdx, selectUser, track, handleKeyDown } =
-    useMentionAutocomplete<HTMLInputElement>({ value, onChange, users, disabled, onKeyDown });
-
-  return (
-    <div className="relative flex-1">
-      <input
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          track(e.target.value, e.target.selectionStart ?? e.target.value.length);
-        }}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={disabled}
-        autoFocus={autoFocus}
-        className={cn(
-          'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50',
-          className
-        )}
-      />
-      {open && (
-        <MentionDropdown
-          matches={matches}
-          activeIdx={activeIdx}
-          onSelect={selectUser}
-          onHover={setActiveIdx}
-          placement={dropdownPlacement}
-        />
-      )}
     </div>
   );
 }
@@ -210,35 +160,65 @@ interface MentionTextareaProps {
   onChange: (v: string) => void;
   users: MentionUser[];
   placeholder?: string;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: MentionKeyHandler;
   disabled?: boolean;
   className?: string;
+  /** Initial height before the box grows with its content. */
   rows?: number;
   /** Where to render the suggestion dropdown. Defaults to above the field. */
   dropdownPlacement?: 'above' | 'below';
 }
 
-/** Multi-line variant of MentionInput, for comment boxes. */
+/**
+ * Comment box: grows with its content, offers @mention autocomplete, and
+ * converts pasted rich text into markdown so line breaks, spacing, bold and
+ * lists survive the paste.
+ */
 export function MentionTextarea({
-  value, onChange, users, placeholder, onKeyDown, disabled, className, rows = 3, dropdownPlacement = 'above',
+  value, onChange, users, placeholder, onKeyDown, disabled, className, rows = 2, dropdownPlacement = 'above',
 }: MentionTextareaProps) {
   const { open, matches, activeIdx, setActiveIdx, selectUser, track, handleKeyDown } =
-    useMentionAutocomplete<HTMLTextAreaElement>({ value, onChange, users, disabled, onKeyDown });
+    useMentionAutocomplete({ value, onChange, users, disabled, onKeyDown });
+
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow: the box expands with the content instead of scrolling.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = readPastedMarkdown(e.clipboardData);
+    if (pasted === null) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    const next = spliceAtSelection(value, el.selectionStart, el.selectionEnd, pasted);
+    onChange(next.value);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = next.caret;
+      track(next.value, next.caret);
+    });
+  };
 
   return (
     <div className="relative w-full">
       <textarea
+        ref={ref}
         value={value}
         rows={rows}
         onChange={(e) => {
           onChange(e.target.value);
           track(e.target.value, e.target.selectionStart ?? e.target.value.length);
         }}
+        onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          'w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50',
+          'w-full resize-none overflow-hidden rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
       />

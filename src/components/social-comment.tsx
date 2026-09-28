@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { SocialComment as SocialCommentType } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { MentionedText, MentionInput, type MentionUser } from '@/components/mention';
+import { MentionedText, MentionTextarea, type MentionUser } from '@/components/mention';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { Send, Trash2, Loader2, Pencil, Check, X, Reply } from 'lucide-react';
 
@@ -67,14 +67,13 @@ function CommentItem({
           </div>
           {isEditing ? (
             <div className="mt-1.5 space-y-1.5">
-              <MentionInput
+              <MentionTextarea
                 value={editContent}
                 onChange={setEditContent}
                 users={users}
                 placeholder="Editá tu comentario..."
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(comment.id); } if (e.key === 'Escape') cancelEdit(); }}
-                className="h-9 text-sm"
-                autoFocus
+                rows={2}
               />
               <div className="flex gap-1.5">
                 <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs" onClick={() => saveEdit(comment.id)} disabled={savingEdit || !editContent.trim()}>
@@ -225,14 +224,14 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
               </button>
             </div>
           )}
-          <div className="flex items-center gap-2">
-            <MentionInput
+          <div className="flex items-end gap-2">
+            <MentionTextarea
               value={newComment}
               onChange={setNewComment}
               users={mentionUsers}
               placeholder={replyTo ? 'Escribí tu respuesta...' : 'Escribí un comentario...'}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              className="h-9 text-sm"
+              rows={1}
               disabled={sending}
             />
             <Button

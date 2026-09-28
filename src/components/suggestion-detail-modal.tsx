@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useSuggestionDetail } from '@/lib/hooks/use-suggestions';
-import { MentionedText, MentionInput } from '@/components/mention';
+import { MentionedText, MentionTextarea } from '@/components/mention';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { SUGGESTION_TYPE_CONFIG, SUGGESTION_STATUS_CONFIG, SUGGESTION_STATUSES } from '@/lib/suggestion-config';
 import type { Suggestion, SuggestionComment } from '@/lib/types';
@@ -188,14 +188,14 @@ export function SuggestionDetailModal({ suggestion, open, onOpenChange, onUpdate
                   <button type="button" onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground shrink-0">✕</button>
                 </div>
               )}
-              <div className="flex items-center gap-2">
-                <MentionInput
+              <div className="flex items-end gap-2">
+                <MentionTextarea
                   value={commentText}
                   onChange={setCommentText}
                   users={mentionUsers}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSend(); } }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                   placeholder={replyTo ? 'Escribí tu respuesta...' : 'Sumá un comentario o sugerencia...'}
-                  className="rounded-lg py-2"
+                  rows={1}
                   disabled={busy}
                 />
                 <Button size="sm" onClick={handleSend} disabled={busy || !commentText.trim()} className="shrink-0">
