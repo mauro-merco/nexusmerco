@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/sidebar';
 import { AIWidget } from '@/components/ai-widget';
 import { GlobalSearch } from '@/components/global-search';
 import { NotificationBell } from '@/components/notification-bell';
+import { MessagesBell } from '@/components/messages-bell';
 import { NotificationToasts } from '@/components/notification-toasts';
 import { RemindersBell } from '@/components/reminders-bell';
 import { ProfileMenu } from '@/components/profile-menu';
@@ -57,6 +58,7 @@ export default function DashboardLayout({
             <GlobalSearch />
           </div>
           <div className="flex items-center gap-2">
+            <MessagesBell />
             <NotificationBell />
             <RemindersBell />
             <ProfileMenu />
