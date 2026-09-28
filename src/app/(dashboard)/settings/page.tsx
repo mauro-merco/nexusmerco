@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import type { UserRole, ModuleId } from '@/lib/types';
 import { ALL_MODULES, DEFAULT_MODULES } from '@/lib/types';
 import { AiUsagePanel } from '@/components/ai-usage-panel';
+import { DevelopmentLogPanel } from '@/components/development-log-panel';
 import {
   Loader2, Check, Plus, Trash2, Users, UserCog, Shield, Eye, EyeOff, X,
 } from 'lucide-react';
@@ -68,6 +69,7 @@ export default function SettingsPage() {
           <TabsTrigger value="profile">Mi perfil</TabsTrigger>
           {isAdmin && <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>}
           <TabsTrigger value="ai">Uso IA</TabsTrigger>
+          {(isAdmin || user?.role === 'operador') && <TabsTrigger value="dev">Desarrollo</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="profile">
@@ -83,6 +85,12 @@ export default function SettingsPage() {
         <TabsContent value="ai">
           <AiUsagePanel />
         </TabsContent>
+
+        {(isAdmin || user?.role === 'operador') && (
+          <TabsContent value="dev">
+            <DevelopmentLogPanel />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
