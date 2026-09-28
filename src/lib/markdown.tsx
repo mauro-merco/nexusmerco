@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 /**
  * Minimal markdown renderer for comments.
@@ -107,10 +108,24 @@ export interface MarkdownBodyProps {
   text: string;
   /** Renders an @mention token, so the caller can style it as a chip. */
   renderMention?: RenderMention;
+  className?: string;
 }
 
 /** Renders markdown as a vertical stack of blocks. */
-export function MarkdownBody({ text, renderMention = defaultRenderMention }: MarkdownBodyProps) {
+export function MarkdownBody({ text, renderMention = defaultRenderMention, className }: MarkdownBodyProps) {
+  // Fast path: no block constructs, so render flat inline nodes. This keeps the
+  // DOM shallow and lets callers use line-clamp / whitespace normally.
+  const hasBlockConstructs =
+    /^\s*(?:[-*]\s|\d+[.)]\s|>\s?|```)/m.test(text) || /\n[ \t]*\n/.test(text);
+
+  if (!hasBlockConstructs) {
+    return (
+      <span className={cn('whitespace-pre-wrap', className)}>
+        {renderInline(text, 'flat', renderMention)}
+      </span>
+    );
+  }
+
   const lines = text.split('\n');
   const out: ReactNode[] = [];
   let paragraph: string[] = [];
@@ -223,5 +238,5 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention }: Mar
 
   flushParagraph();
 
-  return <>{out}</>;
+  return <span className={className}>{out}</span>;
 }

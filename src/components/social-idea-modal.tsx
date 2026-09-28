@@ -18,6 +18,8 @@ import { useAuthStore } from '@/store/auth-store';
 import type { SocialIdea, PostType, IdeaStatus, User as NexusUser } from '@/lib/types';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { MarkdownTextarea } from '@/components/markdown-textarea';
+import { MarkdownBody } from '@/lib/markdown';
 import {
   Loader2, Trash2, Link, Paperclip, Copy,
   Edit3, Calendar, Check,
@@ -261,17 +263,17 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
                   <div className="space-y-1.5">
                     <Label>Brief</Label>
-                    <textarea className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm min-h-[60px] resize-none outline-none" value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Brief..." />
+                    <MarkdownTextarea value={brief} onChange={setBrief} rows={2} className="min-h-[60px]" placeholder="Brief..." />
                   </div>
 
                   <div className="space-y-1.5">
                     <Label>Guión / Descripción</Label>
-                    <textarea className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm min-h-[80px] resize-none outline-none" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Guión o descripción..." />
+                    <MarkdownTextarea value={description} onChange={setDescription} rows={3} className="min-h-[80px]" placeholder="Guión o descripción..." />
                   </div>
 
                   <div className="space-y-1.5">
                     <Label>COPY</Label>
-                    <textarea className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm min-h-[60px] resize-none outline-none" value={copyText} onChange={(e) => setCopyText(e.target.value)} placeholder="Texto del copy para la publicación..." />
+                    <MarkdownTextarea value={copyText} onChange={setCopyText} rows={2} className="min-h-[60px]" placeholder="Texto del copy para la publicación..." />
                   </div>
 
                   <div className="space-y-1.5">
@@ -317,13 +319,13 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                     <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Eje de contenido</p><p className="text-sm font-medium">{idea.eje_contenido}</p></div>
                   )}
                   {idea.brief && (
-                    <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Brief</p><p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.brief}</p></div>
+                    <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Brief</p><MarkdownBody text={idea.brief} className="text-sm text-foreground/80 leading-relaxed" /></div>
                   )}
                   {idea.description && (
-                    <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Guión / Descripción</p><p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.description}</p></div>
+                    <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Guión / Descripción</p><MarkdownBody text={idea.description} className="text-sm text-foreground/80 leading-relaxed" /></div>
                   )}
                   {idea.copy_text && (
-                    <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Copy</p><p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{idea.copy_text}</p></div>
+                    <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Copy</p><MarkdownBody text={idea.copy_text} className="text-sm text-foreground/80 leading-relaxed" /></div>
                   )}
                   {!idea.eje_contenido && !idea.brief && !idea.description && !idea.copy_text && (
                     <p className="text-sm text-muted-foreground italic">Sin contenido</p>

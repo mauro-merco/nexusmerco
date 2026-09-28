@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MarkdownBody, type RenderMention } from '@/lib/markdown';
-import { readPastedMarkdown, spliceAtSelection } from '@/lib/paste';
+import { useMarkdownTextarea } from '@/lib/use-markdown-textarea';
 
 const mentionChip: RenderMention = (token, key) => (
   <span
@@ -180,28 +180,7 @@ export function MentionTextarea({
   const { open, matches, activeIdx, setActiveIdx, selectUser, track, handleKeyDown } =
     useMentionAutocomplete({ value, onChange, users, disabled, onKeyDown });
 
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  // Auto-grow: the box expands with the content instead of scrolling.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
-  }, [value]);
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const pasted = readPastedMarkdown(e.clipboardData);
-    if (pasted === null) return;
-    e.preventDefault();
-    const el = e.currentTarget;
-    const next = spliceAtSelection(value, el.selectionStart, el.selectionEnd, pasted);
-    onChange(next.value);
-    requestAnimationFrame(() => {
-      el.selectionStart = el.selectionEnd = next.caret;
-      track(next.value, next.caret);
-    });
-  };
+  const { ref, handleChange, handlePaste } = useMarkdownTextarea({ value, onChange, onCaret: track });
 
   return (
     <div className="relative w-full">
@@ -209,10 +188,7 @@ export function MentionTextarea({
         ref={ref}
         value={value}
         rows={rows}
-        onChange={(e) => {
-          onChange(e.target.value);
-          track(e.target.value, e.target.selectionStart ?? e.target.value.length);
-        }}
+        onChange={handleChange}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}

@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import type { PostType, IdeaStatus, User, WorkRole } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import { TaskRolesPicker, emptyRoles, rolesToList, type TaskRolesState } from '@/components/task-roles-picker';
+import { MarkdownTextarea } from '@/components/markdown-textarea';
 import { useAuthStore } from '@/store/auth-store';
 import { Loader2, Calendar, Users2, FileText, ListChecks } from 'lucide-react';
 
@@ -182,11 +183,12 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
                 </button>
               ))}
             </div>
-            <textarea
-              className="w-full rounded-xl bg-muted/30 px-3.5 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px] resize-none"
+            <MarkdownTextarea
+              className="bg-muted/30 px-3.5 py-3 min-h-[100px] placeholder:text-muted-foreground focus-visible:ring-ring"
+              rows={3}
               placeholder={CONTENT_TABS.find(t => t.key === contentTab)!.placeholder}
               value={contentValues[contentTab]}
-              onChange={(e) => contentSetters[contentTab](e.target.value)}
+              onChange={contentSetters[contentTab]}
             />
           </div>
 

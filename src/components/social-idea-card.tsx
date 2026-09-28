@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { MarkdownBody } from '@/lib/markdown';
 import { Users, Link as LinkIcon, Check, ChevronDown } from 'lucide-react';
 
 const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
@@ -92,15 +93,13 @@ export function SocialIdeaCard({ idea, attachments = [], onClick, onStatusChange
           </DropdownMenu>
         </div>
         {idea.brief && (
-          <p className={cn('text-xs text-muted-foreground line-clamp-2 mb-2', isPublished && 'blur-[1px]')}>{idea.brief}</p>
+          <MarkdownBody text={idea.brief} className={cn('block text-xs text-muted-foreground line-clamp-2 mb-2', isPublished && 'blur-[1px]')} />
         )}
         {!idea.brief && idea.description && (
-          <p className={cn('text-xs text-muted-foreground line-clamp-2 mb-2', isPublished && 'blur-[1px]')}>{idea.description}</p>
+          <MarkdownBody text={idea.description} className={cn('block text-xs text-muted-foreground line-clamp-2 mb-2', isPublished && 'blur-[1px]')} />
         )}
         {idea.copy_text && (
-          <p className={cn('text-xs line-clamp-2 mb-2 font-medium', isPublished && 'blur-[1px]', 'text-foreground/90')}>
-            {idea.copy_text}
-          </p>
+          <MarkdownBody text={idea.copy_text} className={cn('block text-xs line-clamp-2 mb-2 font-medium', isPublished && 'blur-[1px]', 'text-foreground/90')} />
         )}
         {attachments.length > 0 && (
           <div className={cn('flex flex-wrap gap-1 mb-2', isPublished && 'blur-[1px]')}>

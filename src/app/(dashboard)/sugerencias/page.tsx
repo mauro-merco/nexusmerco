@@ -194,7 +194,7 @@ export default function SuggestionsPage() {
                   </span>
                 </div>
                 <h3 className="font-semibold leading-snug group-hover:underline decoration-2 underline-offset-2 decoration-primary/40">{s.title}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap"><MentionedText text={s.content} /></p>
+                <div className="text-sm text-muted-foreground line-clamp-2"><MentionedText text={s.content} /></div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground mt-auto pt-1">
                   <span className="inline-flex items-center gap-1.5">
                     {s.author?.avatar_url ? <img src={s.author.avatar_url} alt="" className="h-4 w-4 rounded-full object-cover" /> : null}
