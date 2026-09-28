@@ -12,7 +12,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isLoading } = useAuthStore();
+  const { login, verify2FA, isLoading, pending2FA } = useAuthStore();
   const _ = useT();
 
   const [email, setEmail] = useState('');
@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [code, setCode] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,10 +30,26 @@ export default function LoginPage() {
       return;
     }
     const result = await login(email, password);
+    if (result.needs2FA) return;
     if (result.success) {
       router.push('/dashboard');
     } else {
       setError(result.error || 'Error al iniciar sesión');
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (code.trim().length < 6) {
+      setError('Ingresá el código de 6 dígitos de tu aplicación de autenticación');
+      return;
+    }
+    const result = await verify2FA(code.trim());
+    if (result.success) {
+      router.push('/dashboard');
+    } else {
+      setError(result.error || 'Código inválido');
     }
   }
 
@@ -114,6 +131,49 @@ export default function LoginPage() {
             <p className="text-muted-foreground">Accede a tu cuenta para continuar</p>
           </div>
 
+          {pending2FA ? (
+            <form onSubmit={handleVerify} className="space-y-6">
+              {error && (
+                <div className="flex items-center gap-3 rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-600 dark:text-red-400">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <Label htmlFor="code" className="text-sm font-medium text-foreground">Código de verificación</Label>
+                <Input
+                  id="code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                  disabled={isLoading}
+                  className="h-14 text-center text-2xl font-semibold tracking-[0.4em] border-2 border-border bg-muted/40 dark:bg-white/5"
+                />
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                Tu cuenta tiene verificación en dos pasos activada. Ingresá el código de 6 dígitos
+                de tu aplicación de autenticación.
+              </p>
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-14 rounded-xl text-base font-semibold bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-600 hover:to-violet-600 text-white shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-300 disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verificando...</>
+                ) : (
+                  'Verificar código'
+                )}
+              </Button>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <div className="flex items-center gap-3 rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-600 dark:text-red-400">
@@ -200,10 +260,13 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+          )}
 
-          <div className="text-center text-sm text-muted-foreground">
-            ¿No tienes cuenta? <span className="text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 cursor-pointer font-medium">Crea una</span>
-          </div>
+          {!pending2FA && (
+            <div className="text-center text-sm text-muted-foreground">
+              ¿No tienes cuenta? <span className="text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 cursor-pointer font-medium">Crea una</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

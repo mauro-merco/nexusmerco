@@ -14,12 +14,13 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function RealLoginPage() {
   const router = useRouter();
-  const { login, isLoading, logout } = useAuthStore();
+  const { login, verify2FA, isLoading, logout, pending2FA } = useAuthStore();
   const _ = useT();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [code, setCode] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,6 +33,8 @@ export default function RealLoginPage() {
 
     const result = await login(email, password);
 
+    if (result.needs2FA) return;
+
     if (result.success) {
       const currentUser = useAuthStore.getState().user;
       if (currentUser?.role === 'client') {
@@ -42,6 +45,21 @@ export default function RealLoginPage() {
       router.push('/dashboard');
     } else {
       setError(result.error || 'Error al iniciar sesión');
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (code.trim().length < 6) {
+      setError('Ingresá el código de 6 dígitos de tu aplicación de autenticación');
+      return;
+    }
+    const result = await verify2FA(code.trim());
+    if (result.success) {
+      router.push('/dashboard');
+    } else {
+      setError(result.error || 'Código inválido');
     }
   }
 
@@ -93,6 +111,39 @@ export default function RealLoginPage() {
                 </div>
               )}
 
+              {pending2FA ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="code" className="text-sm font-medium">Código de verificación</Label>
+                    <Input
+                      id="code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                      disabled={isLoading}
+                      className="h-14 rounded-xl text-center text-2xl font-semibold tracking-[0.4em]"
+                    />
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                    Tu cuenta tiene verificación en dos pasos activada. Ingresá el código de 6 dígitos
+                    de tu aplicación de autenticación.
+                  </p>
+
+                  <Button type="submit" variant="cta" size="cta" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...</>
+                    ) : (
+                      'Verificar código'
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <>
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <Input
@@ -128,6 +179,8 @@ export default function RealLoginPage() {
                   'Iniciar Sesión'
                 )}
               </Button>
+                </>
+              )}
             </CardContent>
           </form>
           <CardFooter className="flex flex-col gap-2 text-center text-sm text-muted-foreground">
