@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
-import { useUnreadMessages } from '@/lib/hooks/use-unread-messages';
 import { DEFAULT_MODULES } from '@/lib/types';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LangToggle } from '@/components/lang-toggle';
@@ -21,7 +20,6 @@ import {
   LogOut,
   Settings,
   LayoutGrid,
-  Mail,
   Users2,
   Lightbulb,
   ChevronLeft,
@@ -39,7 +37,6 @@ const navItems: NavItem[] = [
   { label: 'insights', href: '/insights', icon: 'BrainCircuit', moduleId: 'insights', roles: ['admin', 'operador', 'client'] },
   { label: 'calendar', href: '/calendarios', icon: 'Calendar', moduleId: 'calendarios', roles: ['admin', 'operador', 'client'] },
   { label: 'documents', href: '/documentos', icon: 'FileText', moduleId: 'documentos', roles: ['admin', 'operador', 'client'] },
-  { label: 'messages', href: '/messages', icon: 'Mail', moduleId: 'mensajes', roles: ['admin', 'operador', 'client'] },
   { label: 'suggestions', href: '/sugerencias', icon: 'Lightbulb', moduleId: 'sugerencias', roles: ['admin', 'operador', 'client'] },
 ];
 
@@ -53,21 +50,11 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Calendar,
   FileText,
   Settings,
-  Mail,
   Users2,
   Lightbulb,
 };
 
 const STORAGE_KEY = 'nexus-sidebar-collapsed';
-
-function NavBadge({ count }: { count: number }) {
-  if (count <= 0) return null;
-  return (
-    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
-      {count > 99 ? '99+' : count}
-    </span>
-  );
-}
 
 function TransitionOverlay({ label }: { label: string }) {
   return (
@@ -106,9 +93,8 @@ function TransitionOverlay({ label }: { label: string }) {
 
 function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolean; onToggle: () => void; onNavigate: (href: string, label: string) => void }) {
   const pathname = usePathname();
-  const { user, token, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const _ = useT();
-  const { unreadCount } = useUnreadMessages(user?.id || null, token);
 
   const visibleItems = navItems.filter(
     (item) => user && user.visible_modules?.includes(item.moduleId)
@@ -138,7 +124,6 @@ function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolea
         {visibleItems.map((item) => {
           const Icon = iconMap[item.icon];
           const active = isActive(item.href);
-          const badgeCount = item.moduleId === 'mensajes' ? unreadCount : 0;
           return (
             <button
               key={item.href}
@@ -146,19 +131,13 @@ function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolea
               title={collapsed ? _(`nav.${item.label}`) : undefined}
               onClick={() => onNavigate(item.href, _(`nav.${item.label}`))}
               className={cn(
-                'group relative w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors',
+                'group w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors',
                 collapsed && 'justify-center px-0 h-11',
                 active ? 'bg-accent text-accent-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
-              <span className="relative shrink-0">
-                <Icon className="h-[18px] w-[18px]" />
-                {collapsed && badgeCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-[14px] rounded-full bg-primary" />
-                )}
-              </span>
-              {!collapsed && <span className="truncate flex-1 text-left">{_(`nav.${item.label}`)}</span>}
-              {!collapsed && <NavBadge count={badgeCount} />}
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              {!collapsed && <span className="truncate">{_(`nav.${item.label}`)}</span>}
             </button>
           );
         })}
@@ -218,10 +197,9 @@ function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolea
 
 function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: string) => void }) {
   const pathname = usePathname();
-  const { user, token, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const _ = useT();
   const [open, setOpen] = useState(false);
-  const { unreadCount } = useUnreadMessages(user?.id || null, token);
 
   const visibleItems = navItems.filter(
     (item) => user && user.visible_modules?.includes(item.moduleId)
@@ -240,7 +218,6 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
             <LayoutGrid className="h-4 w-4 text-white" />
           </span>
           <span className="text-gradient-tech text-sm font-semibold">Aplicaciones</span>
-          {unreadCount > 0 && <span className="ml-auto"><NavBadge count={unreadCount} /></span>}
         </button>
       </div>
 
@@ -268,16 +245,10 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
               {visibleItems.map((item) => {
                 const Icon = iconMap[item.icon];
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                const badgeCount = item.moduleId === 'mensajes' ? unreadCount : 0;
                 return (
-                  <button key={item.href} onClick={() => handleAppClick(item.href, _(`nav.${item.label}`))} className="relative flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95">
-                    <span className={cn('relative flex h-12 w-12 items-center justify-center rounded-2xl transition-all', isActive ? 'bg-gradient-tech glow-tech text-white' : 'bg-muted/50 text-muted-foreground')}>
+                  <button key={item.href} onClick={() => handleAppClick(item.href, _(`nav.${item.label}`))} className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95">
+                    <span className={cn('flex h-12 w-12 items-center justify-center rounded-2xl transition-all', isActive ? 'bg-gradient-tech glow-tech text-white' : 'bg-muted/50 text-muted-foreground')}>
                       <Icon className="h-5 w-5" />
-                      {badgeCount > 0 && (
-                        <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-primary text-[9px] font-bold text-primary-foreground flex items-center justify-center px-1">
-                          {badgeCount > 9 ? '9+' : badgeCount}
-                        </span>
-                      )}
                     </span>
                     <span className={cn('text-[10px] font-medium leading-tight text-center line-clamp-2', isActive ? 'text-gradient-tech' : 'text-muted-foreground')}>{_(`nav.${item.label}`)}</span>
                   </button>

@@ -95,23 +95,22 @@ export function DocumentShareDialog({
 
   return (
     <Dialog open={!!document} onOpenChange={(open) => { if (!open) onShared(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Share2 className="h-4 w-4" /> Compartir documento
+            <Share2 className="h-4 w-4 text-primary" /> Compartir documento
           </DialogTitle>
           <DialogDescription>
             Permite que otros usuarios vean y editen este documento.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative">
-          <Input
-            placeholder="Buscar usuario por nombre o email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        <Input
+          placeholder="Buscar usuario por nombre o email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="rounded-xl border-0 bg-muted/50 dark:bg-white/[0.05]"
+        />
 
         <div className="max-h-72 overflow-y-auto space-y-1">
           {loading && (
@@ -125,27 +124,27 @@ export function DocumentShareDialog({
           {!loading && filteredUsers.map((u) => {
             const shared = sharedUserIds.includes(u.id);
             return (
-              <div key={u.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-muted/50">
+              <div key={u.id} className="flex items-center justify-between gap-3 rounded-2xl px-2.5 py-2 hover:bg-muted/50 dark:hover:bg-white/[0.04]">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-9 w-9">
                     <AvatarImage src={u.avatar_url || undefined} alt={u.full_name} />
                     <AvatarFallback>{u.full_name?.charAt(0).toUpperCase() || u.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{u.full_name || u.email}</p>
+                    <p className="text-sm font-medium text-foreground truncate">{u.full_name || u.email}</p>
                     <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                   </div>
                 </div>
-                <Button
-                  variant={shared ? 'secondary' : 'outline'}
-                  size="sm"
-                  className="gap-1.5 shrink-0"
+                <button
                   disabled={!isOwner}
                   onClick={() => toggleShare(u.id, shared)}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium shrink-0 transition-colors disabled:opacity-50 ${
+                    shared ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted/60 dark:bg-white/[0.06] text-muted-foreground hover:text-foreground'
+                  }`}
                 >
                   {shared ? <UserCheck className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
                   {shared ? 'Compartido' : 'Compartir'}
-                </Button>
+                </button>
               </div>
             );
           })}

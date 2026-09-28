@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Loader2, Sparkles, Plus, ArrowLeftRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export type AiInsertMode = 'append' | 'replace';
 
@@ -20,9 +20,9 @@ const TONES: { value: string; label: string }[] = [
 ];
 
 const LENGTHS: { value: string; label: string }[] = [
-  { value: 'breve', label: 'Breve (2-4 párrafos)' },
-  { value: 'normal', label: 'Normal (~1 página)' },
-  { value: 'extenso', label: 'Extenso (varias secciones)' },
+  { value: 'breve', label: 'Breve' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'extenso', label: 'Extenso' },
 ];
 
 export function DocumentAiDialog({
@@ -66,7 +66,7 @@ export function DocumentAiDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!loading) onOpenChange(o); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg rounded-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" /> Asistente IA
@@ -76,76 +76,89 @@ export function DocumentAiDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-1">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Temática / instrucción</label>
+            <label className="text-sm font-medium text-foreground">Temática / instrucción</label>
             <Textarea
               placeholder="Ej: Estrategia de contenido para Instagram de una marca de moda sostenible"
               value={theme}
               onChange={(e) => setTheme(e.target.value)}
               rows={3}
+              className="rounded-xl border-0 bg-muted/50 dark:bg-white/[0.05]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Tono</label>
-              <Select value={tone} onValueChange={(v) => { if (v) setTone(v); }}>
-                <SelectTrigger className="w-full justify-between">
-                  <span className="flex-1 text-left truncate">{TONES.find((t) => t.value === tone)?.label}</span>
-                </SelectTrigger>
-                <SelectContent>
-                  {TONES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium text-foreground">Tono</label>
+              <div className="flex flex-wrap gap-1.5">
+                {TONES.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setTone(t.value)}
+                    className={cn(
+                      'rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+                      tone === t.value ? 'bg-primary text-primary-foreground' : 'bg-muted/50 dark:bg-white/[0.05] text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Extensión</label>
-              <Select value={length} onValueChange={(v) => { if (v) setLength(v); }}>
-                <SelectTrigger className="w-full justify-between">
-                  <span className="flex-1 text-left truncate">{LENGTHS.find((l) => l.value === length)?.label}</span>
-                </SelectTrigger>
-                <SelectContent>
-                  {LENGTHS.map((l) => (
-                    <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium text-foreground">Extensión</label>
+              <div className="flex flex-wrap gap-1.5">
+                {LENGTHS.map((l) => (
+                  <button
+                    key={l.value}
+                    type="button"
+                    onClick={() => setLength(l.value)}
+                    className={cn(
+                      'rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+                      length === l.value ? 'bg-primary text-primary-foreground' : 'bg-muted/50 dark:bg-white/[0.05] text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Destino</label>
+            <label className="text-sm font-medium text-foreground">Destino</label>
             <div className="flex gap-2">
-              <Button
+              <button
                 type="button"
-                variant={mode === 'append' ? 'default' : 'outline'}
-                size="sm"
-                className="gap-1.5"
                 onClick={() => setMode('append')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors',
+                  mode === 'append' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 dark:bg-white/[0.05] text-muted-foreground hover:text-foreground'
+                )}
               >
                 <Plus className="h-3.5 w-3.5" /> Insertar al final
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                variant={mode === 'replace' ? 'default' : 'outline'}
-                size="sm"
-                className="gap-1.5"
                 onClick={() => setMode('replace')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors',
+                  mode === 'replace' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 dark:bg-white/[0.05] text-muted-foreground hover:text-foreground'
+                )}
               >
                 <ArrowLeftRight className="h-3.5 w-3.5" /> Reemplazar
-              </Button>
+              </button>
             </div>
           </div>
 
-          {error && <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>}
+          {error && <p className="text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2">{error}</p>}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-          <Button onClick={generate} variant="cta" disabled={loading || !theme.trim()} className="gap-2">
+          <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
+          <Button onClick={generate} disabled={loading || !theme.trim()} className="gap-2 rounded-xl">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {loading ? 'Generando...' : 'Generar'}
           </Button>
