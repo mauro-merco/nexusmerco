@@ -19,6 +19,8 @@ import { useAdsIdeas, useEcommerceDates } from '@/lib/hooks/use-ads-ideas';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
+import { CalendarComments } from '@/components/calendar-comments';
+import { CalendarSearch } from '@/components/calendar-search';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
 import type { SocialIdea, IdeaStatus, EcommerceDate, PostType } from '@/lib/types';
@@ -276,6 +278,8 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
   const [viewYear, setViewYear] = useState(initialMonth ? Number(initialMonth.split('-')[0]) : today.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialMonth ? Number(initialMonth.split('-')[1]) - 1 : today.getMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [search, setSearch] = useState('');
+  const isSearching = search.trim().length >= 2;
   const [activeTypes, setActiveTypes] = useState<Set<PostType>>(new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]));
   const [shareOpen, setShareOpen] = useState(false);
   const shareBtnRef = useRef<HTMLDivElement>(null);
@@ -515,7 +519,15 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
             </div>
           )}
 
-          {viewMode === 'month' ? (
+          <CalendarSearch
+            className="mb-4"
+            value={search}
+            onChange={setSearch}
+            ideas={ideas}
+            onSelect={setSelectedIdea}
+          />
+
+          {isSearching ? null : viewMode === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
               <div className="grid grid-cols-7 gap-1.5">
                 {dayNames.map(n => <div key={n} className="text-center text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide py-1">{n}</div>)}
@@ -597,6 +609,17 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
           </div>
         </div>
       </div>
+
+      <CalendarComments
+        className="mt-5"
+        clientId={clientId}
+        calendarType="ads"
+        month={monthStr}
+        mentionUsers={internalUsers}
+        currentUserId={user?.id}
+        isAdmin={user?.role === 'admin'}
+        title="Comentarios del mes"
+      />
 
       <SocialNewIdeaDialog open={showNewIdea} onOpenChange={setShowNewIdea} initialDate={selectedDate} onCreateIdea={createIdea} users={internalUsers} calendarType="ads" />
       <EcommerceDateDialog open={showNewEcomDate} onOpenChange={setShowNewEcomDate} onCreate={createDate} />

@@ -1,89 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { decodeJwt } from 'jose';
 import { enrichIdeasWithAssignees } from '@/lib/idea-assignees-server';
+import {
+  getSupabaseAdmin,
+  hasCalendarAccess,
+  isCalendarType,
+  resolveCalendarLink,
+  type CalendarType,
+} from '@/lib/calendar-access-server';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-function getAdmin() {
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { persistSession: false },
-  });
-}
-
-type CalendarType = 'social' | 'ads';
-
-function isCalendarType(value: string): value is CalendarType {
-  return value === 'social' || value === 'ads';
-}
-
-async function resolveCalendarLink(supabase: ReturnType<typeof getAdmin>, token: string, requestedType: CalendarType) {
-  const { data: link } = await supabase
-    .from('calendar_share_links')
-    .select('token, client_id, calendar_type, month, allowed_client_id, guest_enabled, allowed_user_ids, enabled')
-    .eq('token', token)
-    .maybeSingle();
-
-  if (link) {
-    if (!link.enabled) return { error: 'Calendario no disponible', status: 404 as const };
-    const { data: client, error: clientError } = await supabase
-      .from('clients')
-      .select('id, name, logo_url, social_calendar_enabled, ads_calendar_enabled')
-      .eq('id', link.client_id)
-      .single();
-    if (clientError || !client) return { error: 'Calendario no encontrado', status: 404 as const };
-    return { client, link, type: link.calendar_type as CalendarType, month: link.month as string };
-  }
-
-  const { data: client, error: clientError } = await supabase
-    .from('clients')
-    .select('id, name, logo_url, share_token, social_calendar_enabled, ads_calendar_enabled')
-    .eq('share_token', token)
-    .single();
-
-  if (clientError || !client) return { error: 'Calendario no encontrado', status: 404 as const };
-  return {
-    client,
-    link: { allowed_client_id: client.id, calendar_type: requestedType, month: null, legacy: true },
-    type: requestedType,
-    month: null,
-  };
-}
-
-async function hasCalendarAccess(request: Request, supabase: ReturnType<typeof getAdmin>, link: { allowed_client_id: string; guest_enabled?: boolean; allowed_user_ids?: string[]; legacy?: boolean }) {
-  const authHeader = request.headers.get('authorization') || '';
-  const token = authHeader.replace('Bearer ', '');
-  if (token && token !== 'undefined') {
-    try {
-      const payload = decodeJwt(token);
-      const userId = String(payload.sub || '');
-      if (userId) {
-        const { data: user } = await supabase
-          .from('users')
-          .select('role, client_id')
-          .eq('id', userId)
-          .single();
-        if (user?.role === 'admin' || user?.role === 'operador') return true;
-        if (link.legacy && user?.client_id === link.allowed_client_id) return true;
-        if ((link.allowed_user_ids || []).includes(userId)) return true;
-      }
-    } catch { /* ignore */ }
-  }
-
-  const url = new URL(request.url);
-  const guestEmail = (request.headers.get('x-guest-email') || url.searchParams.get('guest_email') || '').trim().toLowerCase();
-  if (!guestEmail) return false;
-  if (!link.legacy && (!link.guest_enabled || !link.allowed_user_ids?.length)) return false;
-
-  const { data: allowedUser } = await supabase
-    .from('users')
-    .select('id')
-    .ilike('email', guestEmail)
-    .maybeSingle();
-
-  return !!allowedUser && (link.legacy || (link.allowed_user_ids || []).includes(allowedUser.id));
-}
+const getAdmin = getSupabaseAdmin;
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {

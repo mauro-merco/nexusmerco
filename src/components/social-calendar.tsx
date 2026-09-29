@@ -17,6 +17,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useSocialIdeas } from '@/lib/hooks/use-social-ideas';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
+import { CalendarComments } from '@/components/calendar-comments';
+import { CalendarSearch } from '@/components/calendar-search';
 import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
@@ -183,6 +185,8 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
   const [viewYear, setViewYear] = useState(initialMonth ? Number(initialMonth.split('-')[0]) : today.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialMonth ? Number(initialMonth.split('-')[1]) - 1 : today.getMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [search, setSearch] = useState('');
+  const isSearching = search.trim().length >= 2;
   const [activeTypes, setActiveTypes] = useState<Set<PostType>>(new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]));
   const [shareOpen, setShareOpen] = useState(false);
   const shareBtnRef = useRef<HTMLDivElement>(null);
@@ -406,7 +410,15 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
             </div>
           </div>
 
-          {viewMode === 'month' ? (
+          <CalendarSearch
+            className="mb-4"
+            value={search}
+            onChange={setSearch}
+            ideas={ideas}
+            onSelect={setSelectedIdea}
+          />
+
+          {isSearching ? null : viewMode === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
               <div className="grid grid-cols-7 gap-1.5">
                 {dayNames.map(n => <div key={n} className="text-center text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide py-1">{n}</div>)}
@@ -492,6 +504,17 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
           </div>
         </div>
       </div>
+
+      <CalendarComments
+        className="mt-5"
+        clientId={clientId}
+        calendarType="social"
+        month={monthStr}
+        mentionUsers={internalUsers}
+        currentUserId={user?.id}
+        isAdmin={user?.role === 'admin'}
+        title="Comentarios del mes"
+      />
 
       <SocialNewIdeaDialog open={showNewIdea} onOpenChange={setShowNewIdea} initialDate={selectedDate} onCreateIdea={createIdea} users={internalUsers} calendarType="social" />
 

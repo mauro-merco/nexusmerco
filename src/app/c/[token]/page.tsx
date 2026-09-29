@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy, Sun, Moon } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy, Sun, Moon, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
+import { CalendarComments } from '@/components/calendar-comments';
+import { CalendarSearch } from '@/components/calendar-search';
 import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment, User as NexusUser } from '@/lib/types';
@@ -317,6 +319,78 @@ function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick, onAddClick
 
 // ─── Idea modal ───────────────────────────────────────────────────────────────
 
+// ─── Agenda / list view ───────────────────────────────────────────────────────
+
+function AgendaList({ ideas, onIdeaClick }: { ideas: SocialIdea[]; onIdeaClick: (idea: SocialIdea) => void }) {
+  const groups = useMemo(() => {
+    const map = new Map<string, SocialIdea[]>();
+    const sorted = [...ideas].sort((a, b) => a.publish_date.localeCompare(b.publish_date));
+    for (const idea of sorted) {
+      const list = map.get(idea.publish_date) || [];
+      list.push(idea);
+      map.set(idea.publish_date, list);
+    }
+    return [...map.entries()];
+  }, [ideas]);
+
+  if (groups.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-16 text-muted-foreground">
+        <ListIcon className="h-8 w-8 opacity-40" />
+        <p className="text-sm">No hay contenido planificado este mes</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {groups.map(([date, items]) => (
+        <section key={date}>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {format(new Date(`${date}T00:00:00`), 'EEEE d MMMM')}
+          </h3>
+          <ul className="mt-1.5 space-y-1.5">
+            {items.map(idea => {
+              const cfg = POST_TYPE_CONFIG[idea.post_type];
+              const Icon = cfg?.icon;
+              const statusCfg = STATUS_CONFIG[idea.status as keyof typeof STATUS_CONFIG];
+              return (
+                <li key={idea.id}>
+                  <button
+                    type="button"
+                    onClick={() => onIdeaClick(idea)}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40',
+                      idea.status === 'posteado' && 'opacity-70',
+                    )}
+                  >
+                    <span className={cn('flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold shrink-0', cfg?.bgColorClass, cfg?.colorClass)}>
+                      {Icon && <Icon className="h-3 w-3" />}
+                      {cfg?.label || idea.post_type}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-foreground">{idea.title}</span>
+                      {idea.description && (
+                        <span className="block truncate text-xs text-muted-foreground">{idea.description}</span>
+                      )}
+                    </span>
+                    {statusCfg && (
+                      <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
+                        <span className={cn('h-1.5 w-1.5 rounded-full', statusCfg.dotColor)} />
+                        {statusCfg.label}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CalendarLanding({ params }: { params: Promise<{ token: string }> }) {
@@ -328,6 +402,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState('');
+  const [viewMode, setViewMode] = useState<'month' | 'list'>('month');
+  const [search, setSearch] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [initialIdeaId, setInitialIdeaId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
@@ -565,6 +641,22 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('month')}
+                className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors', viewMode === 'month' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Mes
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors', viewMode === 'list' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <ListIcon className="h-3.5 w-3.5" /> Lista
+              </button>
+            </div>
             <span className="rounded-xl bg-muted/40 px-3 py-2 text-sm font-semibold">{monthLabel}</span>
             <Button
               variant="ghost"
@@ -605,24 +697,50 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           })}
         </div>
 
-        <Card className="border-0 ring-0 shadow-none rounded-3xl bg-card">
-          <CardContent className="p-3 md:p-4">
-            {viewMonth && (
-              <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={handleAddNewIdea} />
-                <DragOverlay>{activeIdea ? <PublicIdeaDot idea={activeIdea} onClick={() => {}} /> : null}</DragOverlay>
-              </DndContext>
-            )}
-          </CardContent>
-        </Card>
+        <CalendarSearch
+          className="mb-4"
+          value={search}
+          onChange={setSearch}
+          ideas={data.ideas}
+          onSelect={setSelectedIdea}
+        />
+
+        {search.trim().length >= 2 ? null : (
+          <Card className="border-0 ring-0 shadow-none rounded-3xl bg-card">
+            <CardContent className="p-3 md:p-4">
+              {viewMonth && viewMode === 'month' && (
+                <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                  <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={handleAddNewIdea} />
+                  <DragOverlay>{activeIdea ? <PublicIdeaDot idea={activeIdea} onClick={() => {}} /> : null}</DragOverlay>
+                </DndContext>
+              )}
+              {viewMonth && viewMode === 'list' && (
+                <AgendaList ideas={data.ideas} onIdeaClick={setSelectedIdea} />
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex flex-wrap gap-3 mt-4 text-[11px]">
           {Object.entries(STATUS_CONFIG).map(([, cfg]) => (
-            <span key={cfg.label} className="flex items-center gap-1.5 text-muted-foreground">
+            <span key={cfg.label} className="flex items-center gap-1 text-muted-foreground">
               <span className={cn('w-2 h-2 rounded-full', cfg.dotColor)} />{cfg.label}
             </span>
           ))}
         </div>
+
+        <CalendarComments
+          className="mt-5"
+          clientId={data.client.id}
+          calendarType={calendarType}
+          month={viewMonth}
+          shareToken={token}
+          guestEmail={viewer?.type === 'guest' ? viewer.email : undefined}
+          viewerAuthToken={viewer?.authToken}
+          mentionUsers={data.users || []}
+          currentUserEmail={viewer?.email}
+          title="Comentarios del mes"
+        />
       </div>
 
       {selectedIdea && data && (
