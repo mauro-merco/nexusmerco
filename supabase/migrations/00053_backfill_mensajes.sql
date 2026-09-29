@@ -5,14 +5,16 @@
 -- usuarios ya existentes (a diferencia de 00024 documentos y 00044
 -- sugerencias, que si lo hicieron). Solo 3 usuarios quedaron con el modulo.
 --
--- Politica de acceso al chat:
+-- Politica de acceso al chat (vigente a partir de esta migracion):
 --   - admin  -> siempre tienen 'mensajes'
---   - operador / client -> solo si un admin se lo habilita explicitamente
---     (algunos usuarios estan deliberadamente limitados, ej. nico@ y
---      lauralof@ solo ven el calendario de un cliente: NO tocarlos)
+--   - operador / client -> 'mensajes' viene en DEFAULT_MODULES para ambos
+--     roles (src/lib/types.ts), asi que los usuarios nuevos lo reciben por
+--     defecto. Quien quiera dejarlo fuera tiene que desmarcarlo usuario por
+--     usuario desde Settings > Gestion de Usuarios.
 --
--- Este script solo cubre el caso de los admins. Para habilitar el chat a
--- un operador o cliente se usa Settings > Gestion de Usuarios, que edita
+-- Este script solo cubre el caso de los admins, que ya existian antes de que
+-- 'mensajes' entrara en DEFAULT_MODULES. Para cambiar los permisos de una
+-- persona concreta se usa Settings > Gestion de Usuarios, que edita
 -- visible_modules por usuario.
 
 -- Backfill idempotente: agrega 'mensajes' a los admins que no lo tengan,
