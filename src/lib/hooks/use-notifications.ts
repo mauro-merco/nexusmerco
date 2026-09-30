@@ -21,6 +21,15 @@ export function useNotifications(userId: string | null) {
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
+  // Any page that changes a notification from the outside (e.g. reading a
+  // message thread) can broadcast this so the bell updates right away instead
+  // of waiting for the next poll.
+  useEffect(() => {
+    const handler = () => { fetchNotifications(); };
+    window.addEventListener('notifications:refresh', handler);
+    return () => window.removeEventListener('notifications:refresh', handler);
+  }, [fetchNotifications]);
+
   const markAsRead = useCallback(async (ids: string[]) => {
     if (!userId || ids.length === 0) return;
     await fetch('/api/notifications', {

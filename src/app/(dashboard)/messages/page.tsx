@@ -74,6 +74,17 @@ export default function MessagesPage() {
     const params = new URLSearchParams(window.location.search);
     const to = params.get('to');
     if (to) { setActiveId(to); setMobileThread(true); }
+
+    // Notifications created before the link carried the conversation cannot be
+    // attributed to a thread, so they are cleared when the inbox is opened.
+    const authToken = useAuthStore.getState().token;
+    if (authToken) {
+      fetch('/api/messages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({}),
+      }).then(() => window.dispatchEvent(new Event('notifications:refresh')));
+    }
   }, []);
 
   const active = conversations.find((c) => c.user?.id === activeId) || null;
@@ -81,6 +92,17 @@ export default function MessagesPage() {
   const markRead = useCallback(async (convId: string) => {
     const conv = conversations.find((c) => c.user?.id === convId);
     if (!conv) return;
+
+    // Clear the bell notification first, even when the messages are already
+    // read: the notification is what keeps the badge lit, and it can be
+    // pending while the thread itself is not.
+    await fetch('/api/messages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ from: convId }),
+    });
+    window.dispatchEvent(new Event('notifications:refresh'));
+
     const unreadIds = conv.messages.filter((m) => m.recipient_id === user?.id && !m.read).map((m) => m.id);
     if (unreadIds.length === 0) return;
     await Promise.all(
@@ -103,7 +125,7 @@ export default function MessagesPage() {
           : c
       )
     );
-  }, [conversations, user]);
+  }, [conversations, user, token]);
 
   const openConversation = (convId: string) => {
     setActiveId(convId);

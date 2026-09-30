@@ -124,12 +124,53 @@ export async function POST(request: Request) {
       type: 'message',
       title: 'Nuevo mensaje',
       message: `${senderName}: ${content.trim().slice(0, 80)}${content.trim().length > 80 ? '...' : ''}`,
-      link: '/messages',
+      // The conversation travels in the link so the bell can open the right
+      // thread and so reading it can clear exactly that notification.
+      link: `/messages?to=${senderId}`,
     });
 
     return NextResponse.json({ data }, { status: 201 });
   } catch (e) {
     console.error('POST /api/messages error:', e);
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
+  }
+}
+
+/**
+ * Clears the bell notification that belongs to a message thread, so reading the
+ * conversation also removes its entry from the notification list. Without this
+ * the badge kept counting messages the user had already opened.
+ *
+ * `from` is the id of the other participant: it clears the notifications of
+ * that conversation only. Without it, it clears the legacy rows that carry no
+ * conversation in the link.
+ */
+export async function PUT(request: Request) {
+  try {
+    const userId = getUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const from = typeof body.from === 'string' && body.from ? body.from : null;
+
+    const query = supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', userId)
+      .eq('type', 'message')
+      .eq('read', false)
+      .is('deleted_at', null);
+
+    const { error } = from
+      ? await query.eq('link', `/messages?to=${from}`)
+      : await query.eq('link', '/messages');
+    if (error) throw error;
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error('PUT /api/messages error:', e);
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }
 }
