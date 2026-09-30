@@ -152,7 +152,7 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     await createMentionNotifications(supabase, content, access.userId, {
-      link: '/calendarios',
+      link: `/calendarios?client=${access.clientId}&type=${access.calendarType === 'ads' ? 'ads' : 'redes'}&month=${access.month}`,
       entityLabel: 'un comentario del calendario',
     });
 

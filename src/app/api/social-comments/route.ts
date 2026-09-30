@@ -49,6 +49,33 @@ export async function GET(request: Request) {
   }
 }
 
+/**
+ * Deep link to the calendar showing the idea. /calendarios reads
+ * client, type, month and idea from the query string, so the notification
+ * lands on the idea itself instead of on the month grid.
+ */
+async function buildIdeaLink(ideaId: string) {
+  const { data: social } = await supabase
+    .from('social_ideas')
+    .select('client_id, publish_date')
+    .eq('id', ideaId)
+    .maybeSingle();
+  if (social) {
+    return `/calendarios?client=${social.client_id}&type=redes&month=${social.publish_date.slice(0, 7)}&idea=${ideaId}`;
+  }
+
+  const { data: ads } = await supabase
+    .from('ads_ideas')
+    .select('client_id, publish_date')
+    .eq('id', ideaId)
+    .maybeSingle();
+  if (ads) {
+    return `/calendarios?client=${ads.client_id}&type=ads&month=${ads.publish_date.slice(0, 7)}&idea=${ideaId}`;
+  }
+
+  return '/calendarios';
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -71,7 +98,7 @@ export async function POST(request: Request) {
       supabase,
       content,
       user_id,
-      { link: '/calendarios', entityLabel: 'un comentario de una idea' }
+      { link: await buildIdeaLink(idea_id), entityLabel: 'un comentario de una idea' }
     );
 
     const usersMap = await fetchUsers([user_id]);
