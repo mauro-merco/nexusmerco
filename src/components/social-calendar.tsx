@@ -513,6 +513,10 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
         mentionUsers={internalUsers}
         currentUserId={user?.id}
         isAdmin={user?.role === 'admin'}
+        onOpenIdea={id => {
+          const idea = ideas.find(i => i.id === id);
+          if (idea) setSelectedIdea(idea);
+        }}
         title="Comentarios del mes"
       />
 

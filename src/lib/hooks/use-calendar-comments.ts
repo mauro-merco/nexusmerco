@@ -11,15 +11,30 @@ export interface CalendarCommentUser {
   role?: string | null;
 }
 
+/** The idea a comment was written on, so the feed can link back to it. */
+export interface CalendarCommentIdea {
+  id: string;
+  title: string;
+  publish_date: string | null;
+}
+
+/**
+ * One row of the unified feed: either a general comment on the calendar
+ * (`idea: null`) or a comment written on an idea of the month being viewed.
+ */
 export interface CalendarComment {
   id: string;
-  client_id: string;
-  calendar_type: 'social' | 'ads';
-  month: string;
+  client_id?: string;
+  calendar_type?: 'social' | 'ads';
+  month?: string;
+  scope: 'calendar' | 'idea';
+  idea_id?: string;
   user_id: string;
   content: string;
   created_at: string;
   user: CalendarCommentUser | null;
+  idea: CalendarCommentIdea | null;
+  replies: Omit<CalendarComment, 'replies'>[];
 }
 
 interface Options {
@@ -122,33 +137,50 @@ export function useCalendarComments(options: Options) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setComments(prev => [...prev, json.data as CalendarComment]);
-      return json.data as CalendarComment;
+      // Normalize the POST payload to the same shape as the feed rows.
+      const created: CalendarComment = {
+        ...(json.data as Omit<CalendarComment, 'scope' | 'idea' | 'replies'>),
+        scope: 'calendar',
+        idea: null,
+        replies: [],
+      };
+      setComments(prev => [...prev, created]);
+      return created;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [clientId, calendarType, month, shareToken, guestEmail, viewerAuthToken],
   );
 
-  const removeComment = useCallback(async (id: string) => {
-    const headers: Record<string, string> = {};
-    const params = new URLSearchParams();
-    if (shareToken) {
-      if (viewerAuthToken) headers.Authorization = `Bearer ${viewerAuthToken}`;
-      if (guestEmail) headers['x-guest-email'] = guestEmail;
-      params.set('token', shareToken);
-      params.set('calendar_type', calendarType);
-    } else {
-      const token = useAuthStore.getState().token;
-      if (token) headers.Authorization = `Bearer ${token}`;
-    }
-    const res = await fetch(`/api/calendar-comments/${id}?${params.toString()}`, {
-      method: 'DELETE',
-      headers,
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error);
-    setComments(prev => prev.filter(c => c.id !== id));
-  }, [shareToken, guestEmail, viewerAuthToken, calendarType]);
+  /**
+   * `scope` tells the API which table the comment lives in, so a comment on an
+   * idea of the ads calendar is not looked up in the social one.
+   */
+  const removeComment = useCallback(
+    async (id: string, scope: 'calendar' | 'idea' = 'calendar') => {
+      const headers: Record<string, string> = {};
+      const params = new URLSearchParams();
+      params.set('scope', scope);
+      if (scope === 'idea') params.set('calendar_type', calendarType);
+      if (shareToken) {
+        if (viewerAuthToken) headers.Authorization = `Bearer ${viewerAuthToken}`;
+        if (guestEmail) headers['x-guest-email'] = guestEmail;
+        params.set('token', shareToken);
+        params.set('calendar_type', calendarType);
+      } else {
+        const token = useAuthStore.getState().token;
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
+      const res = await fetch(`/api/calendar-comments/${id}?${params.toString()}`, {
+        method: 'DELETE',
+        headers,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      // Drop the comment plus the replies that were only visible under it.
+      setComments(prev => prev.filter(c => c.id !== id && !c.replies.some(r => r.id === id)));
+    },
+    [shareToken, guestEmail, viewerAuthToken, calendarType],
+  );
 
   return { comments, loading, error, addComment, removeComment, refresh: fetchComments };
 }

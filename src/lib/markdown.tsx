@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
  * Supports: paragraphs, bullet/ordered lists, blockquotes, fenced code,
  * and inline **bold**, *italic*, ~~strike~~, `code` and [links](url).
  * Everything is built from React elements, so any HTML in the source is
- * rendered as literal text — there is no dangerouslySetInnerHTML anywhere.
+ * rendered as literal text Ã¢â‚¬â€ there is no dangerouslySetInnerHTML anywhere.
  */
 
 const MENTION_TOKEN = /@[\p{L}\p{N}'.-]+/gu;
@@ -39,9 +39,19 @@ function isSafeHref(href: string): boolean {
 
 export type RenderMention = (token: string, key: string) => ReactNode;
 
+/** Renders a run of plain text, so callers can highlight search matches in it. */
+export type RenderText = (text: string, key: string) => ReactNode;
+
 const defaultRenderMention: RenderMention = (token, key) => <Fragment key={key}>{token}</Fragment>;
 
-function renderInlineChunk(chunk: string, keyBase: string, renderMention: RenderMention): ReactNode[] {
+const defaultRenderText: RenderText = (text, key) => <Fragment key={key}>{text}</Fragment>;
+
+function renderInlineChunk(
+  chunk: string,
+  keyBase: string,
+  renderMention: RenderMention,
+  renderText: RenderText,
+): ReactNode[] {
   const out: ReactNode[] = [];
   const atoms = tokenizeAtoms(chunk);
 
@@ -54,9 +64,12 @@ function renderInlineChunk(chunk: string, keyBase: string, renderMention: Render
     const text = atom.value;
     let cursor = 0;
     let tokenIdx = 0;
+    let textIdx = 0;
     for (const match of text.matchAll(INLINE_TOKEN)) {
       const start = match.index ?? 0;
-      if (start > cursor) out.push(text.slice(cursor, start));
+      if (start > cursor) {
+        out.push(renderText(text.slice(cursor, start), `${keyBase}-x${atomIdx}-${textIdx++}`));
+      }
       const token = match[0];
       const key = `${keyBase}-t${atomIdx}-${tokenIdx++}`;
 
@@ -94,25 +107,40 @@ function renderInlineChunk(chunk: string, keyBase: string, renderMention: Render
       }
       cursor = start + token.length;
     }
-    if (cursor < text.length) out.push(text.slice(cursor));
+    if (cursor < text.length) {
+      out.push(renderText(text.slice(cursor), `${keyBase}-x${atomIdx}-${textIdx++}`));
+    }
   });
 
   return out;
 }
 
-function renderInline(text: string, keyBase: string, renderMention: RenderMention): ReactNode {
-  return <>{renderInlineChunk(text, keyBase, renderMention)}</>;
+function renderInline(
+  text: string,
+  keyBase: string,
+  renderMention: RenderMention,
+  renderText: RenderText,
+): ReactNode {
+  return <>{renderInlineChunk(text, keyBase, renderMention, renderText)}</>;
 }
 
 export interface MarkdownBodyProps {
   text: string;
   /** Renders an @mention token, so the caller can style it as a chip. */
   renderMention?: RenderMention;
+  /** Renders plain text runs, so the caller can highlight a search query. */
+  renderText?: RenderText;
   className?: string;
 }
 
 /** Renders markdown as a vertical stack of blocks. */
-export function MarkdownBody({ text, renderMention = defaultRenderMention, className }: MarkdownBodyProps) {
+export function MarkdownBody({
+  text,
+  renderMention = defaultRenderMention,
+  renderText = defaultRenderText,
+  className,
+}: MarkdownBodyProps) {
+  const inline = (t: string, k: string) => renderInline(t, k, renderMention, renderText);
   // Fast path: no block constructs, so render flat inline nodes. This keeps the
   // DOM shallow and lets callers use line-clamp / whitespace normally.
   const hasBlockConstructs =
@@ -121,7 +149,7 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, class
   if (!hasBlockConstructs) {
     return (
       <span className={cn('whitespace-pre-wrap', className)}>
-        {renderInline(text, 'flat', renderMention)}
+        {inline(text, 'flat')}
       </span>
     );
   }
@@ -136,7 +164,7 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, class
     paragraph = [];
     out.push(
       <span key={`p${out.length}`} className="block whitespace-pre-wrap">
-        {renderInline(content, `p${out.length}`, renderMention)}
+        {inline(content, `p${out.length}`)}
       </span>
     );
   };
@@ -184,7 +212,7 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, class
           key={`q${out.length}`}
           className="block whitespace-pre-wrap border-l-2 border-border pl-2.5 text-muted-foreground"
         >
-          {renderInline(body.join('\n'), `q${out.length}`, renderMention)}
+          {inline(body.join('\n'), `q${out.length}`)}
         </span>
       );
       continue;
@@ -198,7 +226,7 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, class
         const content = lines[i].replace(/^\s*[-*]\s+/, '');
         items.push(
           <li key={`li${out.length}-${items.length}`} className="whitespace-pre-wrap">
-            {renderInline(content, `li${out.length}-${items.length}`, renderMention)}
+            {inline(content, `li${out.length}-${items.length}`)}
           </li>
         );
         i++;
@@ -219,7 +247,7 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, class
         const content = lines[i].replace(/^\s*\d+[.)]\s+/, '');
         items.push(
           <li key={`oli${out.length}-${items.length}`} className="whitespace-pre-wrap">
-            {renderInline(content, `oli${out.length}-${items.length}`, renderMention)}
+            {inline(content, `oli${out.length}-${items.length}`)}
           </li>
         );
         i++;

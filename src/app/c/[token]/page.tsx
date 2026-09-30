@@ -739,6 +739,10 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           viewerAuthToken={viewer?.authToken}
           mentionUsers={data.users || []}
           currentUserEmail={viewer?.email}
+          onOpenIdea={id => {
+            const idea = data.ideas.find(item => item.id === id);
+            if (idea) setSelectedIdea(idea);
+          }}
           title="Comentarios del mes"
         />
       </div>

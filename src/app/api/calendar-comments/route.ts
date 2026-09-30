@@ -86,9 +86,48 @@ async function resolveAccess(request: Request, clientId?: string | null, calenda
   };
 }
 
+/** Date bounds of a YYYY-MM month, as publish_date is a DATE column. */
+function monthBounds(month: string) {
+  const [y, m] = month.split('-').map(Number);
+  const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+  return { start: `${month}-01`, end: nextMonth };
+}
+
+interface CommentRow {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  idea_id?: string;
+  parent_id?: string | null;
+}
+
+interface IdeaRow {
+  id: string;
+  title: string;
+  publish_date: string | null;
+}
+
+async function fetchUsersMap(userIds: string[]) {
+  const map: Record<string, Record<string, unknown>> = {};
+  if (userIds.length === 0) return map;
+  const { data: users } = await getSupabaseAdmin()
+    .from('users')
+    .select('id, full_name, avatar_url, email, role')
+    .in('id', userIds);
+  for (const u of users || []) map[u.id] = u;
+  return map;
+}
+
+/**
+ * Unified feed for the month being viewed: the general calendar comments plus
+ * the comments written on each idea, so one list answers "who commented what
+ * and on which content". Idea comments keep their replies nested.
+ */
 async function listComments(access: ResolvedAccess) {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
+
+  const { data: general, error } = await supabase
     .from('calendar_comments')
     .select('*')
     .eq('client_id', access.clientId)
@@ -97,18 +136,87 @@ async function listComments(access: ResolvedAccess) {
     .order('created_at', { ascending: true });
   if (error) throw error;
 
-  const comments = data || [];
-  const userIds = [...new Set(comments.map(c => c.user_id).filter(Boolean))];
-  const usersMap: Record<string, Record<string, unknown>> = {};
-  if (userIds.length > 0) {
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, full_name, avatar_url, email, role')
-      .in('id', userIds);
-    for (const u of users || []) usersMap[u.id] = u;
+  const { start, end } = monthBounds(access.month);
+  const ideasTable = access.calendarType === 'ads' ? 'ads_ideas' : 'social_ideas';
+  const commentsTable = access.calendarType === 'ads' ? 'ads_comments' : 'social_comments';
+
+  const { data: ideas, error: ideasError } = await supabase
+    .from(ideasTable)
+    .select('id, title, publish_date')
+    .eq('client_id', access.clientId)
+    .gte('publish_date', start)
+    .lt('publish_date', end)
+    .order('publish_date', { ascending: true });
+  if (ideasError) throw ideasError;
+
+  const monthIdeas = (ideas || []) as IdeaRow[];
+  const ideaById = new Map(monthIdeas.map(i => [i.id, i]));
+
+  let ideaComments: CommentRow[] = [];
+  if (monthIdeas.length > 0) {
+    const { data, error: commentsError } = await supabase
+      .from(commentsTable)
+      .select('*')
+      .in(
+        'idea_id',
+        monthIdeas.map(i => i.id),
+      )
+      .order('created_at', { ascending: true });
+    if (commentsError) throw commentsError;
+    ideaComments = (data || []) as CommentRow[];
   }
 
-  return comments.map(c => ({ ...c, user: usersMap[c.user_id] || null }));
+  const generalComments = (general || []) as CommentRow[];
+  const allUserIds = [
+    ...new Set(
+      [...generalComments.map(c => c.user_id), ...ideaComments.map(c => c.user_id)].filter(Boolean),
+    ),
+  ];
+  const usersMap = await fetchUsersMap(allUserIds);
+
+  const generalItems = generalComments.map(c => ({
+    id: c.id,
+    scope: 'calendar' as const,
+    user_id: c.user_id,
+    content: c.content,
+    created_at: c.created_at,
+    user: usersMap[c.user_id] || null,
+    idea: null,
+    replies: [],
+  }));
+
+  const ideaItems = ideaComments
+    .filter(c => !c.parent_id)
+    .map(c => {
+      const idea = c.idea_id ? ideaById.get(c.idea_id) : undefined;
+      return {
+        id: c.id,
+        scope: 'idea' as const,
+        idea_id: c.idea_id,
+        user_id: c.user_id,
+        content: c.content,
+        created_at: c.created_at,
+        user: usersMap[c.user_id] || null,
+        idea: idea ? { id: idea.id, title: idea.title, publish_date: idea.publish_date } : null,
+        replies: ideaComments
+          .filter(r => r.parent_id === c.id)
+          .map(r => ({
+            id: r.id,
+            scope: 'idea' as const,
+            idea_id: r.idea_id,
+            user_id: r.user_id,
+            content: r.content,
+            created_at: r.created_at,
+            user: usersMap[r.user_id] || null,
+          })),
+      };
+    })
+    // Ideas deleted after the comment was written have no title to show.
+    .filter(item => item.idea !== null);
+
+  return [...generalItems, ...ideaItems].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  );
 }
 
 export async function GET(request: Request) {

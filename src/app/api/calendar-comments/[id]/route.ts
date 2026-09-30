@@ -51,12 +51,25 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const { id } = await params;
     const supabase = getSupabaseAdmin();
+    const { searchParams } = new URL(request.url);
+
+    // 'calendar' comments live in their own table; 'idea' comments live in the
+    // table of the calendar the idea belongs to.
+    const scope = searchParams.get('scope') === 'idea' ? 'idea' : 'calendar';
+    const typeParam = searchParams.get('calendar_type') || 'social';
+    const calendarType = isCalendarType(typeParam) ? typeParam : 'social';
+    const table =
+      scope === 'idea'
+        ? calendarType === 'ads'
+          ? 'ads_comments'
+          : 'social_comments'
+        : 'calendar_comments';
 
     const actor = await resolveActor(request);
     if (!actor) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
     const { data: comment } = await supabase
-      .from('calendar_comments')
+      .from(table)
       .select('id, user_id')
       .eq('id', id)
       .maybeSingle();
@@ -67,7 +80,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
-    const { error } = await supabase.from('calendar_comments').delete().eq('id', id);
+    const { error } = await supabase.from(table).delete().eq('id', id);
     if (error) throw error;
 
     return NextResponse.json({ data: { id } });
