@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { PostType, IdeaStatus, User, WorkRole } from '@/lib/types';
-import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
 import { TaskRolesPicker, emptyRoles, rolesToList, type TaskRolesState } from '@/components/task-roles-picker';
 import { MarkdownTextarea } from '@/components/markdown-textarea';
 import { useAuthStore } from '@/store/auth-store';
@@ -206,7 +206,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
               <ListChecks className="h-3.5 w-3.5" /> Estado
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              {(['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'] as IdeaStatus[]).map(key => {
+              {IDEA_STATUS_ORDER.map(key => {
                 const s = STATUS_CONFIG[key];
                 return (
                   <button

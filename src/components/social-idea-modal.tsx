@@ -17,7 +17,7 @@ import { TaskRolesPicker, rolesFromAssignees, rolesToList, type TaskRolesState }
 import { useAuthStore } from '@/store/auth-store';
 import type { SocialIdea, PostType, IdeaStatus, User as NexusUser } from '@/lib/types';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
-import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
 import { MarkdownTextarea } from '@/components/markdown-textarea';
 import { MarkdownBody } from '@/lib/markdown';
 import {
@@ -32,7 +32,7 @@ const POST_TYPES: { value: PostType; label: string }[] = [
   { value: 'sugerencia', label: 'Sugerencia' },
 ];
 
-const STATUS_FLOW: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
+const STATUS_FLOW = IDEA_STATUS_ORDER;
 
 interface SocialIdeaModalProps {
   idea: SocialIdea;

@@ -7,11 +7,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
-import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
 import { MarkdownBody } from '@/lib/markdown';
 import { Users, Link as LinkIcon, Check, ChevronDown } from 'lucide-react';
 
-const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
+const STATUS_ORDER = IDEA_STATUS_ORDER;
 
 interface SocialIdeaCardProps {
   idea: SocialIdea;

@@ -46,7 +46,27 @@ export const STATUS_CONFIG: Record<IdeaStatus, { label: string; colorClass: stri
   borrador: { label: 'Borrador', colorClass: 'bg-gray-400/20 text-gray-500 border-gray-400/30', dotColor: 'bg-gray-400', group: 1 },
   en_revision: { label: 'En Revisión', colorClass: 'bg-amber-400/20 text-amber-600 border-amber-400/30', dotColor: 'bg-amber-400', group: 1 },
   necesita_modificaciones: { label: 'Necesita Modificaciones', colorClass: 'bg-orange-400/20 text-orange-600 border-orange-400/30', dotColor: 'bg-orange-400', group: 1 },
-  aprobada: { label: 'Aprobado', colorClass: 'bg-emerald-400/20 text-emerald-600 border-emerald-400/30', dotColor: 'bg-emerald-400', group: 1 },
+  idea_aprobada: { label: 'Idea Aprobada', colorClass: 'bg-teal-400/20 text-teal-600 border-teal-400/30', dotColor: 'bg-teal-400', group: 1 },
+  idea_rechazada: { label: 'Idea Rechazada', colorClass: 'bg-rose-400/20 text-rose-600 border-rose-400/30', dotColor: 'bg-rose-400', group: 1 },
+  listo_para_disenar: { label: 'Listo para Diseñar', colorClass: 'bg-indigo-400/20 text-indigo-600 border-indigo-400/30', dotColor: 'bg-indigo-400', group: 2 },
+  aprobada: { label: 'Aprobado', colorClass: 'bg-emerald-400/20 text-emerald-600 border-emerald-400/30', dotColor: 'bg-emerald-400', group: 2 },
   listo_para_postear: { label: 'Listo para postear', colorClass: 'bg-blue-400/20 text-blue-600 border-blue-400/30', dotColor: 'bg-blue-400', group: 2 },
   posteado: { label: 'Publicado', colorClass: 'bg-green-400/20 text-green-600 border-green-400/30', dotColor: 'bg-green-500', group: 2 },
 };
+
+/**
+ * Canonical order of the idea workflow, from the first draft to the published
+ * piece. Every status picker and flow reads this list, so a status added to
+ * STATUS_CONFIG shows up everywhere without touching each component.
+ */
+export const IDEA_STATUS_ORDER: IdeaStatus[] = [
+  'borrador',
+  'en_revision',
+  'necesita_modificaciones',
+  'idea_aprobada',
+  'idea_rechazada',
+  'listo_para_disenar',
+  'aprobada',
+  'listo_para_postear',
+  'posteado',
+];

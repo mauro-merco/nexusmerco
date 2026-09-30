@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
  * Supports: paragraphs, bullet/ordered lists, blockquotes, fenced code,
  * and inline **bold**, *italic*, ~~strike~~, `code` and [links](url).
  * Everything is built from React elements, so any HTML in the source is
- * rendered as literal text Ã¢â‚¬â€ there is no dangerouslySetInnerHTML anywhere.
+  * rendered as literal text — there is no dangerouslySetInnerHTML anywhere.
  */
 
 const MENTION_TOKEN = /@[\p{L}\p{N}'.-]+/gu;

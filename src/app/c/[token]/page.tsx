@@ -9,10 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarComments } from '@/components/calendar-comments';
+import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
 import { CalendarSearch } from '@/components/calendar-search';
 import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment, User as NexusUser } from '@/lib/types';
+import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import { eachDayOfInterval, endOfMonth, format, startOfMonth } from 'date-fns';
@@ -221,15 +223,14 @@ function PublicIdeaDot({ idea, onClick }: { idea: SocialIdea; onClick: () => voi
       {...attributes}
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      title={idea.eje_contenido || idea.title}
+      title={calendarPillTitle(idea, idea.eje_contenido || idea.title)}
       className={cn(
-        'flex items-center gap-1 w-full rounded-md px-1.5 py-1 text-[10.5px] font-medium truncate transition-opacity text-left',
+        'flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
         isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
     >
-      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isPublished ? 'bg-green-500' : ptConfig.dotColor)} />
-      <span className="truncate">{idea.eje_contenido || idea.title}</span>
+      <CalendarPillBody idea={idea} label={idea.eje_contenido || idea.title} />
     </button>
   );
 }
@@ -240,7 +241,7 @@ function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dateStr });
   const active = ecommerceDates.filter(ed => dateStr >= ed.start_date && dateStr <= ed.end_date);
-  const shown = ideas.slice(0, 3);
+  const shown = ideas.slice(0, 2);
   const overflow = ideas.length - shown.length;
 
   return (
@@ -248,7 +249,7 @@ function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick
       ref={setNodeRef}
       onClick={() => onAddClick(dateStr)}
       className={cn(
-        'min-h-[104px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
+        'min-h-[122px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
         isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : 'bg-muted/25 hover:bg-muted/45',
       )}
     >
@@ -739,11 +740,24 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           viewerAuthToken={viewer?.authToken}
           mentionUsers={data.users || []}
           currentUserEmail={viewer?.email}
+          title="Comentarios del mes"
+        />
+
+        <CalendarIdeaComments
+          className="mt-5"
+          clientId={data.client.id}
+          calendarType={calendarType}
+          month={viewMonth}
+          shareToken={token}
+          guestEmail={viewer?.type === 'guest' ? viewer.email : undefined}
+          viewerAuthToken={viewer?.authToken}
+          ideas={data.ideas}
+          currentUserEmail={viewer?.email}
           onOpenIdea={id => {
             const idea = data.ideas.find(item => item.id === id);
             if (idea) setSelectedIdea(idea);
           }}
-          title="Comentarios del mes"
+          title="Comentarios de las ideas"
         />
       </div>
 

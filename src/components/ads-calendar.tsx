@@ -20,18 +20,20 @@ import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { CalendarComments } from '@/components/calendar-comments';
+import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
 import { CalendarSearch } from '@/components/calendar-search';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
 import type { SocialIdea, IdeaStatus, EcommerceDate, PostType } from '@/lib/types';
-import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
 import {
   ChevronLeft, ChevronRight, Plus, Loader2, Check,
   ChevronDown, ShoppingBag, Trash2, X, Copy, Share2, Users, ExternalLink,
   LayoutGrid, List as ListIcon, ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 
-const STATUS_ORDER: IdeaStatus[] = ['borrador', 'en_revision', 'necesita_modificaciones', 'aprobada', 'listo_para_postear', 'posteado'];
+const STATUS_ORDER = IDEA_STATUS_ORDER;
 type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
 type ViewMode = 'month' | 'agenda';
 
@@ -173,15 +175,14 @@ function DraggableDot({ idea, onClick }: { idea: SocialIdea; onClick: () => void
       {...attributes}
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      title={idea.title}
+      title={calendarPillTitle(idea)}
       className={cn(
-        'flex items-center gap-1 w-full rounded-md px-1.5 py-1 text-[10.5px] font-medium truncate transition-opacity text-left',
+        'flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
         isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
     >
-      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isPublished ? 'bg-green-500' : ptConfig.dotColor)} />
-      <span className="truncate">{idea.title}</span>
+      <CalendarPillBody idea={idea} />
     </button>
   );
 }
@@ -192,7 +193,7 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: date });
   const day = Number(date.split('-')[2]);
-  const shown = ideas.slice(0, 3);
+  const shown = ideas.slice(0, 2);
   const overflow = ideas.length - shown.length;
   const active = ecommerceDates.filter(ed => date >= ed.start_date && date <= ed.end_date);
 
@@ -201,7 +202,7 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
       ref={setNodeRef}
       onClick={() => onAddClick(date)}
       className={cn(
-        'min-h-[104px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
+        'min-h-[122px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
         !isCurrentMonth && 'opacity-40',
         isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : 'bg-muted/25 hover:bg-muted/45',
       )}
@@ -618,11 +619,22 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
         mentionUsers={internalUsers}
         currentUserId={user?.id}
         isAdmin={user?.role === 'admin'}
+        title="Comentarios del mes"
+      />
+
+      <CalendarIdeaComments
+        className="mt-5"
+        clientId={clientId}
+        calendarType="ads"
+        month={monthStr}
+        ideas={ideas}
+        currentUserId={user?.id}
+        isAdmin={user?.role === 'admin'}
         onOpenIdea={id => {
           const idea = ideas.find(i => i.id === id);
           if (idea) setSelectedIdea(idea);
         }}
-        title="Comentarios del mes"
+        title="Comentarios de las ideas"
       />
 
       <SocialNewIdeaDialog open={showNewIdea} onOpenChange={setShowNewIdea} initialDate={selectedDate} onCreateIdea={createIdea} users={internalUsers} calendarType="ads" />
