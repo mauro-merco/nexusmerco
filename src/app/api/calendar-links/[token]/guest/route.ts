@@ -43,16 +43,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
     const { data: user } = await supabase
       .from('users')
-      .select('id, email, full_name, client_id, role')
+      .select('id, email, full_name, client_id, allowed_client_ids, role')
       .ilike('email', normalizedEmail)
       .maybeSingle();
 
     if (!user) return NextResponse.json({ error: 'Este email no está creado como usuario cliente' }, { status: 403 });
     if (user.role !== 'client') return NextResponse.json({ error: 'Este usuario no es un cliente invitado' }, { status: 403 });
-    if (!link && user.client_id !== allowedClientId) {
+    const allowedClientIds = user.allowed_client_ids as string[] | null | undefined;
+    const hasClientAccess = user.client_id === allowedClientId || (allowedClientIds || []).includes(allowedClientId);
+
+    if (!link && !hasClientAccess) {
       return NextResponse.json({ error: 'Este email no está autorizado para este calendario' }, { status: 403 });
     }
-    if (link && user.client_id !== allowedClientId && !(link.allowed_user_ids || []).includes(user.id)) {
+    if (link && !hasClientAccess && !(link.allowed_user_ids || []).includes(user.id)) {
       return NextResponse.json({ error: 'Este usuario no está habilitado para este calendario' }, { status: 403 });
     }
     return NextResponse.json({ ok: true, name: user.full_name || user.email, email: user.email });

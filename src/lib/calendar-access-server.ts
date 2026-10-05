@@ -97,12 +97,13 @@ export async function resolveCalendarViewer(
       if (userId) {
         const { data: user } = await supabase
           .from('users')
-          .select('role, client_id')
+          .select('role, client_id, allowed_client_ids')
           .eq('id', userId)
           .single();
         if (user?.role === 'admin' || user?.role === 'operador') return { id: userId, isStaff: true };
         if (link.legacy && user?.client_id === link.allowed_client_id) return { id: userId, isStaff: false };
         if (user?.role === 'client' && user?.client_id === link.allowed_client_id) return { id: userId, isStaff: false };
+        if ((user?.allowed_client_ids || []).includes(link.allowed_client_id)) return { id: userId, isStaff: false };
         if ((link.allowed_user_ids || []).includes(userId)) return { id: userId, isStaff: false };
       }
     } catch {
@@ -117,12 +118,17 @@ export async function resolveCalendarViewer(
 
   const { data: allowedUser } = await supabase
     .from('users')
-    .select('id, client_id')
+    .select('id, client_id, allowed_client_ids')
     .ilike('email', guestEmail)
     .maybeSingle();
 
   if (!allowedUser) return null;
-  if (link.legacy || allowedUser.client_id === link.allowed_client_id || (link.allowed_user_ids || []).includes(allowedUser.id)) {
+  if (
+    link.legacy ||
+    allowedUser.client_id === link.allowed_client_id ||
+    (allowedUser.allowed_client_ids || []).includes(link.allowed_client_id) ||
+    (link.allowed_user_ids || []).includes(allowedUser.id)
+  ) {
     return { id: allowedUser.id, isStaff: false };
   }
   return null;
