@@ -102,6 +102,7 @@ export async function resolveCalendarViewer(
           .single();
         if (user?.role === 'admin' || user?.role === 'operador') return { id: userId, isStaff: true };
         if (link.legacy && user?.client_id === link.allowed_client_id) return { id: userId, isStaff: false };
+        if (user?.role === 'client' && user?.client_id === link.allowed_client_id) return { id: userId, isStaff: false };
         if ((link.allowed_user_ids || []).includes(userId)) return { id: userId, isStaff: false };
       }
     } catch {
@@ -112,16 +113,16 @@ export async function resolveCalendarViewer(
   const url = new URL(request.url);
   const guestEmail = (request.headers.get('x-guest-email') || url.searchParams.get('guest_email') || '').trim().toLowerCase();
   if (!guestEmail) return null;
-  if (!link.legacy && (!link.guest_enabled || !link.allowed_user_ids?.length)) return null;
+  if (!link.legacy && !link.guest_enabled) return null;
 
   const { data: allowedUser } = await supabase
     .from('users')
-    .select('id')
+    .select('id, client_id')
     .ilike('email', guestEmail)
     .maybeSingle();
 
   if (!allowedUser) return null;
-  if (link.legacy || (link.allowed_user_ids || []).includes(allowedUser.id)) {
+  if (link.legacy || allowedUser.client_id === link.allowed_client_id || (link.allowed_user_ids || []).includes(allowedUser.id)) {
     return { id: allowedUser.id, isStaff: false };
   }
   return null;

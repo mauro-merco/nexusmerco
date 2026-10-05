@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
     let allowedClientId = link?.allowed_client_id as string | undefined;
     if (link && !link.enabled) return NextResponse.json({ error: 'Calendario no disponible' }, { status: 404 });
-    if (link && (!link.guest_enabled || !link.allowed_user_ids?.length)) {
+    if (link && !link.guest_enabled) {
       return NextResponse.json({ error: 'El ingreso como invitado no está habilitado para este calendario' }, { status: 403 });
     }
 
@@ -52,7 +52,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (!link && user.client_id !== allowedClientId) {
       return NextResponse.json({ error: 'Este email no está autorizado para este calendario' }, { status: 403 });
     }
-    if (link && !(link.allowed_user_ids || []).includes(user.id)) {
+    if (link && user.client_id !== allowedClientId && !(link.allowed_user_ids || []).includes(user.id)) {
       return NextResponse.json({ error: 'Este usuario no está habilitado para este calendario' }, { status: 403 });
     }
     return NextResponse.json({ ok: true, name: user.full_name || user.email, email: user.email });
