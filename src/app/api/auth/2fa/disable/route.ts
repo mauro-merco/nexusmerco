@@ -50,7 +50,10 @@ export async function POST(request: Request) {
       if (!dbUser?.totp_secret) {
         return NextResponse.json({ error: '2FA no está configurado' }, { status: 400 });
       }
-      const result = await totp.verify(code, { secret: dbUser.totp_secret });
+      const result = await totp.verify(String(code).replace(/\D/g, ''), {
+        secret: dbUser.totp_secret,
+        epochTolerance: 60,
+      });
       if (!result.valid) {
         return NextResponse.json({ error: 'Código inválido' }, { status: 400 });
       }
