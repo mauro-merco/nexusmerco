@@ -22,6 +22,7 @@ import {
   LayoutGrid,
   Users2,
   Lightbulb,
+  FileCode,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { label: 'calendar', href: '/calendarios', icon: 'Calendar', moduleId: 'calendarios', roles: ['admin', 'operador', 'client'] },
   { label: 'documents', href: '/documentos', icon: 'FileText', moduleId: 'documentos', roles: ['admin', 'operador', 'client'] },
   { label: 'suggestions', href: '/sugerencias', icon: 'Lightbulb', moduleId: 'sugerencias', roles: ['admin', 'operador', 'client'] },
+  { label: 'development', href: '/desarrollo', icon: 'FileCode', moduleId: 'desarrollo', roles: ['admin', 'operador'] },
 ];
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -52,6 +54,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   Users2,
   Lightbulb,
+  FileCode,
 };
 
 const STORAGE_KEY = 'nexus-sidebar-collapsed';

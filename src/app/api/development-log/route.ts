@@ -19,6 +19,7 @@ export type DevLogEntry = {
   author_id: string | null;
   created_at: string;
   tags: string[] | null;
+  priority?: 'critical' | 'high' | 'normal' | 'low' | null;
   pr_url: string | null;
   deployed: boolean;
   deployed_at: string | null;

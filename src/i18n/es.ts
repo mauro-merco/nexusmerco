@@ -12,6 +12,7 @@ export const es = {
     documents: 'Documentos',
     messages: 'Mensajes',
     suggestions: 'Sugerencias',
+    development: 'Reporte diario',
     apps: 'Aplicaciones',
     settings: 'Configuración',
     logout: 'Cerrar sesión',

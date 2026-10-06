@@ -12,6 +12,7 @@ export const en = {
     documents: 'Documents',
     messages: 'Messages',
     suggestions: 'Suggestions',
+    development: 'Daily Report',
     apps: 'Apps',
     settings: 'Settings',
     logout: 'Logout',

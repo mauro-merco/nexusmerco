@@ -1,11 +1,11 @@
 export type UserRole = 'admin' | 'operador' | 'client';
 
-export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias'] as const;
+export const ALL_MODULES = ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias', 'desarrollo'] as const;
 export type ModuleId = typeof ALL_MODULES[number];
 
 export const DEFAULT_MODULES: Record<UserRole, ModuleId[]> = {
-  admin: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias'],
-  operador: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias'],
+  admin: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias', 'desarrollo'],
+  operador: ['dashboard', 'wizard', 'tareas', 'equipo', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias', 'desarrollo'],
   client: ['dashboard', 'analysis', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias'],
 };
 

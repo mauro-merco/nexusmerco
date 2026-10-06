@@ -223,7 +223,9 @@ function groupByDate(entries: ActivityEntry[]) {
     const label = KIND_CONFIG[e.kind]?.label || e.kind;
     g.counts[label] = (g.counts[label] || 0) + 1;
   }
-  return [...map.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+  return [...map.values()]
+    .map(g => ({ ...g, items: g.items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()) }))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
 function formatDayLabel(iso: string) {

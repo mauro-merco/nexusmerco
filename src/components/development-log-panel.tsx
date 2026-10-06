@@ -21,6 +21,13 @@ const CATEGORY_CONFIG = {
   chore: { label: 'Mantenimiento', icon: Package, color: 'text-gray-500', bg: 'bg-gray-500/10' },
 } as const;
 
+const PRIORITY_CONFIG = {
+  critical: { label: 'CRITICO', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/20 border-red-500/50' },
+  high: { label: 'Alta', color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  normal: { label: 'Normal', color: 'text-muted-foreground', bg: '' },
+  low: { label: 'Baja', color: 'text-gray-400', bg: '' },
+} as const;
+
 export function DevelopmentLogPanel() {
   const [logs, setLogs] = useState<DevLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,7 +154,10 @@ export function DevelopmentLogPanel() {
                     return (
                       <div
                         key={log.id}
-                        className="group relative rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
+                        className={cn(
+                          'group relative rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md',
+                          log.priority === 'critical' && 'border-red-500/50 bg-red-500/5 shadow-lg shadow-red-500/10'
+                        )}
                       >
                         <div className="flex items-start gap-3">
                           <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', cfg.bg)}>
@@ -157,6 +167,11 @@ export function DevelopmentLogPanel() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
                               <h4 className="font-semibold text-foreground">{log.title}</h4>
+                              {log.priority && log.priority !== 'normal' && PRIORITY_CONFIG[log.priority] && (
+                                <Badge variant="outline" className={cn('text-xs font-bold', PRIORITY_CONFIG[log.priority].color, PRIORITY_CONFIG[log.priority].bg)}>
+                                  {PRIORITY_CONFIG[log.priority].label}
+                                </Badge>
+                              )}
                               <Badge variant="outline" className={cn('text-xs', cfg.color)}>
                                 {cfg.label}
                               </Badge>

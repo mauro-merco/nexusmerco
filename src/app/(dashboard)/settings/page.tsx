@@ -39,6 +39,7 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   documentos: 'Documentos',
   mensajes: 'Mensajes',
   sugerencias: 'Sugerencias',
+  desarrollo: 'Reporte diario',
 };
 
 const ROLE_LABELS: Record<UserRole, string> = {
