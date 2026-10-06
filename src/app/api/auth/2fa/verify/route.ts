@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { TOTP } from '@otplib/totp';
 import { NobleCryptoPlugin } from '@otplib/plugin-crypto-noble';
 import { ScureBase32Plugin } from '@otplib/plugin-base32-scure';
+import { decodeJwt } from 'jose';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,14 +23,9 @@ export async function POST(request: Request) {
     const token = authHeader.replace('Bearer ', '');
     if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-    const client = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false } }
-    );
-
-    const { data: { user: authUser } } = await client.auth.getUser(token);
-    if (!authUser) return NextResponse.json({ error: 'Sesión vencida. Cerrá sesión y volvé a ingresar.' }, { status: 401 });
+    const payload = decodeJwt(token);
+    const userId = String(payload.sub || '');
+    if (!userId) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
 
     const { token: code } = await request.json();
     if (!code) return NextResponse.json({ error: 'Código requerido' }, { status: 400 });
@@ -37,7 +33,7 @@ export async function POST(request: Request) {
     const { data: dbUser } = await supabase
       .from('users')
       .select('totp_secret')
-      .eq('id', authUser.id)
+      .eq('id', userId)
       .single();
 
     if (!dbUser?.totp_secret) {
@@ -52,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Código inválido' }, { status: 400 });
     }
 
-    await supabase.from('users').update({ totp_enabled: true }).eq('id', authUser.id);
+    await supabase.from('users').update({ totp_enabled: true }).eq('id', userId);
 
     return NextResponse.json({ data: { totp_enabled: true } });
   } catch (e) {

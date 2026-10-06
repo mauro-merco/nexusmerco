@@ -4,6 +4,7 @@ import { TOTP } from '@otplib/totp';
 import { NobleCryptoPlugin } from '@otplib/plugin-crypto-noble';
 import { ScureBase32Plugin } from '@otplib/plugin-base32-scure';
 import * as QRCode from 'qrcode';
+import { decodeJwt } from 'jose';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,19 +26,14 @@ export async function POST(request: Request) {
     const token = authHeader.replace('Bearer ', '');
     if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-    const client = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false } }
-    );
-
-    const { data: { user: authUser } } = await client.auth.getUser(token);
-    if (!authUser) return NextResponse.json({ error: 'Sesión vencida. Cerrá sesión y volvé a ingresar.' }, { status: 401 });
+    const payload = decodeJwt(token);
+    const userId = String(payload.sub || '');
+    if (!userId) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
 
     const { data: dbUser } = await supabase
       .from('users')
       .select('id, email, totp_enabled')
-      .eq('id', authUser.id)
+      .eq('id', userId)
       .single();
 
     if (!dbUser) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
@@ -50,7 +46,7 @@ export async function POST(request: Request) {
     const uri = `otpauth://totp/${encodeURIComponent(APP_NAME)}:${encodeURIComponent(dbUser.email)}?secret=${secret}&issuer=${encodeURIComponent(APP_NAME)}&algorithm=SHA1&digits=6&period=30`;
     const qrCode = await QRCode.toDataURL(uri);
 
-    await supabase.from('users').update({ totp_secret: secret }).eq('id', authUser.id);
+    await supabase.from('users').update({ totp_secret: secret }).eq('id', userId);
 
     return NextResponse.json({ data: { secret, qrCode } });
   } catch (e) {

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { TOTP } from '@otplib/totp';
 import { NobleCryptoPlugin } from '@otplib/plugin-crypto-noble';
 import { ScureBase32Plugin } from '@otplib/plugin-base32-scure';
+import { decodeJwt } from 'jose';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,20 +23,27 @@ export async function POST(request: Request) {
     const token = authHeader.replace('Bearer ', '');
     if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-    const client = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false } }
-    );
-
-    const { data: { user: authUser } } = await client.auth.getUser(token);
-    if (!authUser) return NextResponse.json({ error: 'Sesión vencida. Cerrá sesión y volvé a ingresar.' }, { status: 401 });
+    const payload = decodeJwt(token);
+    const userId = String(payload.sub || '');
+    if (!userId) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
 
     const { token: code, password } = await request.json();
 
     if (password) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('email')
+        .eq('id', userId)
+        .single();
+      if (!profile?.email) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+
+      const client = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false } }
+      );
       const { error: signInError } = await client.auth.signInWithPassword({
-        email: authUser.email || '',
+        email: profile.email,
         password,
       });
       if (signInError) {
@@ -45,7 +53,7 @@ export async function POST(request: Request) {
       const { data: dbUser } = await supabase
         .from('users')
         .select('totp_secret')
-        .eq('id', authUser.id)
+        .eq('id', userId)
         .single();
       if (!dbUser?.totp_secret) {
         return NextResponse.json({ error: '2FA no está configurado' }, { status: 400 });
@@ -61,7 +69,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Ingresá tu contraseña o un código 2FA para desactivar' }, { status: 400 });
     }
 
-    await supabase.from('users').update({ totp_secret: null, totp_enabled: false }).eq('id', authUser.id);
+    await supabase.from('users').update({ totp_secret: null, totp_enabled: false }).eq('id', userId);
 
     return NextResponse.json({ data: { totp_enabled: false } });
   } catch (e) {
