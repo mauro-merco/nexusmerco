@@ -210,13 +210,21 @@ function TwoFactorAuthSection() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const getFreshAccessToken = async () => {
+    const { getSupabase } = await import('@/lib/supabase');
+    const supabase = getSupabase();
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed.session?.access_token) return refreshed.session.access_token;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || '';
+  };
+
   const handleSetup = async () => {
     setLoading(true);
     setError('');
     try {
-      const { getSupabase } = await import('@/lib/supabase');
-      const { data: { session } } = await getSupabase().auth.getSession();
-      const token = session?.access_token || '';
+      const token = await getFreshAccessToken();
 
       const res = await fetch('/api/auth/2fa/setup', {
         method: 'POST',
@@ -239,9 +247,7 @@ function TwoFactorAuthSection() {
     setLoading(true);
     setError('');
     try {
-      const { getSupabase } = await import('@/lib/supabase');
-      const { data: { session } } = await getSupabase().auth.getSession();
-      const token = session?.access_token || '';
+      const token = await getFreshAccessToken();
 
       const res = await fetch('/api/auth/2fa/verify', {
         method: 'POST',
@@ -269,9 +275,7 @@ function TwoFactorAuthSection() {
     setError('');
     const disableCode = prompt('Ingresá tu código 2FA para desactivar (o cancelá para usar contraseña)');
     try {
-      const { getSupabase } = await import('@/lib/supabase');
-      const { data: { session } } = await getSupabase().auth.getSession();
-      const token = session?.access_token || '';
+      const token = await getFreshAccessToken();
 
       const body: Record<string, string> = {};
       if (disableCode) {

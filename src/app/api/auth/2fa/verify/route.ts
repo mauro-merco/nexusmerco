@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     );
 
     const { data: { user: authUser } } = await client.auth.getUser(token);
-    if (!authUser) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    if (!authUser) return NextResponse.json({ error: 'Sesión vencida. Cerrá sesión y volvé a ingresar.' }, { status: 401 });
 
     const { token: code } = await request.json();
     if (!code) return NextResponse.json({ error: 'Código requerido' }, { status: 400 });
