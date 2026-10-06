@@ -201,7 +201,7 @@ function ProfileTab() {
 }
 
 function TwoFactorAuthSection() {
-  const { user } = useAuthStore();
+  const { user, token: storedToken } = useAuthStore();
   const [step, setStep] = useState<'idle' | 'setup' | 'verify'>('idle');
   const [qrCode, setQrCode] = useState('');
   const [secret, setSecret] = useState('');
@@ -217,7 +217,7 @@ function TwoFactorAuthSection() {
     if (refreshed.session?.access_token) return refreshed.session.access_token;
 
     const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || '';
+    return session?.access_token || storedToken || '';
   };
 
   const handleSetup = async () => {
