@@ -49,6 +49,8 @@
 }
 
 :root {
+  --font-display: "DM Sans", "Inter", "Segoe UI", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
   --background: oklch(0.97 0.01 245);
   --foreground: oklch(0.2 0.04 245);
   --card: oklch(0.99 0.004 245);
