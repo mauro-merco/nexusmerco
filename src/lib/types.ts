@@ -121,7 +121,7 @@ export interface NavItem {
 }
 
 export type PostType = 'historia' | 'reel' | 'carrusel' | 'sugerencia';
-export type IdeaStatus = 'borrador' | 'en_revision' | 'necesita_modificaciones' | 'idea_aprobada' | 'idea_rechazada' | 'listo_para_disenar' | 'aprobada' | 'listo_para_postear' | 'posteado';
+export type IdeaStatus = 'borrador' | 'en_revision' | 'necesita_modificaciones' | 'idea_aprobada' | 'idea_rechazada' | 'listo_para_disenar' | 'diseno_listo' | 'aprobada' | 'listo_para_postear' | 'posteado';
 export type Responsable = 'nico' | 'mau';
 export type WorkRole = 'lead' | 'executor' | 'reviewer';
 
@@ -143,6 +143,8 @@ export interface SocialIdea {
   publish_date: string;
   author_id: string | null;
   completed_at: string | null;
+  needs_client_material?: boolean;
+  client_material_note?: string;
   created_at: string;
   updated_at: string;
   assignees: WorkAssignee[];

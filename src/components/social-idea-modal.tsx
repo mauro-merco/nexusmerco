@@ -21,7 +21,7 @@ import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social
 import { MarkdownTextarea } from '@/components/markdown-textarea';
 import { MarkdownBody } from '@/lib/markdown';
 import {
-  Loader2, Trash2, Link, Paperclip, Copy,
+  Loader2, Trash2, Link, Paperclip, Copy, AlertTriangle,
   Edit3, Calendar, Check,
 } from 'lucide-react';
 
@@ -61,6 +61,8 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
   const [postType, setPostType] = useState<PostType>(idea.post_type);
   const [status, setStatus] = useState<IdeaStatus>(idea.status);
   const [publishDate, setPublishDate] = useState(idea.publish_date);
+  const [needsMaterial, setNeedsMaterial] = useState(!!idea.needs_client_material);
+  const [materialNote, setMaterialNote] = useState(idea.client_material_note || '');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -80,6 +82,8 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     setPostType(idea.post_type);
     setStatus(idea.status);
     setPublishDate(idea.publish_date);
+    setNeedsMaterial(!!idea.needs_client_material);
+    setMaterialNote(idea.client_material_note || '');
     setEditing(false);
     setConfirmDelete(false);
     setSaveError(null);
@@ -98,6 +102,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         body: JSON.stringify({
           title, description, brief, eje_contenido: ejeContenido, copy_text: copyText,
           post_type: postType, status, publish_date: publishDate, assignees: rolesToList(roles),
+          needs_client_material: needsMaterial, client_material_note: materialNote,
         }),
       });
       const json = await res.json();
@@ -109,7 +114,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     } finally {
       setSaving(false);
     }
-  }, [idea.id, endpoint, title, description, brief, copyText, ejeContenido, roles, postType, status, publishDate, onIdeaUpdated]);
+  }, [idea.id, endpoint, title, description, brief, copyText, ejeContenido, roles, postType, status, publishDate, needsMaterial, materialNote, onIdeaUpdated]);
 
   const handleQuickStatusChange = useCallback(async (newStatus: IdeaStatus) => {
     if (newStatus === idea.status) return;
@@ -201,7 +206,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
               </Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => { setEditing(false); setSaveError(null); setTitle(idea.title); setDescription(idea.description); setBrief(idea.brief || ''); setCopyText(idea.copy_text || ''); setEjeContenido(idea.eje_contenido || ''); setRoles(rolesFromAssignees((idea.assignees || []).map(a => ({ id: a.id, task_role: a.work_role })))); setPostType(idea.post_type); setStatus(idea.status); setPublishDate(idea.publish_date); }}>
+                <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => { setEditing(false); setSaveError(null); setTitle(idea.title); setDescription(idea.description); setBrief(idea.brief || ''); setCopyText(idea.copy_text || ''); setEjeContenido(idea.eje_contenido || ''); setRoles(rolesFromAssignees((idea.assignees || []).map(a => ({ id: a.id, task_role: a.work_role })))); setPostType(idea.post_type); setStatus(idea.status); setPublishDate(idea.publish_date); setNeedsMaterial(!!idea.needs_client_material); setMaterialNote(idea.client_material_note || ''); }}>
                   Cancelar
                 </Button>
                 <Button size="sm" className="rounded-lg" onClick={handleSave} disabled={saving}>
@@ -297,9 +302,25 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                     <Label>Fecha de publicación</Label>
                     <input type="date" value={publishDate} onChange={(e) => setPublishDate(e.target.value)} className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
                   </div>
+
+                  <div className="space-y-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-red-600 dark:text-red-400">
+                      <input type="checkbox" checked={needsMaterial} onChange={e => setNeedsMaterial(e.target.checked)} />
+                      NECESITO MATERIAL DEL CLIENTE
+                    </label>
+                    {needsMaterial && (
+                      <MarkdownTextarea value={materialNote} onChange={setMaterialNote} rows={2} className="min-h-[60px]" placeholder="Qué material se necesita para esta idea..." />
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {idea.needs_client_material && (
+                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3">
+                      <p className="flex items-center gap-2 text-sm font-black uppercase text-red-600 dark:text-red-400"><AlertTriangle className="h-4 w-4" /> NECESITO MATERIAL DEL CLIENTE</p>
+                      {idea.client_material_note && <MarkdownBody text={idea.client_material_note} className="mt-2 text-sm text-foreground/85" />}
+                    </div>
+                  )}
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Equipo asignado</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

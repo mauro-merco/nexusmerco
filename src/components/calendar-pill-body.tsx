@@ -3,6 +3,7 @@
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import type { SocialIdea } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { AlertTriangle } from 'lucide-react';
 
 /**
  * Body of a calendar day pill: the post type dot and the title on the first
@@ -18,6 +19,11 @@ export function CalendarPillBody({ idea, label }: { idea: SocialIdea; label?: st
 
   return (
     <>
+      {idea.needs_client_material && (
+        <span className="mb-1 flex w-full items-center gap-1 rounded-md bg-red-500 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm">
+          <AlertTriangle className="h-2.5 w-2.5" /> Necesito material
+        </span>
+      )}
       <span className="flex min-w-0 items-center gap-1.5">
         <span
           className={cn(

@@ -7,6 +7,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+async function createMaterialBotComment(ideaId: string, note: string, clientId?: string) {
+  if (!note.trim()) return;
+  const { data: bot } = await supabase.from('users').select('id').eq('email', 'bot@mercodigital.com').maybeSingle();
+  const { data: fallback } = bot?.id ? { data: bot } : await supabase.from('users').select('id').in('role', ['admin', 'operador']).limit(1).maybeSingle();
+  const user_id = fallback?.id;
+  if (!user_id) return;
+  const clientName = clientId ? (await supabase.from('clients').select('name').eq('id', clientId).maybeSingle()).data?.name : 'cliente';
+  await supabase.from('social_comments').insert({ idea_id: ideaId, user_id, content: `🤖 MERCO BOT: Para esta idea se necesita "${note.trim()}" de parte del equipo de ${clientName || 'cliente'}.` });
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -45,6 +55,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (body.post_type !== undefined) updates.post_type = body.post_type;
     if (body.status !== undefined) updates.status = body.status;
     if (body.publish_date !== undefined) updates.publish_date = body.publish_date;
+    if (body.needs_client_material !== undefined) updates.needs_client_material = body.needs_client_material;
+    if (body.client_material_note !== undefined) updates.client_material_note = body.client_material_note;
 
      if (body.copy_text !== undefined) updates.copy_text = body.copy_text;
     if (body.status !== undefined) {
@@ -76,6 +88,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (result.error) {
       console.error('PUT /api/social-ideas/[id] Supabase error:', JSON.stringify(result.error));
       return NextResponse.json({ error: result.error.message || JSON.stringify(result.error) }, { status: 500 });
+    }
+    if (body.needs_client_material === true && body.client_material_note) {
+      await createMaterialBotComment(id, body.client_material_note, result.data.client_id);
     }
     if (Array.isArray(body.assignees)) {
       const { added } = await syncIdeaAssignees(supabase, 'social_idea_assignees', id, body.assignees);
