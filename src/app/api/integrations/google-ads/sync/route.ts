@@ -33,6 +33,39 @@ async function googleAccessToken() {
   return json.access_token as string;
 }
 
+async function searchGoogleAds(customerId: string, token: string, query: string) {
+  const versions = [...new Set([process.env.GOOGLE_ADS_API_VERSION, 'v21', 'v20', 'v19', 'v18'].filter(Boolean))] as string[];
+  let lastError = '';
+  for (const apiVersion of versions) {
+    const res = await fetch(`https://googleads.googleapis.com/${apiVersion}/customers/${customerId}/googleAds:searchStream`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
+        'login-customer-id': (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || '').replace(/-/g, ''),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
+    const text = await res.text();
+    let json: any = null;
+    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+    if (res.ok && json) return (json || []).flatMap((chunk: any) => chunk.results || []);
+    lastError = `${apiVersion} ${res.status}: ${text.slice(0, 220)}`;
+    if (res.status !== 404) break;
+  }
+  throw new Error(`Google Ads API falló. ${lastError}`);
+}
+
+function metrics(row: any) {
+  const cost = Number(row.metrics?.costMicros || 0) / 1_000_000;
+  const clicks = Number(row.metrics?.clicks || 0);
+  const impressions = Number(row.metrics?.impressions || 0);
+  const conversions = Number(row.metrics?.conversions || 0);
+  const convValue = Number(row.metrics?.conversionsValue || 0);
+  return { cost, clicks, impressions, conversions, convValue, roas: cost > 0 ? convValue / cost : 0, cpc: clicks > 0 ? cost / clicks : 0, ctr: impressions > 0 ? clicks / impressions : 0 };
+}
+
 export async function POST(request: Request) {
   try {
     const uid = userId(request);
@@ -69,36 +102,9 @@ export async function POST(request: Request) {
       WHERE segments.date BETWEEN '${start}' AND '${end}'
     `;
 
-    const versions = [...new Set([process.env.GOOGLE_ADS_API_VERSION, 'v21', 'v20', 'v19', 'v18'].filter(Boolean))] as string[];
-    let adsJson: any = null;
-    let lastError = '';
-    for (const apiVersion of versions) {
-      const adsRes = await fetch(`https://googleads.googleapis.com/${apiVersion}/customers/${customerId}/googleAds:searchStream`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
-          'login-customer-id': (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || '').replace(/-/g, ''),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query }),
-      });
-      const adsText = await adsRes.text();
-      try { adsJson = adsText ? JSON.parse(adsText) : null; } catch { adsJson = null; }
-      if (adsRes.ok && adsJson) break;
-      lastError = `${apiVersion} ${adsRes.status}: ${adsText.slice(0, 220)}`;
-      adsJson = null;
-      if (adsRes.status !== 404) break;
-    }
-    if (!adsJson) throw new Error(`Google Ads API falló. ${lastError}`);
-
-    const rows = (adsJson || []).flatMap((chunk: any) => chunk.results || []);
+    const rows = await searchGoogleAds(customerId, token, query);
     const campaigns = rows.map((row: any) => {
-      const cost = Number(row.metrics?.costMicros || 0) / 1_000_000;
-      const clicks = Number(row.metrics?.clicks || 0);
-      const impressions = Number(row.metrics?.impressions || 0);
-      const conversions = Number(row.metrics?.conversions || 0);
-      const convValue = Number(row.metrics?.conversionsValue || 0);
+      const m = metrics(row);
       return {
         client_id,
         month: String(row.segments?.month || '').slice(0, 7),
@@ -106,16 +112,37 @@ export async function POST(request: Request) {
         campaign_name: row.campaign?.name || 'Sin nombre',
         campaign_type: row.campaign?.advertisingChannelType || '',
         campaign_status: row.campaign?.status || '',
-        impressions,
-        clicks,
-        cost,
-        conversions,
-        conv_value: convValue,
-        roas: cost > 0 ? convValue / cost : 0,
-        cpc: clicks > 0 ? cost / clicks : 0,
-        ctr: impressions > 0 ? clicks / impressions : 0,
+        impressions: m.impressions,
+        clicks: m.clicks,
+        cost: m.cost,
+        conversions: m.conversions,
+        conv_value: m.convValue,
+        roas: m.roas,
+        cpc: m.cpc,
+        ctr: m.ctr,
       };
     });
+
+    const dailyRows = await searchGoogleAds(customerId, token, `
+      SELECT segments.date, campaign.name, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value
+      FROM campaign
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `).catch(() => []);
+    const daily = dailyRows.map((row: any) => { const m = metrics(row); return { client_id, date: row.segments?.date, campaign_name: row.campaign?.name || '', impressions: m.impressions, clicks: m.clicks, cost: m.cost, conversions: m.conversions, conv_value: m.convValue, roas: m.roas, cpc: m.cpc, ctr: m.ctr }; }).filter((r: any) => r.date);
+
+    const keywordRows = await searchGoogleAds(customerId, token, `
+      SELECT segments.month, campaign.name, ad_group.name, ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value
+      FROM keyword_view
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `).catch(() => []);
+    const keywords = keywordRows.map((row: any) => { const m = metrics(row); return { client_id, month: String(row.segments?.month || '').slice(0, 7), keyword: row.adGroupCriterion?.keyword?.text || '', match_type: row.adGroupCriterion?.keyword?.matchType || '', campaign_name: row.campaign?.name || '', ad_group_name: row.adGroup?.name || '', impressions: m.impressions, clicks: m.clicks, cost: m.cost, conversions: m.conversions, conv_value: m.convValue, cpc: m.cpc }; }).filter((r: any) => r.keyword);
+
+    const deviceRows = await searchGoogleAds(customerId, token, `
+      SELECT segments.month, segments.device, campaign.name, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value
+      FROM campaign
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+    `).catch(() => []);
+    const segments = deviceRows.map((row: any) => { const m = metrics(row); return { client_id, month: String(row.segments?.month || '').slice(0, 7), segment_type: 'device', segment_value: row.segments?.device || '', campaign_name: row.campaign?.name || '', impressions: m.impressions, clicks: m.clicks, cost: m.cost, conversions: m.conversions, conv_value: m.convValue }; }).filter((r: any) => r.segment_value);
 
     const months = [...new Set(campaigns.map((c: any) => c.month).filter(Boolean))];
     for (const month of months) {
@@ -125,9 +152,24 @@ export async function POST(request: Request) {
       const { error } = await supabase.from('ga_campaigns').insert(campaigns);
       if (error) throw error;
     }
+    if (daily.length) {
+      await supabase.from('ga_daily_metrics').delete().eq('client_id', client_id).gte('date', start).lte('date', end);
+      const { error } = await supabase.from('ga_daily_metrics').insert(daily);
+      if (error) throw error;
+    }
+    if (keywords.length) {
+      for (const month of months) await supabase.from('ga_search_keywords').delete().eq('client_id', client_id).eq('month', month).is('week_start', null);
+      const { error } = await supabase.from('ga_search_keywords').insert(keywords);
+      if (error) throw error;
+    }
+    if (segments.length) {
+      for (const month of months) await supabase.from('ga_segments').delete().eq('client_id', client_id).eq('month', month).eq('segment_type', 'device');
+      const { error } = await supabase.from('ga_segments').insert(segments);
+      if (error) throw error;
+    }
     await supabase.from('clients').update({ last_google_ads_sync_at: new Date().toISOString() }).eq('id', client_id);
 
-    return NextResponse.json({ data: { inserted: campaigns.length, months } });
+    return NextResponse.json({ data: { inserted: campaigns.length, daily: daily.length, keywords: keywords.length, segments: segments.length, months } });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error Google Ads sync' }, { status: 500 });
   }

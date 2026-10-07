@@ -44,9 +44,24 @@ export async function GET(request: Request) {
     const { data: assetGroups, error: aErr } = await agQuery.order('cost', { ascending: false });
     if (aErr) return NextResponse.json({ error: aErr.message }, { status: 500 });
 
-    return NextResponse.json({ data: { campaigns: campaigns || [], keywords: keywords || [], assetGroups: assetGroups || [] } });
+    let dailyQuery = supabase.from('ga_daily_metrics').select('*').eq('client_id', client_id);
+    if (month) dailyQuery = dailyQuery.gte('date', `${month}-01`).lt('date', nextMonth(month));
+    const { data: daily, error: dErr } = await dailyQuery.order('date', { ascending: true });
+    if (dErr && dErr.code !== '42P01') return NextResponse.json({ error: dErr.message }, { status: 500 });
+
+    let segmentQuery = supabase.from('ga_segments').select('*').eq('client_id', client_id);
+    if (month) segmentQuery = segmentQuery.eq('month', month);
+    const { data: segments, error: sErr } = await segmentQuery.order('cost', { ascending: false });
+    if (sErr && sErr.code !== '42P01') return NextResponse.json({ error: sErr.message }, { status: 500 });
+
+    return NextResponse.json({ data: { campaigns: campaigns || [], keywords: keywords || [], assetGroups: assetGroups || [], daily: daily || [], segments: segments || [] } });
   } catch (err) {
     console.error('google-ads GET error:', err);
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
+}
+
+function nextMonth(month: string) {
+  const [y, m] = month.split('-').map(Number);
+  return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
 }
