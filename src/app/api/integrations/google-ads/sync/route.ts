@@ -26,8 +26,10 @@ async function googleAccessToken() {
       grant_type: 'refresh_token',
     }),
   });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error_description || json.error || 'Google OAuth error');
+  const text = await res.text();
+  let json: any = null;
+  try { json = text ? JSON.parse(text) : null; } catch { /* handled below */ }
+  if (!res.ok || !json) throw new Error(json?.error_description || json?.error || `Google OAuth ${res.status}: ${text.slice(0, 180)}`);
   return json.access_token as string;
 }
 
@@ -77,8 +79,12 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({ query }),
     });
-    const adsJson = await adsRes.json();
-    if (!adsRes.ok) throw new Error(JSON.stringify(adsJson));
+    const adsText = await adsRes.text();
+    let adsJson: any = null;
+    try { adsJson = adsText ? JSON.parse(adsText) : null; } catch { /* handled below */ }
+    if (!adsRes.ok || !adsJson) {
+      throw new Error(`Google Ads API ${adsRes.status}: ${adsText.slice(0, 500)}`);
+    }
 
     const rows = (adsJson || []).flatMap((chunk: any) => chunk.results || []);
     const campaigns = rows.map((row: any) => {
