@@ -33,6 +33,7 @@ type GoogleCampaign = {
 type DailyMetric = GoogleCampaign & { date: string };
 type KeywordMetric = { keyword: string; campaign_name: string; match_type: string; cost: number; clicks: number; conversions: number; cpc: number };
 type SegmentMetric = { segment_type: string; segment_value: string; campaign_name: string; cost: number; conversions: number };
+type Ga4Daily = { date: string; source_medium: string; sessions: number; total_users: number; conversions: number; total_revenue: number; engagement_rate: number };
 
 const sections = [
   { title: 'Resumen general', icon: BarChart3, text: 'Inversion, conversiones, ROAS, CPA, clics y comparativas por dia, semana y mes.' },
@@ -50,12 +51,15 @@ export default function DataCenterPage() {
   const [config, setConfig] = useState<IntegrationConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncingGoogle, setSyncingGoogle] = useState(false);
+  const [syncingGa4, setSyncingGa4] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [message, setMessage] = useState('');
   const [campaigns, setCampaigns] = useState<GoogleCampaign[]>([]);
   const [daily, setDaily] = useState<DailyMetric[]>([]);
   const [keywords, setKeywords] = useState<KeywordMetric[]>([]);
   const [segments, setSegments] = useState<SegmentMetric[]>([]);
+  const [ga4Daily, setGa4Daily] = useState<Ga4Daily[]>([]);
+  const [range, setRange] = useState<'month' | '30d' | '90d'>('month');
   const selected = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
   useEffect(() => {
@@ -82,11 +86,21 @@ export default function DataCenterPage() {
 
   useEffect(() => {
     if (!clientId) return;
-    fetch(`/api/google-ads?client_id=${clientId}&view=mensual`)
+    const month = range === 'month' ? `&month=${new Date().toISOString().slice(0, 7)}` : '';
+    fetch(`/api/google-ads?client_id=${clientId}&view=mensual${month}`)
       .then(r => r.json())
       .then(json => { setCampaigns(json.data?.campaigns || []); setDaily(json.data?.daily || []); setKeywords(json.data?.keywords || []); setSegments(json.data?.segments || []); })
       .catch(() => { setCampaigns([]); setDaily([]); setKeywords([]); setSegments([]); });
-  }, [clientId]);
+  }, [clientId, range]);
+
+  useEffect(() => {
+    if (!clientId) return;
+    const month = range === 'month' ? `&month=${new Date().toISOString().slice(0, 7)}` : '';
+    fetch(`/api/analytics?client_id=${clientId}${month}`)
+      .then(r => r.json())
+      .then(json => setGa4Daily(json.daily || []))
+      .catch(() => setGa4Daily([]));
+  }, [clientId, range]);
 
   const totals = campaigns.reduce((acc, c) => ({
     cost: acc.cost + Number(c.cost || 0),
@@ -101,6 +115,7 @@ export default function DataCenterPage() {
   const topCtr = [...campaigns].sort((a, b) => Number(b.ctr) - Number(a.ctr))[0];
   const chartData = campaigns.map(c => ({ name: shortName(c.campaign_name), cost: Number(c.cost || 0), conversions: Number(c.conversions || 0), roas: Number(c.roas || 0) }));
   const dailyChart = Object.values(daily.reduce((acc: Record<string, any>, d) => {
+    if (!inSelectedRange(d.date, range)) return acc;
     const key = d.date;
     acc[key] ||= { date: key.slice(5), cost: 0, conversions: 0 };
     acc[key].cost += Number(d.cost || 0);
@@ -114,12 +129,38 @@ export default function DataCenterPage() {
     return acc;
   }, {}));
   const topKeywords = [...keywords].sort((a, b) => Number(b.cost) - Number(a.cost)).slice(0, 8);
+  const channels = Object.values(ga4Daily.reduce((acc: Record<string, any>, r) => {
+    const key = r.source_medium || '(not set)';
+    acc[key] ||= { name: key, sessions: 0, conversions: 0, revenue: 0 };
+    acc[key].sessions += Number(r.sessions || 0);
+    acc[key].conversions += Number(r.conversions || 0);
+    acc[key].revenue += Number(r.total_revenue || 0);
+    return acc;
+  }, {})).sort((a: any, b: any) => b.sessions - a.sessions).slice(0, 8);
+  const ga4Totals = ga4Daily.reduce((acc, r) => ({ sessions: acc.sessions + Number(r.sessions || 0), users: acc.users + Number(r.total_users || 0), conversions: acc.conversions + Number(r.conversions || 0), revenue: acc.revenue + Number(r.total_revenue || 0) }), { sessions: 0, users: 0, conversions: 0, revenue: 0 });
+  const now = new Date();
+  const last7Start = new Date(now); last7Start.setDate(now.getDate() - 6);
+  const prev7Start = new Date(now); prev7Start.setDate(now.getDate() - 13);
+  const prev7End = new Date(now); prev7End.setDate(now.getDate() - 7);
+  const last7 = sumDaily(daily, last7Start, now);
+  const prev7 = sumDaily(daily, prev7Start, prev7End);
+  const weekDeltas = {
+    cost: delta(last7.cost, prev7.cost),
+    conversions: delta(last7.conversions, prev7.conversions),
+    roas: delta(last7.cost > 0 ? last7.value / last7.cost : 0, prev7.cost > 0 ? prev7.value / prev7.cost : 0),
+  };
   const suggestions = [
     bestRoas ? `Escalar o proteger presupuesto en ${bestRoas.campaign_name}: ROAS ${Number(bestRoas.roas).toFixed(2)}.` : '',
     worstWaste ? `Revisar ${worstWaste.campaign_name}: invirtio ${money(worstWaste.cost)} y no genero conversiones.` : '',
     topCtr && Number(topCtr.ctr) > 0.05 ? `${topCtr.campaign_name} tiene CTR alto (${(Number(topCtr.ctr) * 100).toFixed(2)}%): revisar si la landing convierte.` : '',
     totals.cost > 0 && totals.conversions > 0 ? `CPA promedio estimado: ${money(totals.cost / totals.conversions)}.` : '',
   ].filter(Boolean);
+  const healthScore = Math.max(0, Math.min(100,
+    (totals.cost > 0 && totals.value / totals.cost >= 4 ? 35 : totals.cost > 0 && totals.value / totals.cost >= 2 ? 22 : 8) +
+    (totals.conversions >= 5 ? 30 : totals.conversions > 0 ? 18 : 0) +
+    (totals.impressions > 0 && totals.clicks / totals.impressions >= 0.02 ? 20 : 10) +
+    (worstWaste ? 5 : 15)
+  ));
 
   const saveConfig = async () => {
     if (!clientId || !config) return;
@@ -174,6 +215,32 @@ export default function DataCenterPage() {
     }
   };
 
+  const syncGa4 = async () => {
+    if (!clientId) return;
+    setSyncingGa4(true);
+    setMessage('');
+    try {
+      const res = await fetch('/api/integrations/ga4/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ client_id: clientId }),
+      });
+      const text = await res.text();
+      let json: any = null;
+      try { json = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+      if (!res.ok || !json) throw new Error(json?.error || text.slice(0, 180) || 'Error');
+      setMessage(`GA4 sincronizado: ${json.data.inserted} filas`);
+      const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
+      setConfig(cfg.data || null);
+      const analytics = await fetch(`/api/analytics?client_id=${clientId}&month=${new Date().toISOString().slice(0, 7)}`).then(r => r.json());
+      setGa4Daily(analytics.daily || []);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'No se pudo sincronizar GA4');
+    } finally {
+      setSyncingGa4(false);
+    }
+  };
+
   if (!hasModuleAccess(user, 'datos')) {
     return <NoAccess message="No tienes permiso para acceder al Centro de Datos." />;
   }
@@ -190,6 +257,14 @@ export default function DataCenterPage() {
         <select value={clientId} onChange={e => setClientId(e.target.value)} className="h-10 rounded-xl border bg-background px-3 text-sm md:min-w-72">
           {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
         </select>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {([{ id: 'month', label: 'Mes actual' }, { id: '30d', label: '30 dias' }, { id: '90d', label: '90 dias' }] as const).map(opt => (
+          <button key={opt.id} onClick={() => setRange(opt.id)} className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', range === opt.id ? 'bg-gradient-tech text-white' : 'text-muted-foreground')}>
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       <div className="rounded-2xl border bg-card p-5">
@@ -227,6 +302,9 @@ export default function DataCenterPage() {
           <button onClick={syncGoogleAds} disabled={!config?.google_ads_customer_id || syncingGoogle || user?.role === 'client'} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-50">
             {syncingGoogle ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sincronizar Google Ads
           </button>
+          <button onClick={syncGa4} disabled={!config?.ga4_property_id || syncingGa4 || user?.role === 'client'} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-50">
+            {syncingGa4 ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sincronizar GA4
+          </button>
         </div>
       </div>
 
@@ -245,6 +323,24 @@ export default function DataCenterPage() {
         <InsightCard title="Mejor CTR" value={topCtr ? `${(Number(topCtr.ctr) * 100).toFixed(2)}%` : '-'} subtitle={topCtr?.campaign_name || 'Sin datos'} />
       </div>
 
+      <div className="rounded-2xl border bg-card p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Score de salud Google Ads</p>
+            <p className="mt-1 text-4xl font-black text-gradient-tech">{healthScore}/100</p>
+          </div>
+          <div className="h-3 flex-1 overflow-hidden rounded-full bg-muted md:max-w-xl">
+            <div className="h-full rounded-full bg-gradient-tech" style={{ width: `${healthScore}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <DeltaCard label="Inversion vs semana anterior" value={weekDeltas.cost} />
+        <DeltaCard label="Conversiones vs semana anterior" value={weekDeltas.conversions} />
+        <DeltaCard label="ROAS vs semana anterior" value={weekDeltas.roas} />
+      </div>
+
       <div className="grid gap-3 xl:grid-cols-2">
         <ChartCard title="Inversion por campaña" data={chartData} dataKey="cost" color="#22d3ee" />
         <ChartCard title="ROAS por campaña" data={chartData} dataKey="roas" color="#8b5cf6" />
@@ -253,6 +349,18 @@ export default function DataCenterPage() {
       <div className="grid gap-3 xl:grid-cols-2">
         <AreaCard title="Evolucion diaria: inversion" data={dailyChart} />
         <ChartCard title="Dispositivos: inversion" data={deviceChart} dataKey="cost" color="#f59e0b" />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <Metric label="Sesiones GA4" value={num(ga4Totals.sessions)} icon={<BarChart3 className="h-4 w-4" />} tone="cyan" />
+        <Metric label="Usuarios GA4" value={num(ga4Totals.users)} icon={<Target className="h-4 w-4" />} tone="blue" />
+        <Metric label="Conversiones GA4" value={num(ga4Totals.conversions)} icon={<Zap className="h-4 w-4" />} tone="violet" />
+        <Metric label="Revenue GA4" value={money(ga4Totals.revenue)} icon={<DollarSign className="h-4 w-4" />} tone="emerald" />
+      </div>
+
+      <div className="rounded-2xl border bg-card p-4">
+        <h3 className="mb-4 font-bold">Canales GA4</h3>
+        {channels.length === 0 ? <p className="text-sm text-muted-foreground">Sin datos GA4 sincronizados todavía.</p> : <ChartCard title="Sesiones por canal" data={channels} dataKey="sessions" color="#10b981" />}
       </div>
 
       <div className="rounded-2xl border bg-card p-4">
@@ -386,6 +494,11 @@ function InsightCard({ title, value, subtitle, good, danger }: { title: string; 
   return <div className={cn('rounded-2xl border bg-card p-4', good && 'border-emerald-500/40 bg-emerald-500/5', danger && 'border-red-500/40 bg-red-500/5')}><p className="text-xs text-muted-foreground">{title}</p><p className="mt-1 text-2xl font-bold">{value}</p><p className="mt-1 truncate text-xs text-muted-foreground">{subtitle}</p></div>;
 }
 
+function DeltaCard({ label, value }: { label: string; value: number | null }) {
+  const positive = (value || 0) >= 0;
+  return <div className="rounded-2xl border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className={cn('mt-1 flex items-center gap-2 text-2xl font-bold', positive ? 'text-emerald-500' : 'text-red-500')}>{positive ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}{value === null ? '-' : `${positive ? '+' : ''}${value.toFixed(1)}%`}</p></div>;
+}
+
 function ChartCard({ title, data, dataKey, color }: { title: string; data: any[]; dataKey: string; color: string }) {
   return <div className="rounded-2xl border bg-card p-4"><h3 className="mb-4 font-bold">{title}</h3><div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={data}><CartesianGrid strokeDasharray="3 3" opacity={0.15} /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey={dataKey} radius={[8, 8, 0, 0]}>{data.map((_, i) => <Cell key={i} fill={color} />)}</Bar></BarChart></ResponsiveContainer></div></div>;
 }
@@ -400,6 +513,35 @@ function RoasBadge({ value }: { value: number }) {
 }
 
 function shortName(name: string) { return name.replace(/\s*\|\s*/g, ' / ').slice(0, 22); }
+
+function sumDaily(rows: DailyMetric[], from: Date, to: Date) {
+  return rows.reduce((acc, r) => {
+    const d = new Date(r.date);
+    if (d >= startOfDay(from) && d <= endOfDay(to)) {
+      acc.cost += Number(r.cost || 0);
+      acc.conversions += Number(r.conversions || 0);
+      acc.value += Number(r.conv_value || 0);
+    }
+    return acc;
+  }, { cost: 0, conversions: 0, value: 0 });
+}
+
+function delta(current: number, previous: number) {
+  if (!previous) return current ? 100 : null;
+  return ((current - previous) / previous) * 100;
+}
+
+function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function endOfDay(d: Date) { const x = new Date(d); x.setHours(23, 59, 59, 999); return x; }
+
+function inSelectedRange(date: string, range: 'month' | '30d' | '90d') {
+  const d = new Date(date);
+  const now = new Date();
+  if (range === 'month') return date.startsWith(now.toISOString().slice(0, 7));
+  const start = new Date(now);
+  start.setDate(now.getDate() - (range === '30d' ? 29 : 89));
+  return d >= startOfDay(start) && d <= endOfDay(now);
+}
 
 function money(value: number) {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(value || 0));

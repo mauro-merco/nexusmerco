@@ -30,9 +30,19 @@ export async function GET(request: Request) {
     const { data, error } = await query.order('sessions', { ascending: false });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    return NextResponse.json({ data: data || [] });
+    let dailyQuery = supabase.from('analytics_daily_metrics').select('*').eq('client_id', client_id);
+    if (month) dailyQuery = dailyQuery.gte('date', `${month}-01`).lt('date', nextMonth(month));
+    const { data: daily, error: dailyError } = await dailyQuery.order('date', { ascending: true });
+    if (dailyError && dailyError.code !== '42P01') return NextResponse.json({ error: dailyError.message }, { status: 500 });
+
+    return NextResponse.json({ data: data || [], daily: daily || [] });
   } catch (err) {
     console.error('analytics GET error:', err);
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
+}
+
+function nextMonth(month: string) {
+  const [y, m] = month.split('-').map(Number);
+  return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
 }
