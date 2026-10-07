@@ -16,6 +16,19 @@ type IntegrationConfig = {
   last_meta_ads_sync_at: string | null;
   last_ga4_sync_at: string | null;
 };
+type GoogleCampaign = {
+  campaign_name: string;
+  campaign_type: string;
+  campaign_status: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  conv_value: number;
+  roas: number;
+  cpc: number;
+  ctr: number;
+};
 
 const sections = [
   { title: 'Resumen general', icon: BarChart3, text: 'Inversion, conversiones, ROAS, CPA, clics y comparativas por dia, semana y mes.' },
@@ -35,6 +48,7 @@ export default function DataCenterPage() {
   const [syncingGoogle, setSyncingGoogle] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [message, setMessage] = useState('');
+  const [campaigns, setCampaigns] = useState<GoogleCampaign[]>([]);
   const selected = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
   useEffect(() => {
@@ -58,6 +72,22 @@ export default function DataCenterPage() {
       .catch(() => setMessage('No se pudo cargar la configuracion'))
       .finally(() => setLoadingConfig(false));
   }, [clientId, token]);
+
+  useEffect(() => {
+    if (!clientId) return;
+    fetch(`/api/google-ads?client_id=${clientId}&view=mensual`)
+      .then(r => r.json())
+      .then(json => setCampaigns(json.data?.campaigns || []))
+      .catch(() => setCampaigns([]));
+  }, [clientId]);
+
+  const totals = campaigns.reduce((acc, c) => ({
+    cost: acc.cost + Number(c.cost || 0),
+    clicks: acc.clicks + Number(c.clicks || 0),
+    impressions: acc.impressions + Number(c.impressions || 0),
+    conversions: acc.conversions + Number(c.conversions || 0),
+    value: acc.value + Number(c.conv_value || 0),
+  }), { cost: 0, clicks: 0, impressions: 0, conversions: 0, value: 0 });
 
   const saveConfig = async () => {
     if (!clientId || !config) return;
@@ -100,6 +130,8 @@ export default function DataCenterPage() {
       setMessage(`Google Ads sincronizado: ${json.data.inserted} campañas`);
       const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setConfig(cfg.data || null);
+      const ads = await fetch(`/api/google-ads?client_id=${clientId}&view=mensual`).then(r => r.json());
+      setCampaigns(ads.data?.campaigns || []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'No se pudo sincronizar Google Ads');
     } finally {
@@ -163,6 +195,55 @@ export default function DataCenterPage() {
         </div>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-5">
+        <Metric label="Inversion Google" value={money(totals.cost)} />
+        <Metric label="Conversiones" value={num(totals.conversions)} />
+        <Metric label="ROAS" value={totals.cost > 0 ? (totals.value / totals.cost).toFixed(2) : '0.00'} />
+        <Metric label="Clics" value={num(totals.clicks)} />
+        <Metric label="CTR" value={totals.impressions > 0 ? `${((totals.clicks / totals.impressions) * 100).toFixed(2)}%` : '0%'} />
+      </div>
+
+      <div className="rounded-2xl border bg-card p-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold">Google Ads: campañas sincronizadas</h3>
+            <p className="text-sm text-muted-foreground">Datos reales guardados en Supabase desde la API.</p>
+          </div>
+        </div>
+        {campaigns.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Sin campañas sincronizadas todavía.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr className="border-b text-left">
+                  <th className="py-2 pr-3">Campaña</th>
+                  <th className="py-2 pr-3">Estado</th>
+                  <th className="py-2 pr-3 text-right">Costo</th>
+                  <th className="py-2 pr-3 text-right">Conv.</th>
+                  <th className="py-2 pr-3 text-right">ROAS</th>
+                  <th className="py-2 pr-3 text-right">Clics</th>
+                  <th className="py-2 pr-3 text-right">CTR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaigns.map(c => (
+                  <tr key={c.campaign_name} className="border-b last:border-0">
+                    <td className="py-2 pr-3 font-medium">{c.campaign_name}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">{c.campaign_status}</td>
+                    <td className="py-2 pr-3 text-right">{money(c.cost)}</td>
+                    <td className="py-2 pr-3 text-right">{num(c.conversions)}</td>
+                    <td className="py-2 pr-3 text-right">{Number(c.roas || 0).toFixed(2)}</td>
+                    <td className="py-2 pr-3 text-right">{num(c.clicks)}</td>
+                    <td className="py-2 pr-3 text-right">{`${(Number(c.ctr || 0) * 100).toFixed(2)}%`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {sections.map(section => {
           const Icon = section.icon;
@@ -201,4 +282,21 @@ function ConnectionCard({ title, ready, missing, lastSync }: { title: string; re
       <p className="mt-1 text-xs text-muted-foreground">Ultimo sync: {lastSync ? new Date(lastSync).toLocaleString('es-AR') : 'pendiente'}</p>
     </div>
   );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border bg-card p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function money(value: number) {
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function num(value: number) {
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(Number(value || 0));
 }
