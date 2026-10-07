@@ -69,22 +69,28 @@ export async function POST(request: Request) {
       WHERE segments.date BETWEEN '${start}' AND '${end}'
     `;
 
-    const adsRes = await fetch(`https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:searchStream`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
-        'login-customer-id': (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || '').replace(/-/g, ''),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query }),
-    });
-    const adsText = await adsRes.text();
+    const versions = [...new Set([process.env.GOOGLE_ADS_API_VERSION, 'v21', 'v20', 'v19', 'v18'].filter(Boolean))] as string[];
     let adsJson: any = null;
-    try { adsJson = adsText ? JSON.parse(adsText) : null; } catch { /* handled below */ }
-    if (!adsRes.ok || !adsJson) {
-      throw new Error(`Google Ads API ${adsRes.status}: ${adsText.slice(0, 500)}`);
+    let lastError = '';
+    for (const apiVersion of versions) {
+      const adsRes = await fetch(`https://googleads.googleapis.com/${apiVersion}/customers/${customerId}/googleAds:searchStream`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
+          'login-customer-id': (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || '').replace(/-/g, ''),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+      const adsText = await adsRes.text();
+      try { adsJson = adsText ? JSON.parse(adsText) : null; } catch { adsJson = null; }
+      if (adsRes.ok && adsJson) break;
+      lastError = `${apiVersion} ${adsRes.status}: ${adsText.slice(0, 220)}`;
+      adsJson = null;
+      if (adsRes.status !== 404) break;
     }
+    if (!adsJson) throw new Error(`Google Ads API falló. ${lastError}`);
 
     const rows = (adsJson || []).flatMap((chunk: any) => chunk.results || []);
     const campaigns = rows.map((row: any) => {
