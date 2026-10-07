@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { DatabaseZap, RefreshCw, CheckCircle2, AlertTriangle, BarChart3, BrainCircuit, GitBranch, Search, Save, Loader2 } from 'lucide-react';
+import { DatabaseZap, RefreshCw, CheckCircle2, AlertTriangle, BarChart3, BrainCircuit, GitBranch, Search, Save, Loader2, TrendingUp, TrendingDown, MousePointerClick, Target, DollarSign, Zap } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { useAuthStore } from '@/store/auth-store';
 import { NoAccess } from '@/components/no-access';
 import { hasModuleAccess } from '@/lib/permissions';
@@ -88,6 +89,17 @@ export default function DataCenterPage() {
     conversions: acc.conversions + Number(c.conversions || 0),
     value: acc.value + Number(c.conv_value || 0),
   }), { cost: 0, clicks: 0, impressions: 0, conversions: 0, value: 0 });
+  const bestRoas = [...campaigns].filter(c => Number(c.cost) > 0).sort((a, b) => Number(b.roas) - Number(a.roas))[0];
+  const worstWaste = [...campaigns].filter(c => Number(c.cost) > 0 && Number(c.conversions) === 0).sort((a, b) => Number(b.cost) - Number(a.cost))[0];
+  const topSpend = [...campaigns].sort((a, b) => Number(b.cost) - Number(a.cost))[0];
+  const topCtr = [...campaigns].sort((a, b) => Number(b.ctr) - Number(a.ctr))[0];
+  const chartData = campaigns.map(c => ({ name: shortName(c.campaign_name), cost: Number(c.cost || 0), conversions: Number(c.conversions || 0), roas: Number(c.roas || 0) }));
+  const suggestions = [
+    bestRoas ? `Escalar o proteger presupuesto en ${bestRoas.campaign_name}: ROAS ${Number(bestRoas.roas).toFixed(2)}.` : '',
+    worstWaste ? `Revisar ${worstWaste.campaign_name}: invirtio ${money(worstWaste.cost)} y no genero conversiones.` : '',
+    topCtr && Number(topCtr.ctr) > 0.05 ? `${topCtr.campaign_name} tiene CTR alto (${(Number(topCtr.ctr) * 100).toFixed(2)}%): revisar si la landing convierte.` : '',
+    totals.cost > 0 && totals.conversions > 0 ? `CPA promedio estimado: ${money(totals.cost / totals.conversions)}.` : '',
+  ].filter(Boolean);
 
   const saveConfig = async () => {
     if (!clientId || !config) return;
@@ -196,11 +208,35 @@ export default function DataCenterPage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
-        <Metric label="Inversion Google" value={money(totals.cost)} />
-        <Metric label="Conversiones" value={num(totals.conversions)} />
-        <Metric label="ROAS" value={totals.cost > 0 ? (totals.value / totals.cost).toFixed(2) : '0.00'} />
-        <Metric label="Clics" value={num(totals.clicks)} />
-        <Metric label="CTR" value={totals.impressions > 0 ? `${((totals.clicks / totals.impressions) * 100).toFixed(2)}%` : '0%'} />
+        <Metric label="Inversion" value={money(totals.cost)} icon={<DollarSign className="h-4 w-4" />} tone="cyan" />
+        <Metric label="Conversiones" value={num(totals.conversions)} icon={<Target className="h-4 w-4" />} tone="violet" />
+        <Metric label="ROAS" value={totals.cost > 0 ? (totals.value / totals.cost).toFixed(2) : '0.00'} icon={<TrendingUp className="h-4 w-4" />} tone="emerald" />
+        <Metric label="Clics" value={num(totals.clicks)} icon={<MousePointerClick className="h-4 w-4" />} tone="blue" />
+        <Metric label="CTR" value={totals.impressions > 0 ? `${((totals.clicks / totals.impressions) * 100).toFixed(2)}%` : '0%'} icon={<Zap className="h-4 w-4" />} tone="amber" />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <InsightCard title="Mejor ROAS" value={bestRoas ? Number(bestRoas.roas).toFixed(2) : '-'} subtitle={bestRoas?.campaign_name || 'Sin datos'} good />
+        <InsightCard title="A revisar" value={worstWaste ? money(worstWaste.cost) : '-'} subtitle={worstWaste?.campaign_name || 'Sin gasto sin conversion'} danger={!!worstWaste} />
+        <InsightCard title="Mayor inversion" value={topSpend ? money(topSpend.cost) : '-'} subtitle={topSpend?.campaign_name || 'Sin datos'} />
+        <InsightCard title="Mejor CTR" value={topCtr ? `${(Number(topCtr.ctr) * 100).toFixed(2)}%` : '-'} subtitle={topCtr?.campaign_name || 'Sin datos'} />
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-2">
+        <ChartCard title="Inversion por campaña" data={chartData} dataKey="cost" color="#22d3ee" />
+        <ChartCard title="ROAS por campaña" data={chartData} dataKey="roas" color="#8b5cf6" />
+      </div>
+
+      <div className="rounded-2xl border border-violet-500/30 bg-violet-500/5 p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <BrainCircuit className="h-5 w-5 text-violet-500" />
+          <h3 className="font-bold">Sugerencias automaticas</h3>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          {(suggestions.length ? suggestions : ['Sin suficientes datos para sugerencias.']).map((s, i) => (
+            <div key={i} className="rounded-xl border bg-background/60 p-3 text-sm text-muted-foreground">{s}</div>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-2xl border bg-card p-4">
@@ -233,7 +269,7 @@ export default function DataCenterPage() {
                     <td className="py-2 pr-3 text-muted-foreground">{c.campaign_status}</td>
                     <td className="py-2 pr-3 text-right">{money(c.cost)}</td>
                     <td className="py-2 pr-3 text-right">{num(c.conversions)}</td>
-                    <td className="py-2 pr-3 text-right">{Number(c.roas || 0).toFixed(2)}</td>
+                    <td className="py-2 pr-3 text-right"><RoasBadge value={Number(c.roas || 0)} /></td>
                     <td className="py-2 pr-3 text-right">{num(c.clicks)}</td>
                     <td className="py-2 pr-3 text-right">{`${(Number(c.ctr || 0) * 100).toFixed(2)}%`}</td>
                   </tr>
@@ -284,14 +320,37 @@ function ConnectionCard({ title, ready, missing, lastSync }: { title: string; re
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, icon, tone }: { label: string; value: string; icon: React.ReactNode; tone: string }) {
+  const tones: Record<string, string> = {
+    cyan: 'bg-cyan-500/10 text-cyan-500',
+    violet: 'bg-violet-500/10 text-violet-500',
+    emerald: 'bg-emerald-500/10 text-emerald-500',
+    blue: 'bg-blue-500/10 text-blue-500',
+    amber: 'bg-amber-500/10 text-amber-500',
+  };
   return (
     <div className="rounded-2xl border bg-card p-4">
+      <div className={cn('mb-3 flex h-9 w-9 items-center justify-center rounded-xl', tones[tone])}>{icon}</div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-bold">{value}</p>
     </div>
   );
 }
+
+function InsightCard({ title, value, subtitle, good, danger }: { title: string; value: string; subtitle: string; good?: boolean; danger?: boolean }) {
+  return <div className={cn('rounded-2xl border bg-card p-4', good && 'border-emerald-500/40 bg-emerald-500/5', danger && 'border-red-500/40 bg-red-500/5')}><p className="text-xs text-muted-foreground">{title}</p><p className="mt-1 text-2xl font-bold">{value}</p><p className="mt-1 truncate text-xs text-muted-foreground">{subtitle}</p></div>;
+}
+
+function ChartCard({ title, data, dataKey, color }: { title: string; data: any[]; dataKey: string; color: string }) {
+  return <div className="rounded-2xl border bg-card p-4"><h3 className="mb-4 font-bold">{title}</h3><div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={data}><CartesianGrid strokeDasharray="3 3" opacity={0.15} /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey={dataKey} radius={[8, 8, 0, 0]}>{data.map((_, i) => <Cell key={i} fill={color} />)}</Bar></BarChart></ResponsiveContainer></div></div>;
+}
+
+function RoasBadge({ value }: { value: number }) {
+  const cls = value >= 4 ? 'bg-emerald-500/10 text-emerald-500' : value >= 2 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500';
+  return <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', cls)}>{value.toFixed(2)}</span>;
+}
+
+function shortName(name: string) { return name.replace(/\s*\|\s*/g, ' / ').slice(0, 22); }
 
 function money(value: number) {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(value || 0));
