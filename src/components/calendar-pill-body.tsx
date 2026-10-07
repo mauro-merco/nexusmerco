@@ -3,7 +3,7 @@
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import type { SocialIdea } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Check } from 'lucide-react';
 
 /**
  * Body of a calendar day pill: the post type dot and the title on the first
@@ -15,6 +15,7 @@ export function CalendarPillBody({ idea, label }: { idea: SocialIdea; label?: st
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
   const statusCfg = STATUS_CONFIG[idea.status];
   const isPublished = idea.status === 'posteado';
+  const highlight = statusHighlight(idea.status);
   const text = label ?? idea.title;
 
   return (
@@ -34,17 +35,26 @@ export function CalendarPillBody({ idea, label }: { idea: SocialIdea; label?: st
         <span className="truncate">{text}</span>
       </span>
 
-      <span
-        className={cn(
-          'mt-1 inline-flex w-fit max-w-full items-center gap-1 rounded-full border px-1.5 py-px text-[9.5px] font-semibold uppercase leading-tight tracking-wide',
-          statusCfg?.colorClass,
-        )}
-      >
-        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', statusCfg?.dotColor)} />
-        <span className="truncate">{statusCfg?.label || idea.status}</span>
-      </span>
+      {highlight ? (
+        <span className={cn('mt-1 inline-flex w-fit max-w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-black uppercase leading-tight tracking-wide shadow-sm', highlight.className)}>
+          <Check className={cn('h-3.5 w-3.5 shrink-0', highlight.iconClass)} fill={highlight.fill ? 'currentColor' : 'none'} />
+          <span className="truncate">{highlight.label}</span>
+        </span>
+      ) : (
+        <span className={cn('mt-1 inline-flex w-fit max-w-full items-center gap-1 rounded-full border px-1.5 py-px text-[9.5px] font-semibold uppercase leading-tight tracking-wide', statusCfg?.colorClass)}>
+          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', statusCfg?.dotColor)} />
+          <span className="truncate">{statusCfg?.label || idea.status}</span>
+        </span>
+      )}
     </>
   );
+}
+
+function statusHighlight(status: SocialIdea['status']) {
+  if (status === 'diseno_listo') return { label: 'Diseño listo', className: 'border-emerald-300 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', iconClass: 'text-emerald-600 dark:text-emerald-300', fill: false };
+  if (status === 'aprobada') return { label: 'Aprobado', className: 'border-green-400 bg-green-200 text-green-800 dark:bg-green-500/25 dark:text-green-200 text-[11px]', iconClass: 'text-cyan-500', fill: false };
+  if (status === 'posteado') return { label: 'Posteado', className: 'border-green-500 bg-green-500 text-white text-[11px]', iconClass: 'text-white', fill: true };
+  return null;
 }
 
 /** Tooltip with the title and the status, for the pills that truncate. */
