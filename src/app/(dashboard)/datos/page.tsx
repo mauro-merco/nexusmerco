@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { DatabaseZap, RefreshCw, CheckCircle2, AlertTriangle, BarChart3, BrainCircuit, GitBranch, Search, Save, Loader2, TrendingUp, TrendingDown, MousePointerClick, Target, DollarSign, Zap } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, AreaChart, Area } from 'recharts';
 import { useAuthStore } from '@/store/auth-store';
 import { NoAccess } from '@/components/no-access';
 import { hasModuleAccess } from '@/lib/permissions';
@@ -30,6 +30,9 @@ type GoogleCampaign = {
   cpc: number;
   ctr: number;
 };
+type DailyMetric = GoogleCampaign & { date: string };
+type KeywordMetric = { keyword: string; campaign_name: string; match_type: string; cost: number; clicks: number; conversions: number; cpc: number };
+type SegmentMetric = { segment_type: string; segment_value: string; campaign_name: string; cost: number; conversions: number };
 
 const sections = [
   { title: 'Resumen general', icon: BarChart3, text: 'Inversion, conversiones, ROAS, CPA, clics y comparativas por dia, semana y mes.' },
@@ -50,6 +53,9 @@ export default function DataCenterPage() {
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [message, setMessage] = useState('');
   const [campaigns, setCampaigns] = useState<GoogleCampaign[]>([]);
+  const [daily, setDaily] = useState<DailyMetric[]>([]);
+  const [keywords, setKeywords] = useState<KeywordMetric[]>([]);
+  const [segments, setSegments] = useState<SegmentMetric[]>([]);
   const selected = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
   useEffect(() => {
@@ -78,8 +84,8 @@ export default function DataCenterPage() {
     if (!clientId) return;
     fetch(`/api/google-ads?client_id=${clientId}&view=mensual`)
       .then(r => r.json())
-      .then(json => setCampaigns(json.data?.campaigns || []))
-      .catch(() => setCampaigns([]));
+      .then(json => { setCampaigns(json.data?.campaigns || []); setDaily(json.data?.daily || []); setKeywords(json.data?.keywords || []); setSegments(json.data?.segments || []); })
+      .catch(() => { setCampaigns([]); setDaily([]); setKeywords([]); setSegments([]); });
   }, [clientId]);
 
   const totals = campaigns.reduce((acc, c) => ({
@@ -94,6 +100,20 @@ export default function DataCenterPage() {
   const topSpend = [...campaigns].sort((a, b) => Number(b.cost) - Number(a.cost))[0];
   const topCtr = [...campaigns].sort((a, b) => Number(b.ctr) - Number(a.ctr))[0];
   const chartData = campaigns.map(c => ({ name: shortName(c.campaign_name), cost: Number(c.cost || 0), conversions: Number(c.conversions || 0), roas: Number(c.roas || 0) }));
+  const dailyChart = Object.values(daily.reduce((acc: Record<string, any>, d) => {
+    const key = d.date;
+    acc[key] ||= { date: key.slice(5), cost: 0, conversions: 0 };
+    acc[key].cost += Number(d.cost || 0);
+    acc[key].conversions += Number(d.conversions || 0);
+    return acc;
+  }, {}));
+  const deviceChart = Object.values(segments.filter(s => s.segment_type === 'device').reduce((acc: Record<string, any>, s) => {
+    acc[s.segment_value] ||= { name: s.segment_value, cost: 0, conversions: 0 };
+    acc[s.segment_value].cost += Number(s.cost || 0);
+    acc[s.segment_value].conversions += Number(s.conversions || 0);
+    return acc;
+  }, {}));
+  const topKeywords = [...keywords].sort((a, b) => Number(b.cost) - Number(a.cost)).slice(0, 8);
   const suggestions = [
     bestRoas ? `Escalar o proteger presupuesto en ${bestRoas.campaign_name}: ROAS ${Number(bestRoas.roas).toFixed(2)}.` : '',
     worstWaste ? `Revisar ${worstWaste.campaign_name}: invirtio ${money(worstWaste.cost)} y no genero conversiones.` : '',
@@ -144,6 +164,9 @@ export default function DataCenterPage() {
       setConfig(cfg.data || null);
       const ads = await fetch(`/api/google-ads?client_id=${clientId}&view=mensual`).then(r => r.json());
       setCampaigns(ads.data?.campaigns || []);
+      setDaily(ads.data?.daily || []);
+      setKeywords(ads.data?.keywords || []);
+      setSegments(ads.data?.segments || []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'No se pudo sincronizar Google Ads');
     } finally {
@@ -225,6 +248,28 @@ export default function DataCenterPage() {
       <div className="grid gap-3 xl:grid-cols-2">
         <ChartCard title="Inversion por campaña" data={chartData} dataKey="cost" color="#22d3ee" />
         <ChartCard title="ROAS por campaña" data={chartData} dataKey="roas" color="#8b5cf6" />
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-2">
+        <AreaCard title="Evolucion diaria: inversion" data={dailyChart} />
+        <ChartCard title="Dispositivos: inversion" data={deviceChart} dataKey="cost" color="#f59e0b" />
+      </div>
+
+      <div className="rounded-2xl border bg-card p-4">
+        <h3 className="mb-3 font-bold">Keywords con mayor inversion</h3>
+        {topKeywords.length === 0 ? <p className="text-sm text-muted-foreground">Sin keywords sincronizadas todavía.</p> : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {topKeywords.map(k => (
+              <div key={`${k.keyword}-${k.campaign_name}`} className="rounded-xl border bg-background/60 p-3">
+                <p className="truncate font-semibold">{k.keyword}</p>
+                <p className="truncate text-xs text-muted-foreground">{k.campaign_name} · {k.match_type}</p>
+                <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                  <span>{money(k.cost)}</span><span>{num(k.conversions)} conv.</span><span>CPC {money(k.cpc)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl border border-violet-500/30 bg-violet-500/5 p-4">
@@ -343,6 +388,10 @@ function InsightCard({ title, value, subtitle, good, danger }: { title: string; 
 
 function ChartCard({ title, data, dataKey, color }: { title: string; data: any[]; dataKey: string; color: string }) {
   return <div className="rounded-2xl border bg-card p-4"><h3 className="mb-4 font-bold">{title}</h3><div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={data}><CartesianGrid strokeDasharray="3 3" opacity={0.15} /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey={dataKey} radius={[8, 8, 0, 0]}>{data.map((_, i) => <Cell key={i} fill={color} />)}</Bar></BarChart></ResponsiveContainer></div></div>;
+}
+
+function AreaCard({ title, data }: { title: string; data: any[] }) {
+  return <div className="rounded-2xl border bg-card p-4"><h3 className="mb-4 font-bold">{title}</h3><div className="h-64"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data}><CartesianGrid strokeDasharray="3 3" opacity={0.15} /><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Area type="monotone" dataKey="cost" stroke="#22d3ee" fill="#22d3ee" fillOpacity={0.2} /></AreaChart></ResponsiveContainer></div></div>;
 }
 
 function RoasBadge({ value }: { value: number }) {
