@@ -34,6 +34,7 @@ type DailyMetric = GoogleCampaign & { date: string };
 type KeywordMetric = { keyword: string; campaign_name: string; match_type: string; cost: number; clicks: number; conversions: number; cpc: number };
 type SegmentMetric = { segment_type: string; segment_value: string; campaign_name: string; cost: number; conversions: number };
 type Ga4Daily = { date: string; source_medium: string; sessions: number; total_users: number; conversions: number; total_revenue: number; engagement_rate: number };
+type MetaCampaign = { campaign_name: string; spend: number; impressions: number; reach: number; results: number; cost_per_result: number };
 
 const sections = [
   { title: 'Resumen general', icon: BarChart3, text: 'Inversion, conversiones, ROAS, CPA, clics y comparativas por dia, semana y mes.' },
@@ -52,6 +53,7 @@ export default function DataCenterPage() {
   const [saving, setSaving] = useState(false);
   const [syncingGoogle, setSyncingGoogle] = useState(false);
   const [syncingGa4, setSyncingGa4] = useState(false);
+  const [syncingMeta, setSyncingMeta] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [message, setMessage] = useState('');
   const [campaigns, setCampaigns] = useState<GoogleCampaign[]>([]);
@@ -59,6 +61,7 @@ export default function DataCenterPage() {
   const [keywords, setKeywords] = useState<KeywordMetric[]>([]);
   const [segments, setSegments] = useState<SegmentMetric[]>([]);
   const [ga4Daily, setGa4Daily] = useState<Ga4Daily[]>([]);
+  const [metaCampaigns, setMetaCampaigns] = useState<MetaCampaign[]>([]);
   const [range, setRange] = useState<'month' | '30d' | '90d'>('month');
   const selected = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
@@ -91,6 +94,15 @@ export default function DataCenterPage() {
       .then(r => r.json())
       .then(json => { setCampaigns(json.data?.campaigns || []); setDaily(json.data?.daily || []); setKeywords(json.data?.keywords || []); setSegments(json.data?.segments || []); })
       .catch(() => { setCampaigns([]); setDaily([]); setKeywords([]); setSegments([]); });
+  }, [clientId, range]);
+
+  useEffect(() => {
+    if (!clientId) return;
+    const month = range === 'month' ? `&month=${new Date().toISOString().slice(0, 7)}` : '';
+    fetch(`/api/meta-ads?client_id=${clientId}&view=mensual${month}`)
+      .then(r => r.json())
+      .then(json => setMetaCampaigns(json.data?.campaigns || []))
+      .catch(() => setMetaCampaigns([]));
   }, [clientId, range]);
 
   useEffect(() => {
@@ -138,6 +150,8 @@ export default function DataCenterPage() {
     return acc;
   }, {})).sort((a: any, b: any) => b.sessions - a.sessions).slice(0, 8);
   const ga4Totals = ga4Daily.reduce((acc, r) => ({ sessions: acc.sessions + Number(r.sessions || 0), users: acc.users + Number(r.total_users || 0), conversions: acc.conversions + Number(r.conversions || 0), revenue: acc.revenue + Number(r.total_revenue || 0) }), { sessions: 0, users: 0, conversions: 0, revenue: 0 });
+  const metaTotals = metaCampaigns.reduce((acc, c) => ({ spend: acc.spend + Number(c.spend || 0), impressions: acc.impressions + Number(c.impressions || 0), reach: acc.reach + Number(c.reach || 0), results: acc.results + Number(c.results || 0) }), { spend: 0, impressions: 0, reach: 0, results: 0 });
+  const metaChart = metaCampaigns.map(c => ({ name: shortName(c.campaign_name), spend: Number(c.spend || 0), results: Number(c.results || 0) }));
   const now = new Date();
   const last7Start = new Date(now); last7Start.setDate(now.getDate() - 6);
   const prev7Start = new Date(now); prev7Start.setDate(now.getDate() - 13);
@@ -241,6 +255,23 @@ export default function DataCenterPage() {
     }
   };
 
+  const syncMeta = async () => {
+    if (!clientId) return;
+    setSyncingMeta(true);
+    setMessage('');
+    try {
+      const res = await fetch('/api/integrations/meta-ads/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ client_id: clientId }) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Error');
+      setMessage(`Meta Ads sincronizado: ${json.data.inserted} campañas`);
+      const meta = await fetch(`/api/meta-ads?client_id=${clientId}&view=mensual&month=${new Date().toISOString().slice(0, 7)}`).then(r => r.json());
+      setMetaCampaigns(meta.data?.campaigns || []);
+      const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
+      setConfig(cfg.data || null);
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'No se pudo sincronizar Meta'); }
+    finally { setSyncingMeta(false); }
+  };
+
   if (!hasModuleAccess(user, 'datos')) {
     return <NoAccess message="No tienes permiso para acceder al Centro de Datos." />;
   }
@@ -305,6 +336,9 @@ export default function DataCenterPage() {
           <button onClick={syncGa4} disabled={!config?.ga4_property_id || syncingGa4 || user?.role === 'client'} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-50">
             {syncingGa4 ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sincronizar GA4
           </button>
+          <button onClick={syncMeta} disabled={!config?.meta_ad_account_id || syncingMeta || user?.role === 'client'} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-50">
+            {syncingMeta ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sincronizar Meta
+          </button>
         </div>
       </div>
 
@@ -361,6 +395,18 @@ export default function DataCenterPage() {
       <div className="rounded-2xl border bg-card p-4">
         <h3 className="mb-4 font-bold">Canales GA4</h3>
         {channels.length === 0 ? <p className="text-sm text-muted-foreground">Sin datos GA4 sincronizados todavía.</p> : <ChartCard title="Sesiones por canal" data={channels} dataKey="sessions" color="#10b981" />}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <Metric label="Inversion Meta" value={money(metaTotals.spend)} icon={<DollarSign className="h-4 w-4" />} tone="blue" />
+        <Metric label="Resultados Meta" value={num(metaTotals.results)} icon={<Target className="h-4 w-4" />} tone="violet" />
+        <Metric label="Alcance Meta" value={num(metaTotals.reach)} icon={<Zap className="h-4 w-4" />} tone="cyan" />
+        <Metric label="CPR Meta" value={metaTotals.results > 0 ? money(metaTotals.spend / metaTotals.results) : '$0'} icon={<TrendingDown className="h-4 w-4" />} tone="amber" />
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-2">
+        <ChartCard title="Meta: inversion por campaña" data={metaChart} dataKey="spend" color="#3b82f6" />
+        <ChartCard title="Meta: resultados por campaña" data={metaChart} dataKey="results" color="#a855f7" />
       </div>
 
       <div className="rounded-2xl border bg-card p-4">
