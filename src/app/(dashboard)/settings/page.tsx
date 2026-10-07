@@ -29,6 +29,7 @@ interface ManagedUser {
 
 const MODULE_LABELS: Record<ModuleId, string> = {
   dashboard: 'Centro de Control',
+  datos: 'Centro de Datos',
   wizard: 'Asistente Semanal',
   tareas: 'Tareas',
   equipo: 'Equipo',

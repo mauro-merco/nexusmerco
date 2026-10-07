@@ -10,11 +10,8 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { LangToggle } from '@/components/lang-toggle';
 import {
   LayoutDashboard,
-  Wand2,
   KanbanSquare,
-  Cable,
-  BrainCircuit,
-  BarChart3,
+  DatabaseZap,
   Calendar,
   FileText,
   LogOut,
@@ -30,12 +27,9 @@ import type { NavItem } from '@/lib/types';
 
 const navItems: NavItem[] = [
   { label: 'dashboard', href: '/dashboard', icon: 'LayoutDashboard', moduleId: 'dashboard', roles: ['admin', 'operador', 'client'] },
-  { label: 'wizard', href: '/wizard', icon: 'Wand2', moduleId: 'wizard', roles: ['admin', 'operador'] },
+  { label: 'dataCenter', href: '/datos', icon: 'DatabaseZap', moduleId: 'datos', roles: ['admin', 'operador', 'client'] },
   { label: 'operations', href: '/operations', icon: 'KanbanSquare', moduleId: 'tareas', roles: ['admin', 'operador'] },
   { label: 'team', href: '/team', icon: 'Users2', moduleId: 'equipo', roles: ['admin', 'operador'] },
-  { label: 'analysis', href: '/analysis', icon: 'BarChart3', moduleId: 'analysis', roles: ['admin', 'operador', 'client'] },
-  { label: 'integrations', href: '/integrations', icon: 'Cable', moduleId: 'integrations', roles: ['admin', 'operador'] },
-  { label: 'insights', href: '/insights', icon: 'BrainCircuit', moduleId: 'insights', roles: ['admin', 'operador', 'client'] },
   { label: 'calendar', href: '/calendarios', icon: 'Calendar', moduleId: 'calendarios', roles: ['admin', 'operador', 'client'] },
   { label: 'documents', href: '/documentos', icon: 'FileText', moduleId: 'documentos', roles: ['admin', 'operador', 'client'] },
   { label: 'suggestions', href: '/sugerencias', icon: 'Lightbulb', moduleId: 'sugerencias', roles: ['admin', 'operador', 'client'] },
@@ -44,11 +38,8 @@ const navItems: NavItem[] = [
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
-  Wand2,
   KanbanSquare,
-  BarChart3,
-  Cable,
-  BrainCircuit,
+  DatabaseZap,
   Calendar,
   FileText,
   Settings,

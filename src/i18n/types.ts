@@ -1,7 +1,7 @@
 export type Lang = 'es' | 'en';
 
 export type TranslationKey =
-  | 'nav.dashboard' | 'nav.wizard' | 'nav.operations' | 'nav.clients'
+  | 'nav.dashboard' | 'nav.dataCenter' | 'nav.wizard' | 'nav.operations' | 'nav.clients'
   | 'nav.analysis' | 'nav.integrations' | 'nav.insights' | 'nav.calendar'
   | 'nav.documents' | 'nav.messages' | 'nav.suggestions' | 'nav.development' | 'nav.settings' | 'nav.logout'
   | 'nav.apps'

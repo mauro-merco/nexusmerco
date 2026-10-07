@@ -1,6 +1,7 @@
 export const en = {
   nav: {
     dashboard: 'Dashboard',
+    dataCenter: 'Data Center',
     wizard: 'Weekly Wizard',
     operations: 'Tasks',
     team: 'Team',

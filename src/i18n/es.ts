@@ -1,6 +1,7 @@
 export const es = {
   nav: {
     dashboard: 'Centro de Control',
+    dataCenter: 'Centro de Datos',
     wizard: 'Asistente Semanal',
     operations: 'Tareas',
     team: 'Equipo',
