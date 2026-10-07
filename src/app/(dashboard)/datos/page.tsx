@@ -90,8 +90,13 @@ export default function DataCenterPage() {
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ client_id: clientId }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Error');
+      const text = await res.text();
+      let json: any = null;
+      try { json = text ? JSON.parse(text) : null; } catch { /* show raw response below */ }
+      if (!res.ok || !json) {
+        const detail = json?.error || text.slice(0, 180) || res.statusText;
+        throw new Error(`Sync falló (${res.status}): ${detail}`);
+      }
       setMessage(`Google Ads sincronizado: ${json.data.inserted} campañas`);
       const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setConfig(cfg.data || null);
