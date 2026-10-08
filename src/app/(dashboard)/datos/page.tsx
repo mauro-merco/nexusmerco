@@ -35,6 +35,7 @@ type KeywordMetric = { keyword: string; campaign_name: string; match_type: strin
 type SegmentMetric = { segment_type: string; segment_value: string; campaign_name: string; cost: number; conversions: number };
 type Ga4Daily = { date: string; source_medium: string; sessions: number; total_users: number; conversions: number; total_revenue: number; engagement_rate: number };
 type MetaCampaign = { campaign_name: string; spend: number; impressions: number; reach: number; results: number; cost_per_result: number };
+type MetaAccount = { id: string; name: string; account_id?: string; currency?: string; account_status?: number };
 
 const sections = [
   { title: 'Resumen general', icon: BarChart3, text: 'Inversion, conversiones, ROAS, CPA, clics y comparativas por dia, semana y mes.' },
@@ -62,6 +63,7 @@ export default function DataCenterPage() {
   const [segments, setSegments] = useState<SegmentMetric[]>([]);
   const [ga4Daily, setGa4Daily] = useState<Ga4Daily[]>([]);
   const [metaCampaigns, setMetaCampaigns] = useState<MetaCampaign[]>([]);
+  const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [range, setRange] = useState<'month' | '30d' | '90d'>('month');
   const selected = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
@@ -90,29 +92,37 @@ export default function DataCenterPage() {
   useEffect(() => {
     if (!clientId) return;
     const month = range === 'month' ? `&month=${new Date().toISOString().slice(0, 7)}` : '';
-    fetch(`/api/google-ads?client_id=${clientId}&view=mensual${month}`)
+    fetch(`/api/google-ads?client_id=${clientId}&view=mensual${month}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then(r => r.json())
       .then(json => { setCampaigns(json.data?.campaigns || []); setDaily(json.data?.daily || []); setKeywords(json.data?.keywords || []); setSegments(json.data?.segments || []); })
       .catch(() => { setCampaigns([]); setDaily([]); setKeywords([]); setSegments([]); });
-  }, [clientId, range]);
+  }, [clientId, range, token]);
+
+  useEffect(() => {
+    if (!token || user?.role === 'client') return;
+    fetch('/api/integrations/meta-ads/accounts', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(json => setMetaAccounts(json.data || []))
+      .catch(() => setMetaAccounts([]));
+  }, [token, user?.role]);
 
   useEffect(() => {
     if (!clientId) return;
     const month = range === 'month' ? `&month=${new Date().toISOString().slice(0, 7)}` : '';
-    fetch(`/api/meta-ads?client_id=${clientId}&view=mensual${month}`)
+    fetch(`/api/meta-ads?client_id=${clientId}&view=mensual${month}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then(r => r.json())
       .then(json => setMetaCampaigns(json.data?.campaigns || []))
       .catch(() => setMetaCampaigns([]));
-  }, [clientId, range]);
+  }, [clientId, range, token]);
 
   useEffect(() => {
     if (!clientId) return;
     const month = range === 'month' ? `&month=${new Date().toISOString().slice(0, 7)}` : '';
-    fetch(`/api/analytics?client_id=${clientId}${month}`)
+    fetch(`/api/analytics?client_id=${clientId}${month}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then(r => r.json())
       .then(json => setGa4Daily(json.daily || []))
       .catch(() => setGa4Daily([]));
-  }, [clientId, range]);
+  }, [clientId, range, token]);
 
   const totals = campaigns.reduce((acc, c) => ({
     cost: acc.cost + Number(c.cost || 0),
@@ -217,7 +227,7 @@ export default function DataCenterPage() {
       setMessage(`Google Ads sincronizado: ${json.data.inserted} campañas`);
       const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setConfig(cfg.data || null);
-      const ads = await fetch(`/api/google-ads?client_id=${clientId}&view=mensual`).then(r => r.json());
+      const ads = await fetch(`/api/google-ads?client_id=${clientId}&view=mensual`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setCampaigns(ads.data?.campaigns || []);
       setDaily(ads.data?.daily || []);
       setKeywords(ads.data?.keywords || []);
@@ -246,7 +256,7 @@ export default function DataCenterPage() {
       setMessage(`GA4 sincronizado: ${json.data.inserted} filas`);
       const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setConfig(cfg.data || null);
-      const analytics = await fetch(`/api/analytics?client_id=${clientId}&month=${new Date().toISOString().slice(0, 7)}`).then(r => r.json());
+      const analytics = await fetch(`/api/analytics?client_id=${clientId}&month=${new Date().toISOString().slice(0, 7)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setGa4Daily(analytics.daily || []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'No se pudo sincronizar GA4');
@@ -264,7 +274,7 @@ export default function DataCenterPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Error');
       setMessage(`Meta Ads sincronizado: ${json.data.inserted} campañas`);
-      const meta = await fetch(`/api/meta-ads?client_id=${clientId}&view=mensual&month=${new Date().toISOString().slice(0, 7)}`).then(r => r.json());
+      const meta = await fetch(`/api/meta-ads?client_id=${clientId}&view=mensual&month=${new Date().toISOString().slice(0, 7)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setMetaCampaigns(meta.data?.campaigns || []);
       const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setConfig(cfg.data || null);
@@ -317,6 +327,20 @@ export default function DataCenterPage() {
         <Field label="Meta Ad Account ID" value={config?.meta_ad_account_id || ''} disabled={user?.role === 'client'} onChange={value => setConfig(c => c ? { ...c, meta_ad_account_id: value } : c)} placeholder="act_123456789" />
         <Field label="GA4 Property ID" value={config?.ga4_property_id || ''} disabled={user?.role === 'client'} onChange={value => setConfig(c => c ? { ...c, ga4_property_id: value } : c)} placeholder="4021710339" />
       </div>
+
+      {user?.role !== 'client' && metaAccounts.length > 0 && (
+        <div className="rounded-2xl border bg-card p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cuentas Meta disponibles</p>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {metaAccounts.map(acc => (
+              <button key={acc.id} onClick={() => setConfig(c => c ? { ...c, meta_ad_account_id: acc.id } : c)} className="rounded-xl border bg-background/60 p-3 text-left transition-colors hover:border-primary/50">
+                <p className="font-semibold truncate">{acc.name}</p>
+                <p className="text-xs text-muted-foreground">{acc.id} · {acc.currency || ''}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-3">
         <ConnectionCard title="Google Ads" ready={!!config?.google_ads_customer_id} missing="Customer ID por cliente" lastSync={config?.last_google_ads_sync_at} />

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser, safeError } from '@/lib/api-security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -22,6 +23,9 @@ export async function GET(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!canAccessClient(user, client_id)) return NextResponse.json({ error: 'Sin permisos para este cliente' }, { status: 403 });
 
     let query = supabase.from('ga_campaigns').select('*').eq('client_id', client_id);
     if (view === 'mensual') query = query.is('week_start', null);
@@ -57,7 +61,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: { campaigns: campaigns || [], keywords: keywords || [], assetGroups: assetGroups || [], daily: daily || [], segments: segments || [] } });
   } catch (err) {
     console.error('google-ads GET error:', err);
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+    return NextResponse.json({ error: safeError(err) }, { status: 500 });
   }
 }
 

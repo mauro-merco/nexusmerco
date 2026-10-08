@@ -1,28 +1,18 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { decodeJwt } from 'jose';
+import { assertSyncRateLimit, canAccessClient, getAdminClient, getRequestUser, isStaff, logIntegrationSync, safeError } from '@/lib/api-security';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-
-function userId(request: Request) {
-  const token = (request.headers.get('authorization') || '').replace('Bearer ', '');
-  if (!token) return null;
-  try { return String(decodeJwt(token).sub || ''); } catch { return null; }
-}
-
-async function canSync(id: string) {
-  const { data } = await supabase.from('users').select('role').eq('id', id).single();
-  return data?.role === 'admin' || data?.role === 'operador';
-}
+const supabase = getAdminClient();
 
 export async function POST(request: Request) {
+  let bodyPayload: any = {};
   try {
-    const uid = userId(request);
-    if (!uid) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    if (!(await canSync(uid))) return NextResponse.json({ error: 'Sin permisos' }, { status: 403 });
-
-    const { client_id, start_date, end_date } = await request.json();
+    bodyPayload = await request.json();
+    const { client_id, start_date, end_date } = bodyPayload;
     if (!client_id) return NextResponse.json({ error: 'Falta client_id' }, { status: 400 });
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!isStaff(user) || !canAccessClient(user, client_id)) return NextResponse.json({ error: 'Sin permisos' }, { status: 403 });
+    await assertSyncRateLimit(supabase, client_id, 'meta_ads');
 
     const { data: client, error } = await supabase.from('clients').select('meta_ad_account_id').eq('id', client_id).single();
     if (error) throw error;
@@ -67,8 +57,13 @@ export async function POST(request: Request) {
       if (insertError) throw insertError;
     }
     await supabase.from('clients').update({ last_meta_ads_sync_at: new Date().toISOString() }).eq('id', client_id);
+    await logIntegrationSync(supabase, { clientId: client_id, userId: user.id, platform: 'meta_ads', status: 'success', rows: rows.length });
     return NextResponse.json({ data: { inserted: rows.length } });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Error Meta sync' }, { status: 500 });
+    try {
+      const user = await getRequestUser(request, supabase).catch(() => null);
+      if (bodyPayload.client_id) await logIntegrationSync(supabase, { clientId: bodyPayload.client_id, userId: user?.id || null, platform: 'meta_ads', status: 'error', message: safeError(e) });
+    } catch { /* ignore */ }
+    return NextResponse.json({ error: safeError(e, 'Error Meta sync') }, { status: 500 });
   }
 }
