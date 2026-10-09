@@ -20,7 +20,12 @@ export function CalendarPillBody({ idea, label }: { idea: SocialIdea; label?: st
 
   return (
     <>
-      {idea.needs_client_material && (
+      {idea.status === 'espera_cliente' && (
+        <span className="mb-1 flex w-full items-center gap-1 rounded-md bg-red-600 px-1.5 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
+          <AlertTriangle className="h-3 w-3" /> En espera del cliente
+        </span>
+      )}
+      {idea.needs_client_material && idea.status !== 'espera_cliente' && (
         <span className="mb-1 flex w-full items-center gap-1 rounded-md bg-red-500 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm">
           <AlertTriangle className="h-2.5 w-2.5" /> Necesito material
         </span>
@@ -52,6 +57,7 @@ export function CalendarPillBody({ idea, label }: { idea: SocialIdea; label?: st
 
 function statusHighlight(status: SocialIdea['status']) {
   if (status === 'diseno_listo') return { label: 'Diseño listo', className: 'border-emerald-300 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', iconClass: 'text-emerald-600 dark:text-emerald-300', fill: false };
+  if (status === 'espera_cliente') return { label: 'Cliente pendiente', className: 'border-red-500 bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 text-[11px]', iconClass: 'text-red-600 dark:text-red-300', fill: false };
   if (status === 'aprobada') return { label: 'Aprobado', className: 'border-green-400 bg-green-200 text-green-800 dark:bg-green-500/25 dark:text-green-200 text-[11px]', iconClass: 'text-cyan-500', fill: false };
   if (status === 'posteado') return { label: 'Posteado', className: 'border-green-500 bg-green-500 text-white text-[11px]', iconClass: 'text-white', fill: true };
   return null;

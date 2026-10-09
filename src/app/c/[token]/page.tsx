@@ -228,7 +228,7 @@ function PublicIdeaDot({ idea, onClick }: { idea: SocialIdea; onClick: () => voi
       title={calendarPillTitle(idea, idea.eje_contenido || idea.title)}
       className={cn(
         'flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
-        isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
+        idea.status === 'espera_cliente' ? 'border border-red-500/60 bg-red-500/20 text-red-700 dark:text-red-200 shadow-sm shadow-red-500/20' : isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
     >

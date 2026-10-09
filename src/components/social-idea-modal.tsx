@@ -171,9 +171,14 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
     setTimeout(() => setCopiedLink(false), 1800);
   }, [calendarType, idea.client_id, idea.id, idea.publish_date]);
 
+  const modalState = modalStatusStyle(status);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl">
+      <DialogContent className={cn('sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl border-2', modalState.border)}>
+        <div className={cn('mx-[-1.5rem] mt-[-1.5rem] px-6 py-3 text-sm font-black uppercase tracking-wide', modalState.banner)}>
+          {modalState.label}
+        </div>
         {/* Header */}
         <div className="flex items-start justify-between gap-4 shrink-0 pr-10">
           <div className="flex-1 min-w-0">
@@ -415,4 +420,14 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
       </DialogContent>
     </Dialog>
   );
+}
+
+function modalStatusStyle(status: IdeaStatus) {
+  if (status === 'espera_cliente') return { label: '⚠ EN ESPERA DEL CLIENTE', border: 'border-red-500/70', banner: 'bg-red-600 text-white' };
+  if (status === 'necesita_modificaciones') return { label: 'NECESITA MODIFICACIONES', border: 'border-orange-500/70', banner: 'bg-orange-500 text-white' };
+  if (status === 'diseno_listo') return { label: '✓ DISEÑO LISTO', border: 'border-cyan-400/70', banner: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-200' };
+  if (status === 'aprobada') return { label: '✓ APROBADO', border: 'border-emerald-500/70', banner: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-200' };
+  if (status === 'posteado') return { label: '✓ POSTEADO', border: 'border-green-600/80', banner: 'bg-green-600 text-white' };
+  if (status === 'en_revision') return { label: 'EN REVISIÓN', border: 'border-amber-400/60', banner: 'bg-amber-400/15 text-amber-700 dark:text-amber-200' };
+  return { label: STATUS_CONFIG[status]?.label || status, border: 'border-border', banner: 'bg-muted/50 text-muted-foreground' };
 }

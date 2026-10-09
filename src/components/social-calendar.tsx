@@ -84,7 +84,7 @@ function DraggableDot({ idea, onClick }: { idea: SocialIdea; onClick: () => void
       title={calendarPillTitle(idea)}
       className={cn(
         'flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
-        isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
+        idea.status === 'espera_cliente' ? 'border border-red-500/60 bg-red-500/20 text-red-700 dark:text-red-200 shadow-sm shadow-red-500/20' : isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
     >
@@ -143,7 +143,7 @@ function DragOverlayPill({ idea }: { idea: SocialIdea }) {
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
   const isPublished = idea.status === 'posteado';
   return (
-    <div className={cn('flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold shadow-xl max-w-[160px] truncate', isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass])}>
+    <div className={cn('flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold shadow-xl max-w-[160px] truncate', idea.status === 'espera_cliente' ? 'border border-red-500/60 bg-red-500/20 text-red-700 dark:text-red-200' : isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass])}>
       <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isPublished ? 'bg-green-500' : ptConfig.dotColor)} />
       <span className="truncate">{idea.title}</span>
     </div>
