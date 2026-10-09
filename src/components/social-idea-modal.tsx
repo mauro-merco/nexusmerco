@@ -29,6 +29,7 @@ const POST_TYPES: { value: PostType; label: string }[] = [
   { value: 'historia', label: 'Historia' },
   { value: 'reel', label: 'Reel' },
   { value: 'carrusel', label: 'Carrusel' },
+  { value: 'posteo', label: 'Posteo' },
   { value: 'sugerencia', label: 'Sugerencia' },
 ];
 
@@ -176,7 +177,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn('sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl border-2', modalState.border)}>
-        <div className={cn('mx-[-1.5rem] mt-[-1.5rem] px-6 py-3 text-sm font-black uppercase tracking-wide', modalState.banner)}>
+        <div className={cn('mx-[-1.5rem] mt-[-1.5rem] px-6 py-3 text-sm font-black uppercase tracking-wide shadow-sm', modalState.banner)}>
           {modalState.label}
         </div>
         {/* Header */}
@@ -423,11 +424,16 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 }
 
 function modalStatusStyle(status: IdeaStatus) {
-  if (status === 'espera_cliente') return { label: '⚠ EN ESPERA DEL CLIENTE', border: 'border-red-500/70', banner: 'bg-red-600 text-white' };
-  if (status === 'necesita_modificaciones') return { label: 'NECESITA MODIFICACIONES', border: 'border-orange-500/70', banner: 'bg-orange-500 text-white' };
-  if (status === 'diseno_listo') return { label: '✓ DISEÑO LISTO', border: 'border-cyan-400/70', banner: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-200' };
-  if (status === 'aprobada') return { label: '✓ APROBADO', border: 'border-emerald-500/70', banner: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-200' };
+  if (status === 'borrador') return { label: 'BORRADOR', border: 'border-gray-400/70', banner: 'bg-gray-500/15 text-gray-700 dark:text-gray-200' };
+  if (status === 'en_revision') return { label: 'EN REVISIÓN', border: 'border-amber-400/70', banner: 'bg-amber-400/20 text-amber-800 dark:text-amber-100' };
+  if (status === 'espera_cliente') return { label: '⚠ EN ESPERA DEL CLIENTE', border: 'border-red-500/80', banner: 'bg-red-600 text-white' };
+  if (status === 'necesita_modificaciones') return { label: 'NECESITA MODIFICACIONES', border: 'border-orange-500/80', banner: 'bg-orange-500 text-white' };
+  if (status === 'idea_aprobada') return { label: '✓ IDEA APROBADA', border: 'border-teal-500/75', banner: 'bg-teal-500/20 text-teal-800 dark:text-teal-100' };
+  if (status === 'idea_rechazada') return { label: 'IDEA RECHAZADA', border: 'border-rose-500/80', banner: 'bg-rose-600 text-white' };
+  if (status === 'listo_para_disenar') return { label: 'LISTO PARA DISEÑAR', border: 'border-indigo-500/75', banner: 'bg-indigo-500/20 text-indigo-800 dark:text-indigo-100' };
+  if (status === 'diseno_listo') return { label: '✓ DISEÑO LISTO', border: 'border-cyan-400/75', banner: 'bg-cyan-500/20 text-cyan-800 dark:text-cyan-100' };
+  if (status === 'aprobada') return { label: '✓ APROBADO', border: 'border-emerald-500/80', banner: 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-100' };
+  if (status === 'listo_para_postear') return { label: 'LISTO PARA POSTEAR', border: 'border-violet-500/80', banner: 'bg-gradient-to-r from-blue-600/25 via-indigo-600/25 to-violet-600/30 text-violet-900 dark:text-violet-100' };
   if (status === 'posteado') return { label: '✓ POSTEADO', border: 'border-green-600/80', banner: 'bg-green-600 text-white' };
-  if (status === 'en_revision') return { label: 'EN REVISIÓN', border: 'border-amber-400/60', banner: 'bg-amber-400/15 text-amber-700 dark:text-amber-200' };
-  return { label: STATUS_CONFIG[status]?.label || status, border: 'border-border', banner: 'bg-muted/50 text-muted-foreground' };
+  return { label: String(status), border: 'border-border', banner: 'bg-muted/50 text-muted-foreground' };
 }

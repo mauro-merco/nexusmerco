@@ -120,7 +120,7 @@ export interface NavItem {
   roles: UserRole[];
 }
 
-export type PostType = 'historia' | 'reel' | 'carrusel' | 'sugerencia';
+export type PostType = 'historia' | 'reel' | 'carrusel' | 'posteo' | 'sugerencia';
 export type IdeaStatus = 'borrador' | 'en_revision' | 'espera_cliente' | 'necesita_modificaciones' | 'idea_aprobada' | 'idea_rechazada' | 'listo_para_disenar' | 'diseno_listo' | 'aprobada' | 'listo_para_postear' | 'posteado';
 export type Responsable = 'nico' | 'mau';
 export type WorkRole = 'lead' | 'executor' | 'reviewer';
