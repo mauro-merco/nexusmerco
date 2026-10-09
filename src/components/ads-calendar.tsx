@@ -25,6 +25,7 @@ import { CalendarSearch } from '@/components/calendar-search';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
+import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import type { SocialIdea, IdeaStatus, EcommerceDate, PostType } from '@/lib/types';
 import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
 import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
@@ -530,6 +531,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
           />
 
           <CalendarMonthFolder clientId={clientId} calendarType="ads" month={monthStr} />
+          <CalendarGeneralFolders clientId={clientId} />
 
           {isSearching ? null : viewMode === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>

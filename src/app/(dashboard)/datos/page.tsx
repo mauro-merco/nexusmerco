@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DatabaseZap, RefreshCw, CheckCircle2, AlertTriangle, BarChart3, BrainCircuit, GitBranch, Search, Save, Loader2, TrendingUp, TrendingDown, MousePointerClick, Target, DollarSign, Zap } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, AreaChart, Area } from 'recharts';
 import { useAuthStore } from '@/store/auth-store';
@@ -35,6 +35,7 @@ type KeywordMetric = { keyword: string; campaign_name: string; match_type: strin
 type SegmentMetric = { segment_type: string; segment_value: string; campaign_name: string; cost: number; conversions: number };
 type Ga4Daily = { date: string; source_medium: string; sessions: number; total_users: number; conversions: number; total_revenue: number; engagement_rate: number };
 type MetaCampaign = { campaign_name: string; spend: number; impressions: number; reach: number; results: number; cost_per_result: number };
+type SyncLog = { id: string; platform: string; status: 'success' | 'error'; rows_synced: number; message: string; created_at: string };
 type MetaAccount = { id: string; name: string; account_id?: string; currency?: string; account_status?: number };
 
 const sections = [
@@ -64,6 +65,7 @@ export default function DataCenterPage() {
   const [ga4Daily, setGa4Daily] = useState<Ga4Daily[]>([]);
   const [metaCampaigns, setMetaCampaigns] = useState<MetaCampaign[]>([]);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
+  const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [range, setRange] = useState<'month' | '30d' | '90d'>('month');
   const selected = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
@@ -97,6 +99,16 @@ export default function DataCenterPage() {
       .then(json => { setCampaigns(json.data?.campaigns || []); setDaily(json.data?.daily || []); setKeywords(json.data?.keywords || []); setSegments(json.data?.segments || []); })
       .catch(() => { setCampaigns([]); setDaily([]); setKeywords([]); setSegments([]); });
   }, [clientId, range, token]);
+
+  const fetchSyncLogs = useCallback(() => {
+    if (!clientId) return;
+    fetch(`/api/integrations/sync-logs?client_id=${clientId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.json())
+      .then(json => setSyncLogs(json.data || []))
+      .catch(() => setSyncLogs([]));
+  }, [clientId, token]);
+
+  useEffect(() => { fetchSyncLogs(); }, [fetchSyncLogs]);
 
   useEffect(() => {
     if (!token || user?.role === 'client') return;
@@ -227,6 +239,7 @@ export default function DataCenterPage() {
       setMessage(`Google Ads sincronizado: ${json.data.inserted} campañas`);
       const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setConfig(cfg.data || null);
+      fetchSyncLogs();
       const ads = await fetch(`/api/google-ads?client_id=${clientId}&view=mensual`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setCampaigns(ads.data?.campaigns || []);
       setDaily(ads.data?.daily || []);
@@ -256,6 +269,7 @@ export default function DataCenterPage() {
       setMessage(`GA4 sincronizado: ${json.data.inserted} filas`);
       const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setConfig(cfg.data || null);
+      fetchSyncLogs();
       const analytics = await fetch(`/api/analytics?client_id=${clientId}&month=${new Date().toISOString().slice(0, 7)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setGa4Daily(analytics.daily || []);
     } catch (e) {
@@ -278,6 +292,7 @@ export default function DataCenterPage() {
       setMetaCampaigns(meta.data?.campaigns || []);
       const cfg = await fetch(`/api/clients/${clientId}/integrations`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.json());
       setConfig(cfg.data || null);
+      fetchSyncLogs();
     } catch (e) { setMessage(e instanceof Error ? e.message : 'No se pudo sincronizar Meta'); }
     finally { setSyncingMeta(false); }
   };
@@ -364,6 +379,27 @@ export default function DataCenterPage() {
             {syncingMeta ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Sincronizar Meta
           </button>
         </div>
+      </div>
+
+      <div className="rounded-2xl border bg-card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-bold">Historial de sincronizaciones</h3>
+          <button onClick={fetchSyncLogs} className="text-xs text-primary hover:underline">Actualizar</button>
+        </div>
+        {syncLogs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin sincronizaciones registradas.</p>
+        ) : (
+          <div className="space-y-2">
+            {syncLogs.map(log => (
+              <div key={log.id} className="flex items-center gap-3 rounded-xl border bg-background/60 p-3 text-sm">
+                <span className={cn('h-2.5 w-2.5 rounded-full', log.status === 'success' ? 'bg-emerald-500' : 'bg-red-500')} />
+                <span className="font-semibold uppercase">{log.platform}</span>
+                <span className="text-muted-foreground">{log.status === 'success' ? `${log.rows_synced} filas` : log.message}</span>
+                <span className="ml-auto text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString('es-AR')}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">

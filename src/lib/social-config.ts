@@ -45,6 +45,7 @@ export const POST_TYPE_CONFIG: Record<PostType, { label: string; icon: LucideIco
 export const STATUS_CONFIG: Record<IdeaStatus, { label: string; colorClass: string; dotColor: string; group: number }> = {
   borrador: { label: 'Borrador', colorClass: 'bg-gray-400/20 text-gray-500 border-gray-400/30', dotColor: 'bg-gray-400', group: 1 },
   en_revision: { label: 'En Revisión', colorClass: 'bg-amber-400/20 text-amber-600 border-amber-400/30', dotColor: 'bg-amber-400', group: 1 },
+  espera_cliente: { label: 'En espera del cliente', colorClass: 'bg-sky-400/20 text-sky-600 border-sky-400/30', dotColor: 'bg-sky-400', group: 1 },
   necesita_modificaciones: { label: 'Necesita Modificaciones', colorClass: 'bg-orange-400/20 text-orange-600 border-orange-400/30', dotColor: 'bg-orange-400', group: 1 },
   idea_aprobada: { label: 'Idea Aprobada', colorClass: 'bg-teal-400/20 text-teal-600 border-teal-400/30', dotColor: 'bg-teal-400', group: 1 },
   idea_rechazada: { label: 'Idea Rechazada', colorClass: 'bg-rose-400/20 text-rose-600 border-rose-400/30', dotColor: 'bg-rose-400', group: 1 },
@@ -63,6 +64,7 @@ export const STATUS_CONFIG: Record<IdeaStatus, { label: string; colorClass: stri
 export const IDEA_STATUS_ORDER: IdeaStatus[] = [
   'borrador',
   'en_revision',
+  'espera_cliente',
   'necesita_modificaciones',
   'idea_aprobada',
   'idea_rechazada',

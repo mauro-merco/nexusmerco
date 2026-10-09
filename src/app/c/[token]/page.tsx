@@ -12,6 +12,7 @@ import { CalendarComments } from '@/components/calendar-comments';
 import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
 import { CalendarSearch } from '@/components/calendar-search';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
+import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment, User as NexusUser } from '@/lib/types';
@@ -708,6 +709,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         />
 
         {viewMonth && <CalendarMonthFolder clientId={data.client.id} calendarType={data.calendar_type} month={viewMonth} />}
+        <CalendarGeneralFolders clientId={data.client.id} />
 
         {search.trim().length >= 2 ? null : (
           <Card className="border-0 ring-0 shadow-none rounded-3xl bg-card">
