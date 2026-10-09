@@ -45,10 +45,10 @@ export const POST_TYPE_CONFIG: Record<PostType, { label: string; icon: LucideIco
 export const STATUS_CONFIG: Record<IdeaStatus, { label: string; colorClass: string; dotColor: string; group: number }> = {
   borrador: { label: 'Borrador', colorClass: 'bg-gray-400/20 text-gray-500 border-gray-400/30', dotColor: 'bg-gray-400', group: 1 },
   en_revision: { label: 'En Revisión', colorClass: 'bg-amber-400/20 text-amber-600 border-amber-400/30', dotColor: 'bg-amber-400', group: 1 },
-  espera_cliente: { label: 'En espera del cliente', colorClass: 'bg-sky-400/20 text-sky-600 border-sky-400/30', dotColor: 'bg-sky-400', group: 1 },
+  espera_cliente: { label: 'En espera del cliente', colorClass: 'bg-red-500/20 text-red-700 border-red-500/50 dark:text-red-200', dotColor: 'bg-red-500', group: 1 },
   necesita_modificaciones: { label: 'Necesita Modificaciones', colorClass: 'bg-orange-400/20 text-orange-600 border-orange-400/30', dotColor: 'bg-orange-400', group: 1 },
   idea_aprobada: { label: 'Idea Aprobada', colorClass: 'bg-teal-400/20 text-teal-600 border-teal-400/30', dotColor: 'bg-teal-400', group: 1 },
-  idea_rechazada: { label: 'Idea Rechazada', colorClass: 'bg-rose-400/20 text-rose-600 border-rose-400/30', dotColor: 'bg-rose-400', group: 1 },
+  idea_rechazada: { label: 'Idea Rechazada', colorClass: 'bg-rose-500/20 text-rose-700 border-rose-500/40 dark:text-rose-200', dotColor: 'bg-rose-500', group: 1 },
   listo_para_disenar: { label: 'Listo para Diseñar', colorClass: 'bg-indigo-400/20 text-indigo-600 border-indigo-400/30', dotColor: 'bg-indigo-400', group: 2 },
   diseno_listo: { label: 'Diseño listo', colorClass: 'bg-cyan-400/20 text-cyan-600 border-cyan-400/30', dotColor: 'bg-cyan-400', group: 2 },
   aprobada: { label: 'Aprobado', colorClass: 'bg-emerald-400/20 text-emerald-600 border-emerald-400/30', dotColor: 'bg-emerald-400', group: 2 },

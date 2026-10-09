@@ -21,6 +21,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { CalendarComments } from '@/components/calendar-comments';
 import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
+import { CalendarRecentComments } from '@/components/calendar-recent-comments';
 import { CalendarSearch } from '@/components/calendar-search';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
@@ -613,6 +614,17 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
               })}
             </div>
           </div>
+
+          <CalendarRecentComments
+            clientId={clientId}
+            calendarType="ads"
+            month={monthStr}
+            ideas={ideas}
+            onOpenIdea={id => {
+              const idea = ideas.find(i => i.id === id);
+              if (idea) setSelectedIdea(idea);
+            }}
+          />
         </div>
       </div>
 

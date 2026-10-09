@@ -19,6 +19,7 @@ import { useSocialIdeas } from '@/lib/hooks/use-social-ideas';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
 import { CalendarComments } from '@/components/calendar-comments';
 import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
+import { CalendarRecentComments } from '@/components/calendar-recent-comments';
 import { CalendarSearch } from '@/components/calendar-search';
 import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
@@ -508,6 +509,17 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
               })}
             </div>
           </div>
+
+          <CalendarRecentComments
+            clientId={clientId}
+            calendarType="social"
+            month={monthStr}
+            ideas={ideas}
+            onOpenIdea={id => {
+              const idea = ideas.find(i => i.id === id);
+              if (idea) setSelectedIdea(idea);
+            }}
+          />
         </div>
       </div>
 

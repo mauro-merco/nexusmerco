@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarComments } from '@/components/calendar-comments';
 import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
+import { CalendarRecentComments } from '@/components/calendar-recent-comments';
 import { CalendarSearch } from '@/components/calendar-search';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
@@ -712,19 +713,34 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         <CalendarGeneralFolders clientId={data.client.id} />
 
         {search.trim().length >= 2 ? null : (
-          <Card className="border-0 ring-0 shadow-none rounded-3xl bg-card">
-            <CardContent className="p-3 md:p-4">
-              {viewMonth && viewMode === 'month' && (
-                <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                  <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={handleAddNewIdea} />
-                  <DragOverlay>{activeIdea ? <PublicIdeaDot idea={activeIdea} onClick={() => {}} /> : null}</DragOverlay>
-                </DndContext>
-              )}
-              {viewMonth && viewMode === 'list' && (
-                <AgendaList ideas={data.ideas} onIdeaClick={setSelectedIdea} />
-              )}
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+            <Card className="border-0 ring-0 shadow-none rounded-3xl bg-card">
+              <CardContent className="p-3 md:p-4">
+                {viewMonth && viewMode === 'month' && (
+                  <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                    <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={handleAddNewIdea} />
+                    <DragOverlay>{activeIdea ? <PublicIdeaDot idea={activeIdea} onClick={() => {}} /> : null}</DragOverlay>
+                  </DndContext>
+                )}
+                {viewMonth && viewMode === 'list' && (
+                  <AgendaList ideas={data.ideas} onIdeaClick={setSelectedIdea} />
+                )}
+              </CardContent>
+            </Card>
+            <CalendarRecentComments
+              clientId={data.client.id}
+              calendarType={calendarType}
+              month={viewMonth}
+              shareToken={token}
+              guestEmail={viewer?.type === 'guest' ? viewer.email : undefined}
+              viewerAuthToken={viewer?.authToken}
+              ideas={data.ideas}
+              onOpenIdea={id => {
+                const idea = data.ideas.find(item => item.id === id);
+                if (idea) setSelectedIdea(idea);
+              }}
+            />
+          </div>
         )}
 
         <div className="flex flex-wrap gap-3 mt-4 text-[11px]">
