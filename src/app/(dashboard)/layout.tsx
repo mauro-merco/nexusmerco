@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { AIWidget } from '@/components/ai-widget';
@@ -13,7 +14,8 @@ import { ProfileMenu } from '@/components/profile-menu';
 import { SuggestionsFloatingButtons } from '@/components/suggestions-floating-buttons';
 import { useAuthStore } from '@/store/auth-store';
 import { initAuthSync } from '@/lib/auth-sync';
-import { Loader2 } from 'lucide-react';
+import { BookOpenText, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function DashboardLayout({
   children,
@@ -58,6 +60,12 @@ export default function DashboardLayout({
             <GlobalSearch />
           </div>
           <div className="flex items-center gap-2">
+            {(user.role === 'admin' || user.role === 'operador') && (
+              <Button render={<Link href="/blog" />} nativeButton={false} variant="outline" size="sm" className="h-9 rounded-xl border-violet-500/30 bg-violet-500/10 text-violet-700 hover:bg-violet-500/20 dark:text-violet-200">
+                <BookOpenText className="h-4 w-4" />
+                <span className="hidden lg:inline">BLOG DE MERCO</span>
+              </Button>
+            )}
             <MessagesBell />
             <NotificationBell />
             <RemindersBell />

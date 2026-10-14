@@ -37,6 +37,7 @@ export function safeError(error: unknown, fallback = 'Error interno') {
     .replace(/EA[A-Za-z0-9_-]{20,}/g, '[META_TOKEN]')
     .replace(/1\/\/[A-Za-z0-9_-]{20,}/g, '[GOOGLE_REFRESH_TOKEN]')
     .replace(/GOCSPX-[A-Za-z0-9_-]+/g, '[GOOGLE_CLIENT_SECRET]')
+    .replace(/pit-[A-Za-z0-9_-]+/gi, '[VENTRY_TOKEN]')
     .slice(0, 500);
 }
 
