@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRequestUser, isStaff, safeError } from '@/lib/api-security';
-import { getVentryBlogConfig, sanitizeBlogHtml, ventryBlogRequest } from '@/lib/ventry-blog';
+import { buildVentryPostPayload, getVentryBlogConfig, ventryBlogRequest } from '@/lib/ventry-blog';
 
 async function authorize(request: Request) {
   const user = await getRequestUser(request);
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const { locationId, blogId } = getVentryBlogConfig();
     const body = await request.json();
     const title = String(body.title || '').trim();
-    const rawHTML = sanitizeBlogHtml(String(body.rawHTML || '')).trim();
+    const rawHTML = String(body.rawHTML || '').trim();
     const status = String(body.status || 'DRAFT').toUpperCase();
     if (!title) return NextResponse.json({ error: 'El título es obligatorio.' }, { status: 400 });
     if (!rawHTML || rawHTML === '<br>') return NextResponse.json({ error: 'El contenido es obligatorio.' }, { status: 400 });
@@ -50,26 +50,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Elegí una fecha para programar la nota.' }, { status: 400 });
     }
 
-    const text = rawHTML.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    const wordCount = text ? text.split(' ').length : 0;
     const payload = {
-      title,
+      ...buildVentryPostPayload(body, status),
       locationId,
       blogId,
-      rawHTML,
-      status,
-      description: String(body.description || '').trim(),
-      imageUrl: String(body.imageUrl || '').trim(),
-      imageAltText: String(body.imageAltText || '').trim(),
-      urlSlug: String(body.urlSlug || '').trim(),
-      canonicalLink: String(body.canonicalLink || '').trim(),
-      categories: Array.isArray(body.categories) ? body.categories.map(String) : [],
-      tags: Array.isArray(body.tags) ? body.tags.map(String).filter(Boolean) : [],
-      author: body.author ? String(body.author) : undefined,
-      wordCount,
-      readTimeInMinutes: Math.max(1, Math.ceil(wordCount / 220)),
-      archived: false,
-      ...(status === 'SCHEDULED' ? { scheduledAt: new Date(body.scheduledAt).toISOString() } : {}),
       ...(status === 'PUBLISHED' ? { publishedAt: new Date().toISOString() } : {}),
     };
     const created = await ventryBlogRequest('/blogs/posts', { method: 'POST', body: JSON.stringify(payload) });

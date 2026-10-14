@@ -10,9 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { NoAccess } from '@/components/no-access';
 import { cn } from '@/lib/utils';
 import {
-  BookOpenText, CalendarClock, CheckCircle2, Clock3, ExternalLink,
-  FileText, Image as ImageIcon, Loader2, Plus, RefreshCw, Rocket, Search,
-  Send, Tag, UserRound,
+  BookOpenText, CalendarClock, Clock3, ExternalLink, Image as ImageIcon,
+  Loader2, Pencil, Plus, RefreshCw, Rocket, Search, Send, WandSparkles,
 } from 'lucide-react';
 
 type BlogPost = {
@@ -21,27 +20,35 @@ type BlogPost = {
   description?: string;
   urlSlug?: string;
   imageUrl?: string;
+  imageAltText?: string;
+  rawHTML?: string;
+  canonicalLink?: string;
   status: string;
+  author?: string;
+  categories?: string[];
+  tags?: string[];
   publishedAt?: string;
   scheduledAt?: string;
   updatedAt?: string;
 };
 
-type BlogCategory = { _id: string; label: string; urlSlug?: string };
-type BlogAuthor = { _id: string; name: string; imageUrl?: string };
 type BlogData = {
   blog: { id: string; name: string };
   posts: BlogPost[];
   total: number;
-  categories: BlogCategory[];
-  authors: BlogAuthor[];
+  categories: Array<{ _id: string; label: string }>;
+  authors: Array<{ _id: string; name: string }>;
 };
 
+const CANONICAL_BASE = 'https://mercodigital.com.ar/post';
 const STATUS_STYLE: Record<string, string> = {
   DRAFT: 'border-slate-400/30 bg-slate-400/15 text-slate-600 dark:text-slate-300',
   PUBLISHED: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
   SCHEDULED: 'border-violet-500/30 bg-violet-500/15 text-violet-700 dark:text-violet-300',
   ARCHIVED: 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300',
+};
+const STATUS_LABEL: Record<string, string> = {
+  DRAFT: 'Borrador', PUBLISHED: 'Publicada', SCHEDULED: 'Programada', ARCHIVED: 'Archivada',
 };
 
 function slugify(value: string) {
@@ -53,35 +60,47 @@ function formatDate(value?: string) {
   return new Date(value).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function toLocalDateTime(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function contentLength(html: string) {
+  return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().length;
+}
+
 export default function BlogPage() {
   const { user, token } = useAuthStore();
   const [data, setData] = useState<BlogData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingPost, setLoadingPost] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generatingCover, setGeneratingCover] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
-  const [slug, setSlug] = useState('');
-  const [slugTouched, setSlugTouched] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [imageAltText, setImageAltText] = useState('');
-  const [canonicalLink, setCanonicalLink] = useState('');
   const [author, setAuthor] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = useState('');
+  const slug = slugify(title);
+  const canonicalLink = slug ? `${CANONICAL_BASE}/${slug}` : '';
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/ventry-blog${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const query = search.trim() ? `?q=${encodeURIComponent(search.trim())}` : '';
+      const response = await fetch(`/api/ventry-blog${query}`, { headers: { Authorization: `Bearer ${token}` } });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'No se pudo cargar el blog');
       startTransition(() => setData(json.data));
@@ -99,40 +118,114 @@ export default function BlogPage() {
   }
 
   const resetEditor = () => {
-    setTitle(''); setDescription(''); setContent(''); setSlug(''); setSlugTouched(false);
-    setImageUrl(''); setImageAltText(''); setCanonicalLink(''); setAuthor('');
-    setCategories([]); setTags(''); setScheduledAt(''); setError(''); setSuccess('');
+    setEditingId(null);
+    setTitle(''); setDescription(''); setContent(''); setImageUrl(''); setImageAltText('');
+    setAuthor(''); setCategories([]); setTags([]); setScheduledAt(''); setError(''); setSuccess('');
   };
 
-  const openNew = () => { resetEditor(); setEditorOpen(true); };
+  const openNew = () => {
+    resetEditor();
+    setEditorOpen(true);
+  };
 
-  const publish = async (status: 'DRAFT' | 'PUBLISHED' | 'SCHEDULED') => {
+  const openEdit = async (post: BlogPost) => {
+    setLoadingPost(true);
+    setError('');
+    try {
+      const response = await fetch(`/api/ventry-blog/${encodeURIComponent(post._id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'No se pudo abrir la nota');
+      const detail: BlogPost = json.data;
+      setEditingId(detail._id || post._id);
+      setTitle(detail.title || '');
+      setDescription(detail.description || '');
+      setContent(detail.rawHTML || '');
+      setImageUrl(detail.imageUrl || '');
+      setImageAltText(detail.imageAltText || '');
+      setAuthor(typeof detail.author === 'string' ? detail.author : '');
+      setCategories(Array.isArray(detail.categories) ? detail.categories : []);
+      setTags(Array.isArray(detail.tags) ? detail.tags : []);
+      setScheduledAt(detail.status === 'SCHEDULED' ? toLocalDateTime(detail.scheduledAt) : '');
+      setSuccess('');
+      setEditorOpen(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo abrir la nota');
+    } finally {
+      setLoadingPost(false);
+    }
+  };
+
+  const generateImage = async (type: 'cover' | 'inline', context = '') => {
+    setError('');
+    const response = await fetch('/api/ventry-blog/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ type, title, content, context }),
+    });
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.error || 'No se pudo generar la imagen');
+    return json.data as { url: string; alt: string };
+  };
+
+  const generateCover = async () => {
+    setGeneratingCover(true);
+    setError('');
+    try {
+      const image = await generateImage('cover');
+      setImageUrl(image.url);
+      setImageAltText(image.alt);
+      setSuccess('Portada generada y guardada.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo generar la portada');
+    } finally {
+      setGeneratingCover(false);
+    }
+  };
+
+  const generateInlineImage = async (context: string) => {
+    try {
+      const image = await generateImage('inline', context);
+      setSuccess('Imagen generada e insertada en la nota.');
+      return image;
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'No se pudo generar la imagen';
+      setError(message);
+      throw cause;
+    }
+  };
+
+  const publish = async () => {
     setSaving(true);
     setError('');
     setSuccess('');
     try {
-      const response = await fetch('/api/ventry-blog', {
-        method: 'POST',
+      const status = scheduledAt ? 'SCHEDULED' : 'PUBLISHED';
+      const endpoint = editingId ? `/api/ventry-blog/${encodeURIComponent(editingId)}` : '/api/ventry-blog';
+      const response = await fetch(endpoint, {
+        method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title, description, rawHTML: content, urlSlug: slug || slugify(title), imageUrl,
-          imageAltText, canonicalLink, author: author || undefined, categories,
-          tags: tags.split(',').map(tag => tag.trim()).filter(Boolean), status, scheduledAt,
+          title, description, rawHTML: content, imageUrl, imageAltText,
+          author: author || data?.authors[0]?._id || undefined, categories, tags, status,
+          scheduledAt: scheduledAt || undefined,
         }),
       });
       const json = await response.json();
-      if (!response.ok) throw new Error(json.error || 'No se pudo guardar la nota');
-      setSuccess(status === 'PUBLISHED' ? 'Nota publicada correctamente.' : status === 'SCHEDULED' ? 'Nota programada correctamente.' : 'Borrador guardado correctamente.');
+      if (!response.ok) throw new Error(json.error || 'No se pudo publicar la nota');
+      setEditorOpen(false);
+      setSuccess(editingId ? 'Nota actualizada correctamente.' : status === 'SCHEDULED' ? 'Nota programada correctamente.' : 'Nota publicada correctamente.');
       await load();
-      if (status !== 'DRAFT') setEditorOpen(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo guardar la nota');
+      setError(cause instanceof Error ? cause.message : 'No se pudo publicar la nota');
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleCategory = (id: string) => setCategories(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  const canPublish = title.trim().length > 0 && contentLength(content) > 0;
+  const canGenerateImage = title.trim().length > 0 && contentLength(content) >= 40;
 
   if (editorOpen) {
     return (
@@ -140,13 +233,12 @@ export default function BlogPage() {
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <button type="button" onClick={() => setEditorOpen(false)} className="mb-1 text-xs font-medium text-muted-foreground hover:text-foreground">← Volver al blog</button>
-            <h1 className="text-2xl font-bold text-gradient-tech">Nueva nota para Merco Blog</h1>
+            <h1 className="text-2xl font-bold text-gradient-tech">{editingId ? 'Editar nota' : 'Nueva nota para Merco Blog'}</h1>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="rounded-xl" disabled={saving} onClick={() => publish('DRAFT')}><FileText className="h-4 w-4" /> Guardar borrador</Button>
-            <Button variant="outline" className="rounded-xl border-violet-500/40 text-violet-600" disabled={saving} onClick={() => publish('SCHEDULED')}><CalendarClock className="h-4 w-4" /> Programar</Button>
-            <Button variant="cta" disabled={saving} onClick={() => publish('PUBLISHED')}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />} Publicar</Button>
-          </div>
+          <Button variant="cta" disabled={saving || !canPublish} onClick={publish}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : scheduledAt ? <CalendarClock className="h-4 w-4" /> : <Rocket className="h-4 w-4" />}
+            {scheduledAt ? 'Programar publicación' : editingId ? 'Actualizar publicación' : 'Publicar ahora'}
+          </Button>
         </header>
 
         {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>}
@@ -154,40 +246,40 @@ export default function BlogPage() {
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <section className="space-y-4 rounded-2xl border bg-card p-4 md:p-6">
-            <Input value={title} onChange={event => { const value = event.target.value; setTitle(value); if (!slugTouched) setSlug(slugify(value)); }} placeholder="Título de la nota" className="h-auto border-0 bg-transparent px-0 text-3xl font-bold shadow-none focus-visible:ring-0" />
-            <Input value={description} onChange={event => setDescription(event.target.value)} placeholder="Bajada o descripción breve para buscadores" className="rounded-xl bg-muted/30" />
-            <DocumentEditor initialContent={content} onChange={setContent} />
+            <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Título de la nota" className="h-auto border-0 bg-transparent px-0 text-3xl font-bold shadow-none focus-visible:ring-0" />
+            <Input value={description} onChange={event => setDescription(event.target.value)} placeholder="Descripción breve (opcional, se completa automáticamente)" className="rounded-xl bg-muted/30" />
+            <DocumentEditor initialContent={content} onChange={setContent} onGenerateImage={generateInlineImage} />
+            {!canGenerateImage && <p className="text-xs text-muted-foreground">Escribí un título y al menos 40 caracteres para habilitar las imágenes con IA.</p>}
           </section>
 
           <aside className="space-y-4">
             <div className="space-y-3 rounded-2xl border bg-card p-4">
               <p className="flex items-center gap-2 text-sm font-semibold"><ImageIcon className="h-4 w-4 text-blue-500" /> Portada</p>
-              <Input value={imageUrl} onChange={event => setImageUrl(event.target.value)} placeholder="URL de la imagen" className="rounded-xl" />
-              <Input value={imageAltText} onChange={event => setImageAltText(event.target.value)} placeholder="Descripción de la imagen" className="rounded-xl" />
-              {imageUrl && <img src={imageUrl} alt={imageAltText || 'Vista previa'} className="aspect-video w-full rounded-xl object-cover" />}
+              {imageUrl ? (
+                <img src={imageUrl} alt={imageAltText || `Portada de ${title}`} className="aspect-video w-full rounded-xl border object-cover" />
+              ) : (
+                <div className="flex aspect-video items-center justify-center rounded-xl border border-dashed bg-muted/30"><ImageIcon className="h-8 w-8 text-muted-foreground/40" /></div>
+              )}
+              <Button variant="outline" className="w-full rounded-xl border-violet-500/40 text-violet-600 dark:text-violet-300" disabled={generatingCover || !canGenerateImage} onClick={generateCover}>
+                {generatingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}
+                {generatingCover ? 'Generando portada...' : imageUrl ? 'Regenerar portada con IA' : 'Generar portada con IA'}
+              </Button>
+              <Input value={imageUrl} onChange={event => setImageUrl(event.target.value)} placeholder="O pegá la URL de una portada" className="rounded-xl text-xs" />
             </div>
 
             <div className="space-y-3 rounded-2xl border bg-card p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold"><UserRound className="h-4 w-4 text-violet-500" /> Autor y clasificación</p>
-              <select value={author} onChange={event => setAuthor(event.target.value)} className="h-10 w-full rounded-xl border bg-background px-3 text-sm">
-                <option value="">Seleccionar autor</option>
-                {(data?.authors || []).map(item => <option key={item._id} value={item._id}>{item.name}</option>)}
-              </select>
-              <div className="flex flex-wrap gap-2">
-                {(data?.categories || []).map(item => (
-                  <button key={item._id} type="button" onClick={() => toggleCategory(item._id)} className={cn('rounded-full border px-2.5 py-1 text-xs transition-colors', categories.includes(item._id) ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-700 dark:text-cyan-200' : 'border-border text-muted-foreground')}>
-                    {item.label}
-                  </button>
-                ))}
+              <p className="text-sm font-semibold">Publicación</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fecha y hora (opcional)</Label>
+                <Input type="datetime-local" value={scheduledAt} min={toLocalDateTime(new Date().toISOString())} onChange={event => setScheduledAt(event.target.value)} className="rounded-xl" />
+                <p className="text-[11px] text-muted-foreground">Sin fecha, se publica inmediatamente.</p>
               </div>
-              <Input value={tags} onChange={event => setTags(event.target.value)} placeholder="Etiquetas separadas por coma" className="rounded-xl" />
             </div>
 
             <div className="space-y-3 rounded-2xl border bg-card p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold"><Tag className="h-4 w-4 text-emerald-500" /> SEO y programación</p>
-              <div className="space-y-1.5"><Label className="text-xs">Slug</Label><Input value={slug} onChange={event => { setSlugTouched(true); setSlug(slugify(event.target.value)); }} placeholder="url-de-la-nota" className="rounded-xl" /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Enlace canónico</Label><Input value={canonicalLink} onChange={event => setCanonicalLink(event.target.value)} placeholder="https://..." className="rounded-xl" /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Fecha para programar</Label><Input type="datetime-local" value={scheduledAt} onChange={event => setScheduledAt(event.target.value)} className="rounded-xl" /></div>
+              <p className="text-sm font-semibold">SEO automático</p>
+              <div className="space-y-1"><Label className="text-xs">Slug</Label><p className="break-all rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{slug || 'Se genera al escribir el título'}</p></div>
+              <div className="space-y-1"><Label className="text-xs">Enlace canónico</Label><p className="break-all rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{canonicalLink || 'Se genera al escribir el título'}</p></div>
             </div>
           </aside>
         </div>
@@ -201,12 +293,13 @@ export default function BlogPage() {
         <div>
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-300"><BookOpenText className="h-4 w-4" /> {data?.blog.name || 'Merco Blog'}</div>
           <h1 className="text-3xl font-black text-gradient-tech">BLOG DE MERCO</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Redactá, programá y publicá notas directamente en Ventry.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Creá, editá y publicá notas directamente en Ventry.</p>
         </div>
         <Button variant="cta" onClick={openNew}><Plus className="h-4 w-4" /> Nueva nota</Button>
       </header>
 
       {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>}
+      {success && <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600">{success}</div>}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') load(); }} placeholder="Buscar notas..." className="rounded-xl pl-9" /></div>
@@ -219,11 +312,12 @@ export default function BlogPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.posts.map(post => (
             <article key={post._id} className="group overflow-hidden rounded-2xl border bg-card transition-colors hover:border-violet-500/35">
-              {post.imageUrl ? <img src={post.imageUrl} alt="" className="aspect-[16/8] w-full object-cover" /> : <div className="flex aspect-[16/8] items-center justify-center bg-gradient-to-br from-blue-500/10 to-violet-500/15"><BookOpenText className="h-9 w-9 text-violet-500/40" /></div>}
+              {post.imageUrl ? <img src={post.imageUrl} alt={post.imageAltText || ''} className="aspect-[16/8] w-full object-cover" /> : <div className="flex aspect-[16/8] items-center justify-center bg-gradient-to-br from-blue-500/10 to-violet-500/15"><BookOpenText className="h-9 w-9 text-violet-500/40" /></div>}
               <div className="space-y-3 p-4">
-                <div className="flex items-center justify-between gap-2"><Badge variant="outline" className={cn('text-[10px]', STATUS_STYLE[post.status] || STATUS_STYLE.DRAFT)}>{post.status}</Badge><span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="h-3 w-3" /> {formatDate(post.updatedAt || post.publishedAt)}</span></div>
+                <div className="flex items-center justify-between gap-2"><Badge variant="outline" className={cn('text-[10px]', STATUS_STYLE[post.status] || STATUS_STYLE.DRAFT)}>{STATUS_LABEL[post.status] || post.status}</Badge><span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="h-3 w-3" /> {formatDate(post.updatedAt || post.publishedAt)}</span></div>
                 <div><h2 className="line-clamp-2 font-bold leading-snug">{post.title}</h2>{post.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{post.description}</p>}</div>
                 <p className="truncate text-[11px] text-muted-foreground">/{post.urlSlug || 'sin-slug'}</p>
+                <Button variant="outline" className="w-full rounded-xl" disabled={loadingPost} onClick={() => openEdit(post)}>{loadingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />} Editar nota</Button>
               </div>
             </article>
           ))}

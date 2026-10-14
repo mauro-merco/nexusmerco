@@ -1,12 +1,12 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   Quote, AlignLeft, AlignCenter, AlignRight, Heading1, Heading2, Heading3,
-  Link2, Undo2, Redo2,
+  ImagePlus, Link2, Loader2, Undo2, Redo2,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
@@ -46,13 +46,16 @@ export function DocumentEditor({
   initialContent,
   onChange,
   readOnly = false,
+  onGenerateImage,
 }: {
   initialContent: string;
   onChange: (html: string) => void;
   readOnly?: boolean;
+  onGenerateImage?: (context: string) => Promise<{ url: string; alt: string }>;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const isExternalUpdate = useRef(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
 
   // Update the editor's content only when initialContent changes from outside
   // (not from user input), to avoid cursor jumps
@@ -86,6 +89,49 @@ export function DocumentEditor({
     if (isExternalUpdate.current) return;
     if (onChange) onChange(e.currentTarget.innerHTML);
   }, [onChange]);
+
+  const insertGeneratedImage = useCallback(async () => {
+    const editor = editorRef.current;
+    if (!editor || !onGenerateImage || generatingImage) return;
+    const selection = window.getSelection();
+    const selectedRange = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    const range = selectedRange && editor.contains(selectedRange.commonAncestorContainer)
+      ? selectedRange.cloneRange()
+      : null;
+    const contextElement = range?.commonAncestorContainer.nodeType === Node.TEXT_NODE
+      ? range.commonAncestorContainer.parentElement
+      : range?.commonAncestorContainer as HTMLElement | undefined;
+    const context = contextElement?.closest('p, h1, h2, h3, li, blockquote')?.textContent
+      || editor.innerText.slice(0, 500);
+
+    setGeneratingImage(true);
+    try {
+      const image = await onGenerateImage(context);
+      editor.focus();
+      if (range && selection) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        const end = document.createRange();
+        end.selectNodeContents(editor);
+        end.collapse(false);
+        selection?.removeAllRanges();
+        selection?.addRange(end);
+      }
+      const safeUrl = image.url.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      const safeAlt = image.alt.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      document.execCommand(
+        'insertHTML',
+        false,
+        `<figure><img src="${safeUrl}" alt="${safeAlt}" style="width:100%;height:auto;border-radius:12px" /><figcaption>${safeAlt}</figcaption></figure><p><br></p>`
+      );
+      onChange(editor.innerHTML);
+    } catch {
+      // The parent displays the API error next to the editor.
+    } finally {
+      setGeneratingImage(false);
+    }
+  }, [generatingImage, onChange, onGenerateImage]);
 
   const ToolbarGroup = ({ tools }: { tools: Tool[] }) => (
     <div className="flex items-center gap-0.5">
@@ -130,6 +176,20 @@ export function DocumentEditor({
             >
               <Link2 className="h-3.5 w-3.5" />
             </Button>
+            {onGenerateImage && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-7 gap-1.5 px-2 text-violet-600 dark:text-violet-300"
+                title="Generar e insertar una imagen con IA"
+                disabled={generatingImage}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={insertGeneratedImage}
+              >
+                {generatingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                <span className="text-xs">Imagen IA</span>
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
