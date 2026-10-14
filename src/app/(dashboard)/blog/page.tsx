@@ -71,6 +71,16 @@ function contentLength(html: string) {
   return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().length;
 }
 
+function titleFromContent(html: string) {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(/[.!?]/)[0]
+    .slice(0, 120);
+}
+
 export default function BlogPage() {
   const { user, token } = useAuthStore();
   const [data, setData] = useState<BlogData | null>(null);
@@ -92,7 +102,8 @@ export default function BlogPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = useState('');
-  const slug = slugify(title);
+  const resolvedTitle = title.trim() || titleFromContent(content);
+  const slug = slugify(resolvedTitle);
   const canonicalLink = slug ? `${CANONICAL_BASE}/${slug}` : '';
 
   const load = async () => {
@@ -157,12 +168,12 @@ export default function BlogPage() {
     }
   };
 
-  const generateImage = async (type: 'cover' | 'inline', context = '') => {
+  const generateImage = async (type: 'cover' | 'inline', context = '', liveContent = content) => {
     setError('');
     const response = await fetch('/api/ventry-blog/image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ type, title, content, context }),
+      body: JSON.stringify({ type, title: resolvedTitle, content: liveContent, context }),
     });
     const json = await response.json();
     if (!response.ok) throw new Error(json.error || 'No se pudo generar la imagen');
@@ -184,9 +195,9 @@ export default function BlogPage() {
     }
   };
 
-  const generateInlineImage = async (context: string) => {
+  const generateInlineImage = async (context: string, liveContent: string) => {
     try {
-      const image = await generateImage('inline', context);
+      const image = await generateImage('inline', context, liveContent);
       setSuccess('Imagen generada e insertada en la nota.');
       return image;
     } catch (cause) {
@@ -207,7 +218,7 @@ export default function BlogPage() {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title, description, rawHTML: content, imageUrl, imageAltText,
+          title: resolvedTitle, description, rawHTML: content, imageUrl, imageAltText,
           author: author || data?.authors[0]?._id || undefined, categories, tags, status,
           scheduledAt: scheduledAt || undefined,
         }),
@@ -224,8 +235,7 @@ export default function BlogPage() {
     }
   };
 
-  const canPublish = title.trim().length > 0 && contentLength(content) > 0;
-  const canGenerateImage = title.trim().length > 0;
+  const canPublish = resolvedTitle.length > 0 && contentLength(content) > 0;
 
   if (editorOpen) {
     return (
@@ -249,7 +259,6 @@ export default function BlogPage() {
             <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Título de la nota" className="h-auto border-0 bg-transparent px-0 text-3xl font-bold shadow-none focus-visible:ring-0" />
             <Input value={description} onChange={event => setDescription(event.target.value)} placeholder="Descripción breve (opcional, se completa automáticamente)" className="rounded-xl bg-muted/30" />
             <DocumentEditor initialContent={content} onChange={setContent} onGenerateImage={generateInlineImage} />
-            {!canGenerateImage && <p className="text-xs text-muted-foreground">Escribí un título para habilitar las imágenes con IA.</p>}
           </section>
 
           <aside className="space-y-4">
@@ -260,7 +269,7 @@ export default function BlogPage() {
               ) : (
                 <div className="flex aspect-video items-center justify-center rounded-xl border border-dashed bg-muted/30"><ImageIcon className="h-8 w-8 text-muted-foreground/40" /></div>
               )}
-              <Button variant="outline" className="w-full rounded-xl border-violet-500/40 text-violet-600 dark:text-violet-300" disabled={generatingCover || !canGenerateImage} onClick={generateCover}>
+              <Button variant="outline" className="w-full rounded-xl border-violet-500/40 text-violet-600 dark:text-violet-300" disabled={generatingCover} onClick={generateCover}>
                 {generatingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}
                 {generatingCover ? 'Generando portada...' : imageUrl ? 'Regenerar portada con IA' : 'Generar portada con IA'}
               </Button>

@@ -51,7 +51,7 @@ export function DocumentEditor({
   initialContent: string;
   onChange: (html: string) => void;
   readOnly?: boolean;
-  onGenerateImage?: (context: string) => Promise<{ url: string; alt: string }>;
+  onGenerateImage?: (context: string, html: string) => Promise<{ url: string; alt: string }>;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const isExternalUpdate = useRef(false);
@@ -106,7 +106,7 @@ export function DocumentEditor({
 
     setGeneratingImage(true);
     try {
-      const image = await onGenerateImage(context);
+      const image = await onGenerateImage(context, editor.innerHTML);
       editor.focus();
       if (range && selection) {
         selection.removeAllRanges();

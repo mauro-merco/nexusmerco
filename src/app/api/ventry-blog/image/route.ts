@@ -38,12 +38,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const title = String(body.title || '').trim();
     const content = plainText(String(body.content || '')).slice(0, 1400);
     const context = plainText(String(body.context || '')).slice(0, 500);
+    const title = String(body.title || '').trim()
+      || (content || context).split(/[.!?\n]/)[0].trim().slice(0, 120);
     const type = body.type === 'inline' ? 'inline' : 'cover';
     if (!title) {
-      return NextResponse.json({ error: 'Escribí un título antes de generar la imagen.' }, { status: 400 });
+      return NextResponse.json({ error: 'Escribí algo en la nota antes de generar la imagen.' }, { status: 400 });
     }
 
     const purpose = type === 'cover'
