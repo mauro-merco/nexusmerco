@@ -3,6 +3,14 @@ import { getAdminClient, getRequestUser, isStaff, safeError } from '@/lib/api-se
 
 const BUCKET = 'blog-images';
 
+const IMAGE_STYLES: Record<string, string> = {
+  hyperrealistic: 'Hyperrealistic professional photography, natural materials and skin texture, physically accurate light, realistic depth of field, premium commercial camera look, highly detailed but believable.',
+  cinematic: 'Cinematic photorealism, dramatic but natural lighting, deep contrast, atmospheric perspective, premium film color grading, visually powerful composition.',
+  editorial: 'High-end contemporary editorial photography, refined art direction, clean composition, sophisticated color palette, magazine-quality lighting.',
+  minimal: 'Minimalist premium photography, one clear focal subject, generous negative space, restrained color palette, soft natural light, elegant composition.',
+  tech: 'Futuristic photorealistic technology scene, luminous blue and violet accents, premium materials, subtle reflections, sophisticated innovation aesthetic.',
+};
+
 export const maxDuration = 300;
 
 async function ensureBucket() {
@@ -43,6 +51,7 @@ export async function POST(request: Request) {
     const title = String(body.title || '').trim()
       || (content || context).split(/[.!?\n]/)[0].trim().slice(0, 120);
     const type = body.type === 'inline' ? 'inline' : 'cover';
+    const style = IMAGE_STYLES[String(body.style || '')] || IMAGE_STYLES.hyperrealistic;
     if (!title) {
       return NextResponse.json({ error: 'Escribí algo en la nota antes de generar la imagen.' }, { status: 400 });
     }
@@ -58,8 +67,8 @@ export async function POST(request: Request) {
         : content
           ? `Article context: ${content}.`
           : 'Build the visual concept from the article title.',
-      'Contemporary premium art direction, visually clear, sophisticated lighting, bold composition, brand-neutral.',
-      'Do not include words, letters, captions, watermarks, logos, UI screenshots, or recognizable trademarks.',
+      style,
+      'ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE. No words, no letters, no numbers, no typography, no captions, no signs, no labels, no posters, no screens with writing, no logos, no brands, no watermarks, no UI, and no symbols resembling text. Use purely visual storytelling.',
     ].join(' ');
 
     const form = new FormData();

@@ -50,6 +50,13 @@ const STATUS_STYLE: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: 'Borrador', PUBLISHED: 'Publicada', SCHEDULED: 'Programada', ARCHIVED: 'Archivada',
 };
+const IMAGE_STYLES = [
+  { id: 'hyperrealistic', label: 'Hiperrealista', description: 'Fotografía real y detallada' },
+  { id: 'cinematic', label: 'Cinemático', description: 'Dramático y profesional' },
+  { id: 'editorial', label: 'Editorial', description: 'Estética de revista premium' },
+  { id: 'minimal', label: 'Minimalista', description: 'Limpio y con foco claro' },
+  { id: 'tech', label: 'Tecnológico', description: 'Futurista azul y violeta' },
+] as const;
 
 function slugify(value: string) {
   return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -102,6 +109,7 @@ export default function BlogPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = useState('');
+  const [imageStyle, setImageStyle] = useState<(typeof IMAGE_STYLES)[number]['id']>('hyperrealistic');
   const resolvedTitle = title.trim() || titleFromContent(content);
   const slug = slugify(resolvedTitle);
   const canonicalLink = slug ? `${CANONICAL_BASE}/${slug}` : '';
@@ -131,7 +139,7 @@ export default function BlogPage() {
   const resetEditor = () => {
     setEditingId(null);
     setTitle(''); setDescription(''); setContent(''); setImageUrl(''); setImageAltText('');
-    setAuthor(''); setCategories([]); setTags([]); setScheduledAt(''); setError(''); setSuccess('');
+    setAuthor(''); setCategories([]); setTags([]); setScheduledAt(''); setImageStyle('hyperrealistic'); setError(''); setSuccess('');
   };
 
   const openNew = () => {
@@ -173,7 +181,7 @@ export default function BlogPage() {
     const response = await fetch('/api/ventry-blog/image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ type, title: resolvedTitle, content: liveContent, context }),
+      body: JSON.stringify({ type, title: resolvedTitle, content: liveContent, context, style: imageStyle }),
     });
     const json = await response.json();
     if (!response.ok) throw new Error(json.error || 'No se pudo generar la imagen');
@@ -264,6 +272,28 @@ export default function BlogPage() {
           <aside className="space-y-4">
             <div className="space-y-3 rounded-2xl border bg-card p-4">
               <p className="flex items-center gap-2 text-sm font-semibold"><ImageIcon className="h-4 w-4 text-blue-500" /> Portada</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Estilo de las imágenes</Label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {IMAGE_STYLES.map(style => (
+                    <button
+                      key={style.id}
+                      type="button"
+                      title={style.description}
+                      onClick={() => setImageStyle(style.id)}
+                      className={cn(
+                        'rounded-lg border px-2 py-2 text-left text-[11px] font-medium transition-colors',
+                        imageStyle === style.id
+                          ? 'border-violet-500/50 bg-violet-500/15 text-violet-700 dark:text-violet-200'
+                          : 'border-border text-muted-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      {style.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Se aplica a la portada y a “Imagen IA”. Siempre sin textos ni logos.</p>
+              </div>
               {imageUrl ? (
                 <img src={imageUrl} alt={imageAltText || `Portada de ${title}`} className="aspect-video w-full rounded-xl border object-cover" />
               ) : (
