@@ -47,28 +47,65 @@ export function blogCanonicalLink(slug: string) {
   return slug ? `${base}/${slug}` : '';
 }
 
+const SEO_STOP_WORDS = new Set([
+  'para', 'como', 'pero', 'porque', 'desde', 'hasta', 'sobre', 'entre', 'este', 'esta', 'estos', 'estas',
+  'tambien', 'tiene', 'tienen', 'puede', 'pueden', 'cuando', 'donde', 'cada', 'todo', 'todos', 'toda', 'todas',
+  'mucho', 'muchos', 'muy', 'mas', 'menos', 'solo', 'algo', 'esto', 'eso', 'una', 'uno', 'unos', 'unas',
+  'del', 'las', 'los', 'que', 'con', 'sin', 'por', 'sus', 'son', 'ser', 'hay', 'fue', 'han', 'al', 'se',
+]);
+
+function seoDescription(text: string) {
+  if (text.length <= 155) return text;
+  const shortened = text.slice(0, 155);
+  const lastSpace = shortened.lastIndexOf(' ');
+  return `${shortened.slice(0, lastSpace > 120 ? lastSpace : 152).replace(/[,:;.-]+$/, '')}...`;
+}
+
+function seoKeywords(title: string, text: string) {
+  const normalized = `${title} ${title} ${text}`
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .match(/[a-z0-9]{3,}/g) || [];
+  const counts = new Map<string, number>();
+  for (const word of normalized) {
+    if (!SEO_STOP_WORDS.has(word) && !/^\d+$/.test(word)) counts.set(word, (counts.get(word) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([word]) => word);
+}
+
+export function buildBlogSeo(title: string, rawHTML: string) {
+  const text = rawHTML.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+  const urlSlug = blogSlug(title);
+  return {
+    description: seoDescription(text),
+    urlSlug,
+    canonicalLink: blogCanonicalLink(urlSlug),
+    tags: seoKeywords(title, text),
+    imageAltText: title ? `Imagen principal del artículo: ${title}` : '',
+    wordCount: text ? text.split(' ').length : 0,
+  };
+}
+
 export function buildVentryPostPayload(body: Record<string, unknown>, status: string) {
   const title = String(body.title || '').trim();
   const rawHTML = sanitizeBlogHtml(String(body.rawHTML || '')).trim();
-  const urlSlug = blogSlug(title);
-  const text = rawHTML.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  const wordCount = text ? text.split(' ').length : 0;
-  const description = String(body.description || '').trim() || text.slice(0, 155);
+  const seo = buildBlogSeo(title, rawHTML);
 
   return {
     title,
     rawHTML,
     status,
-    description,
+    description: seo.description,
     imageUrl: String(body.imageUrl || '').trim(),
-    imageAltText: String(body.imageAltText || '').trim() || (title ? `Portada de ${title}` : ''),
-    urlSlug,
-    canonicalLink: blogCanonicalLink(urlSlug),
+    imageAltText: seo.imageAltText,
+    urlSlug: seo.urlSlug,
+    canonicalLink: seo.canonicalLink,
     categories: Array.isArray(body.categories) ? body.categories.map(String) : [],
-    tags: Array.isArray(body.tags) ? body.tags.map(String).filter(Boolean) : [],
+    tags: seo.tags,
     author: body.author ? String(body.author) : undefined,
-    wordCount,
-    readTimeInMinutes: Math.max(1, Math.ceil(wordCount / 220)),
+    wordCount: seo.wordCount,
+    readTimeInMinutes: Math.max(1, Math.ceil(seo.wordCount / 220)),
     archived: false,
     ...(status === 'SCHEDULED' && body.scheduledAt
       ? { scheduledAt: new Date(String(body.scheduledAt)).toISOString() }

@@ -4,11 +4,11 @@ import { getAdminClient, getRequestUser, isStaff, safeError } from '@/lib/api-se
 const BUCKET = 'blog-images';
 
 const IMAGE_STYLES: Record<string, string> = {
-  hyperrealistic: 'Hyperrealistic professional photography, natural materials and skin texture, physically accurate light, realistic depth of field, premium commercial camera look, highly detailed but believable.',
-  cinematic: 'Cinematic photorealism, dramatic but natural lighting, deep contrast, atmospheric perspective, premium film color grading, visually powerful composition.',
-  editorial: 'High-end contemporary editorial photography, refined art direction, clean composition, sophisticated color palette, magazine-quality lighting.',
-  minimal: 'Minimalist premium photography, one clear focal subject, generous negative space, restrained color palette, soft natural light, elegant composition.',
-  tech: 'Futuristic photorealistic technology scene, luminous blue and violet accents, premium materials, subtle reflections, sophisticated innovation aesthetic.',
+  hyperrealistic: 'Hyperrealistic professional photography, natural materials and skin texture, physically accurate light, realistic depth of field, premium commercial camera look. Show people, nature, or unbranded abstract objects only.',
+  cinematic: 'Cinematic photorealism, dramatic natural lighting, deep contrast, atmospheric perspective, premium film color grading. Use a purely visual scene without buildings, storefronts, streets, or text-bearing props.',
+  editorial: 'High-end contemporary editorial photography, refined art direction, clean composition, sophisticated color palette, magazine-quality lighting. The image itself is an unprinted photograph, not a magazine cover or layout.',
+  minimal: 'Minimalist premium photography, one clear unbranded focal subject, generous negative space, restrained color palette, soft natural light. No documents, packaging, signs, screens, or printed surfaces.',
+  tech: 'Futuristic photorealistic technology scene made from abstract light, glass, metal, and geometric forms. No screens, interfaces, keyboards, devices, control panels, data visualizations, or text-bearing surfaces.',
 };
 
 export const maxDuration = 300;
@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       ? 'wide 16:9 editorial hero image for a digital marketing agency blog'
       : 'wide editorial illustration placed inside a professional blog article';
     const prompt = [
+      'CREATE A COMPLETELY TEXT-FREE IMAGE. Visual content only.',
       `Create a ${purpose}.`,
       `Article title: ${title}.`,
       context
@@ -68,7 +69,8 @@ export async function POST(request: Request) {
           ? `Article context: ${content}.`
           : 'Build the visual concept from the article title.',
       style,
-      'ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE. No words, no letters, no numbers, no typography, no captions, no signs, no labels, no posters, no screens with writing, no logos, no brands, no watermarks, no UI, and no symbols resembling text. Use purely visual storytelling.',
+      'Exclude every object that could contain writing: signs, billboards, books, documents, newspapers, magazines, packaging, storefronts, clothing prints, license plates, screens, interfaces, charts, keyboards, labels, badges, and posters.',
+      'ABSOLUTELY NO TEXT ANYWHERE. No words, letters, numbers, typography, captions, logos, brands, watermarks, UI, pseudo-text, glyphs, runes, or symbols resembling writing. If any object would normally contain text, leave its surface completely blank. Communicate only through people, light, color, shape, and composition.',
     ].join(' ');
 
     const form = new FormData();

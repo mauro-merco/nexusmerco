@@ -88,6 +88,33 @@ function titleFromContent(html: string) {
     .slice(0, 120);
 }
 
+function plainContent(html: string) {
+  return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function seoPreviewDescription(html: string) {
+  const text = plainContent(html);
+  if (text.length <= 155) return text;
+  const shortened = text.slice(0, 155);
+  const lastSpace = shortened.lastIndexOf(' ');
+  return `${shortened.slice(0, lastSpace > 120 ? lastSpace : 152).replace(/[,:;.-]+$/, '')}...`;
+}
+
+function contentWordCount(html: string) {
+  const text = plainContent(html);
+  return text ? text.split(' ').length : 0;
+}
+
+function seoPreviewKeywords(title: string, html: string) {
+  const ignored = new Set(['para', 'como', 'pero', 'porque', 'desde', 'hasta', 'sobre', 'entre', 'este', 'esta', 'todo', 'todos', 'cada', 'tambien', 'puede', 'pueden', 'tiene', 'tienen', 'una', 'uno', 'unos', 'unas', 'del', 'las', 'los', 'que', 'con', 'sin', 'por', 'sus', 'son', 'ser', 'hay', 'mas', 'muy']);
+  const words = `${title} ${title} ${plainContent(html)}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z0-9]{3,}/g) || [];
+  const counts = new Map<string, number>();
+  for (const word of words) {
+    if (!ignored.has(word) && !/^\d+$/.test(word)) counts.set(word, (counts.get(word) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([word]) => word);
+}
+
 export default function BlogPage() {
   const { user, token } = useAuthStore();
   const [data, setData] = useState<BlogData | null>(null);
@@ -101,7 +128,6 @@ export default function BlogPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageAltText, setImageAltText] = useState('');
@@ -138,7 +164,7 @@ export default function BlogPage() {
 
   const resetEditor = () => {
     setEditingId(null);
-    setTitle(''); setDescription(''); setContent(''); setImageUrl(''); setImageAltText('');
+    setTitle(''); setContent(''); setImageUrl(''); setImageAltText('');
     setAuthor(''); setCategories([]); setTags([]); setScheduledAt(''); setImageStyle('hyperrealistic'); setError(''); setSuccess('');
   };
 
@@ -159,7 +185,6 @@ export default function BlogPage() {
       const detail: BlogPost = json.data;
       setEditingId(detail._id || post._id);
       setTitle(detail.title || '');
-      setDescription(detail.description || '');
       setContent(detail.rawHTML || '');
       setImageUrl(detail.imageUrl || '');
       setImageAltText(detail.imageAltText || '');
@@ -226,7 +251,7 @@ export default function BlogPage() {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title: resolvedTitle, description, rawHTML: content, imageUrl, imageAltText,
+          title: resolvedTitle, rawHTML: content, imageUrl, imageAltText,
           author: author || data?.authors[0]?._id || undefined, categories, tags, status,
           scheduledAt: scheduledAt || undefined,
         }),
@@ -265,7 +290,6 @@ export default function BlogPage() {
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <section className="space-y-4 rounded-2xl border bg-card p-4 md:p-6">
             <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Título de la nota" className="h-auto border-0 bg-transparent px-0 text-3xl font-bold shadow-none focus-visible:ring-0" />
-            <Input value={description} onChange={event => setDescription(event.target.value)} placeholder="Descripción breve (opcional, se completa automáticamente)" className="rounded-xl bg-muted/30" />
             <DocumentEditor initialContent={content} onChange={setContent} onGenerateImage={generateInlineImage} />
           </section>
 
@@ -317,8 +341,15 @@ export default function BlogPage() {
 
             <div className="space-y-3 rounded-2xl border bg-card p-4">
               <p className="text-sm font-semibold">SEO automático</p>
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                El título SEO, la descripción, las etiquetas, el texto alternativo y Open Graph se completan al publicar.
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Título SEO</Label><p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{resolvedTitle || 'Se genera desde la nota'}</p></div>
+              <div className="space-y-1"><Label className="text-xs">Meta descripción</Label><p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{seoPreviewDescription(content) || 'Se genera desde el contenido'}</p></div>
               <div className="space-y-1"><Label className="text-xs">Slug</Label><p className="break-all rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{slug || 'Se genera al escribir el título'}</p></div>
               <div className="space-y-1"><Label className="text-xs">Enlace canónico</Label><p className="break-all rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{canonicalLink || 'Se genera al escribir el título'}</p></div>
+              <div className="space-y-1"><Label className="text-xs">Etiquetas sugeridas</Label><div className="flex flex-wrap gap-1">{seoPreviewKeywords(resolvedTitle, content).map(keyword => <Badge key={keyword} variant="outline" className="text-[10px]">{keyword}</Badge>)}</div></div>
+              <div className="grid grid-cols-2 gap-2 text-center text-[10px] text-muted-foreground"><div className="rounded-lg bg-muted/40 p-2"><strong className="block text-sm text-foreground">{contentWordCount(content)}</strong>palabras</div><div className="rounded-lg bg-muted/40 p-2"><strong className="block text-sm text-foreground">{Math.max(1, Math.ceil(contentWordCount(content) / 220))} min</strong>de lectura</div></div>
             </div>
           </aside>
         </div>
