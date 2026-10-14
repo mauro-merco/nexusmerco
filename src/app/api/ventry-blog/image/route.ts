@@ -42,8 +42,8 @@ export async function POST(request: Request) {
     const content = plainText(String(body.content || '')).slice(0, 1400);
     const context = plainText(String(body.context || '')).slice(0, 500);
     const type = body.type === 'inline' ? 'inline' : 'cover';
-    if (!title || content.length < 40) {
-      return NextResponse.json({ error: 'Escribí un título y algo de contenido antes de generar la imagen.' }, { status: 400 });
+    if (!title) {
+      return NextResponse.json({ error: 'Escribí un título antes de generar la imagen.' }, { status: 400 });
     }
 
     const purpose = type === 'cover'
@@ -52,7 +52,11 @@ export async function POST(request: Request) {
     const prompt = [
       `Create a ${purpose}.`,
       `Article title: ${title}.`,
-      context ? `Section context: ${context}.` : `Article context: ${content}.`,
+      context
+        ? `Section context: ${context}.`
+        : content
+          ? `Article context: ${content}.`
+          : 'Build the visual concept from the article title.',
       'Contemporary premium art direction, visually clear, sophisticated lighting, bold composition, brand-neutral.',
       'Do not include words, letters, captions, watermarks, logos, UI screenshots, or recognizable trademarks.',
     ].join(' ');

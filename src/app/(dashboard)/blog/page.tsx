@@ -225,7 +225,7 @@ export default function BlogPage() {
   };
 
   const canPublish = title.trim().length > 0 && contentLength(content) > 0;
-  const canGenerateImage = title.trim().length > 0 && contentLength(content) >= 40;
+  const canGenerateImage = title.trim().length > 0;
 
   if (editorOpen) {
     return (
@@ -249,7 +249,7 @@ export default function BlogPage() {
             <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Título de la nota" className="h-auto border-0 bg-transparent px-0 text-3xl font-bold shadow-none focus-visible:ring-0" />
             <Input value={description} onChange={event => setDescription(event.target.value)} placeholder="Descripción breve (opcional, se completa automáticamente)" className="rounded-xl bg-muted/30" />
             <DocumentEditor initialContent={content} onChange={setContent} onGenerateImage={generateInlineImage} />
-            {!canGenerateImage && <p className="text-xs text-muted-foreground">Escribí un título y al menos 40 caracteres para habilitar las imágenes con IA.</p>}
+            {!canGenerateImage && <p className="text-xs text-muted-foreground">Escribí un título para habilitar las imágenes con IA.</p>}
           </section>
 
           <aside className="space-y-4">
