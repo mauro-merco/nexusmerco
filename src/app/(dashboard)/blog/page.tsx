@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { NoAccess } from '@/components/no-access';
 import { cn } from '@/lib/utils';
 import {
-  BookOpenText, CalendarClock, Clock3, ExternalLink, Image as ImageIcon,
+  BookOpenText, CalendarClock, Clock3, ExternalLink, Eye, Image as ImageIcon,
   Loader2, Pencil, Plus, RefreshCw, Rocket, Search, Send, WandSparkles,
 } from 'lucide-react';
 
@@ -387,7 +387,21 @@ export default function BlogPage() {
                 <div className="flex items-center justify-between gap-2"><Badge variant="outline" className={cn('text-[10px]', STATUS_STYLE[post.status] || STATUS_STYLE.DRAFT)}>{STATUS_LABEL[post.status] || post.status}</Badge><span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="h-3 w-3" /> {formatDate(post.updatedAt || post.publishedAt)}</span></div>
                 <div><h2 className="line-clamp-2 font-bold leading-snug">{post.title}</h2>{post.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{post.description}</p>}</div>
                 <p className="truncate text-[11px] text-muted-foreground">/{post.urlSlug || 'sin-slug'}</p>
-                <Button variant="outline" className="w-full rounded-xl" disabled={loadingPost} onClick={() => openEdit(post)}>{loadingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />} Editar nota</Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" className="rounded-xl" disabled={loadingPost} onClick={() => openEdit(post)}>{loadingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />} Editar</Button>
+                  {post.status === 'PUBLISHED' && post.urlSlug ? (
+                    <a
+                      href={`${CANONICAL_BASE}/${post.urlSlug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <Eye className="h-4 w-4" /> Abrir nota
+                    </a>
+                  ) : (
+                    <Button variant="outline" className="rounded-xl" disabled title="Disponible cuando la nota esté publicada"><Eye className="h-4 w-4" /> Abrir nota</Button>
+                  )}
+                </div>
               </div>
             </article>
           ))}
