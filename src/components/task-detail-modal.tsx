@@ -199,7 +199,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex! flex-col sm:max-w-5xl h-[90dvh] overflow-hidden rounded-2xl">
+      <DialogContent className="flex! flex-col sm:max-w-[min(96vw,1400px)] h-[90dvh] overflow-hidden rounded-2xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 shrink-0 pr-10">
           <div className="flex-1 min-w-0">
@@ -349,9 +349,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
         {/* Two-column body */}
         <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]">
             {/* LEFT — Detail + Attachments */}
-            <div className="md:col-span-3 space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
+            <div className="space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
               {editing ? (
                 <div className="space-y-3">
                   {saveError && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
@@ -521,7 +521,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             </div>
 
             {/* RIGHT — Comments */}
-            <div className="md:col-span-2 flex flex-col min-h-0 h-[55vh] overflow-hidden rounded-2xl bg-muted/25 p-4 md:h-auto">
+            <div className="flex flex-col min-h-0 h-[55vh] overflow-hidden rounded-2xl bg-muted/25 p-4 md:h-auto">
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1.5 mb-3 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Comentarios ({comments.length})</p>
               <div className="flex-1 overflow-y-auto min-h-0 space-y-4 mb-3">
                 {comments.length === 0 && <p className="text-sm text-muted-foreground/50 italic text-center py-6">Sin comentarios</p>}

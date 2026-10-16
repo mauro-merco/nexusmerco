@@ -177,7 +177,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn('flex! flex-col sm:max-w-5xl h-[90dvh] overflow-hidden rounded-2xl border-2', modalState.border)}>
+      <DialogContent className={cn('flex! flex-col sm:max-w-[min(96vw,1400px)] h-[90dvh] overflow-hidden rounded-2xl border-2', modalState.border)}>
         <div className={cn('mx-[-1.5rem] mt-[-1.5rem] px-6 py-3 text-sm font-black uppercase tracking-wide shadow-sm', modalState.banner)}>
           {modalState.label}
         </div>
@@ -261,9 +261,9 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
         {/* Two-column body */}
         <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]">
+          <div className={cn('grid grid-cols-1 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]', isSocial ? 'md:grid-cols-2' : 'md:grid-cols-1')}>
             {/* LEFT COLUMN — Detail + Attachments */}
-            <div className="md:col-span-3 space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
+            <div className="space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
               {editing ? (
                 <div className="space-y-3">
                   {saveError && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
@@ -399,7 +399,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
             {/* RIGHT COLUMN — Comments */}
             {isSocial && (
-              <div className="md:col-span-2 flex flex-col min-h-0 h-[55vh] overflow-hidden rounded-2xl bg-muted/25 p-3.5 md:h-auto">
+              <div className="flex flex-col min-h-0 h-[55vh] overflow-hidden rounded-2xl bg-muted/25 p-3.5 md:h-auto">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1 mb-2 shrink-0">Comentarios ({comments.length})</p>
                 <div className="flex-1 min-h-0">
                   <SocialComment ideaId={idea.id} comments={comments} onAddComment={addComment} onDeleteComment={deleteComment} onUpdateComment={updateComment} currentUserId={user?.id} />
