@@ -1,35 +1,90 @@
 import type { TaskStatus, TaskPriority, TaskRole, Task } from '@/lib/types';
-import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck, Share2, Megaphone, Globe, ShoppingCart, Target, Play } from 'lucide-react';
+import { IDEA_STATUS_ORDER } from '@/lib/social-config';
+import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck, Share2, Megaphone, Globe, ShoppingCart, Target, Hourglass, RefreshCw, ThumbsUp, ThumbsDown, Sparkles, Send } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
+/**
+ * Tasks share the idea workflow (see STATUS_CONFIG in social-config) so both
+ * calendars and the task board read the same vocabulary; `problemas` and
+ * `cerrada` are the task-only terminal states.
+ */
 export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: LucideIcon; colorClass: string; bgColorClass: string; dotColor: string }> = {
-  en_espera: {
-    label: 'En espera',
+  borrador: {
+    label: 'Borrador',
     icon: Clock,
-    colorClass: 'text-slate-600',
-    bgColorClass: 'bg-slate-100 dark:bg-slate-800',
+    colorClass: 'text-slate-500',
+    bgColorClass: 'bg-slate-100 dark:bg-slate-900',
     dotColor: 'bg-slate-400',
-  },
-  ejecutando: {
-    label: 'Ejecutando',
-    icon: Play,
-    colorClass: 'text-amber-600',
-    bgColorClass: 'bg-amber-50 dark:bg-amber-950',
-    dotColor: 'bg-amber-500',
   },
   en_revision: {
     label: 'En revisión',
     icon: Eye,
-    colorClass: 'text-blue-600',
-    bgColorClass: 'bg-blue-50 dark:bg-blue-950',
-    dotColor: 'bg-blue-500',
+    colorClass: 'text-amber-600',
+    bgColorClass: 'bg-amber-50 dark:bg-amber-950',
+    dotColor: 'bg-amber-500',
   },
-  aprobado: {
+  espera_cliente: {
+    label: 'En espera del cliente',
+    icon: Hourglass,
+    colorClass: 'text-red-600',
+    bgColorClass: 'bg-red-50 dark:bg-red-950',
+    dotColor: 'bg-red-500',
+  },
+  necesita_modificaciones: {
+    label: 'Necesita modificaciones',
+    icon: RefreshCw,
+    colorClass: 'text-orange-600',
+    bgColorClass: 'bg-orange-50 dark:bg-orange-950',
+    dotColor: 'bg-orange-500',
+  },
+  idea_aprobada: {
+    label: 'Idea aprobada',
+    icon: ThumbsUp,
+    colorClass: 'text-teal-600',
+    bgColorClass: 'bg-teal-50 dark:bg-teal-950',
+    dotColor: 'bg-teal-500',
+  },
+  idea_rechazada: {
+    label: 'Idea rechazada',
+    icon: ThumbsDown,
+    colorClass: 'text-rose-600',
+    bgColorClass: 'bg-rose-50 dark:bg-rose-950',
+    dotColor: 'bg-rose-500',
+  },
+  listo_para_disenar: {
+    label: 'Listo para diseñar',
+    icon: Hammer,
+    colorClass: 'text-indigo-600',
+    bgColorClass: 'bg-indigo-50 dark:bg-indigo-950',
+    dotColor: 'bg-indigo-500',
+  },
+  diseno_listo: {
+    label: 'Diseño listo',
+    icon: Sparkles,
+    colorClass: 'text-cyan-600',
+    bgColorClass: 'bg-cyan-50 dark:bg-cyan-950',
+    dotColor: 'bg-cyan-500',
+  },
+  aprobada: {
     label: 'Aprobado',
     icon: CheckCircle,
     colorClass: 'text-emerald-600',
     bgColorClass: 'bg-emerald-50 dark:bg-emerald-950',
     dotColor: 'bg-emerald-500',
+  },
+  listo_para_postear: {
+    label: 'Listo para postear',
+    icon: Send,
+    colorClass: 'text-blue-600',
+    bgColorClass: 'bg-blue-50 dark:bg-blue-950',
+    dotColor: 'bg-blue-500',
+  },
+  posteado: {
+    label: 'Publicado',
+    icon: Globe,
+    colorClass: 'text-green-600',
+    bgColorClass: 'bg-green-50 dark:bg-green-950',
+    dotColor: 'bg-green-500',
   },
   problemas: {
     label: 'Problemas',
@@ -41,9 +96,9 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: Lucid
   cerrada: {
     label: 'Cerrada',
     icon: Archive,
-    colorClass: 'text-indigo-600',
-    bgColorClass: 'bg-indigo-50 dark:bg-indigo-950',
-    dotColor: 'bg-indigo-500',
+    colorClass: 'text-slate-600 dark:text-slate-400',
+    bgColorClass: 'bg-slate-100 dark:bg-slate-800',
+    dotColor: 'bg-slate-500',
   },
 };
 
@@ -65,8 +120,21 @@ export const TASK_PRIORITY_CONFIG: Record<TaskPriority, { label: string; colorCl
   urgent: { label: 'Urgente', colorClass: 'text-red-500', dotColor: 'bg-red-500' },
 };
 
-export const TASK_STATUSES: TaskStatus[] = ['en_espera', 'ejecutando', 'en_revision', 'aprobado', 'problemas', 'cerrada'];
+/**
+ * Same canonical order as the ideas, plus the two task-only states. The kanban
+ * renders one column per entry and the modal renders one pill per entry.
+ */
+export const TASK_STATUSES: TaskStatus[] = [...IDEA_STATUS_ORDER, 'problemas', 'cerrada'];
 export const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
+
+/**
+ * `TASK_STATUS_CONFIG` is keyed by the canonical vocabulary; rows written before
+ * a migration ran can still hold a retired status, so fall back instead of
+ * crashing the row.
+ */
+export function taskStatusConfig(status: TaskStatus) {
+  return TASK_STATUS_CONFIG[status] ?? TASK_STATUS_CONFIG.borrador;
+}
 
 export const TASK_ROLE_CONFIG: Record<TaskRole, {
   label: string;

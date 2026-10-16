@@ -15,7 +15,7 @@ const MENTION_TOKEN = /@[\p{L}\p{N}'.-]+/gu;
 // Single-underscore italics are intentionally not supported: otherwise
 // snake_case words like `mi_variable` would render as italic.
 const INLINE_TOKEN =
-  /(\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)|\*[^*\n]+\*)/g;
+  /(\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)|\*[^*\n]+\*|https?:\/\/[^\s`<>]+|www\.[^\s`<>]+)/gi;
 
 type Atom = { kind: 'mention' | 'text'; value: string };
 
@@ -73,7 +73,23 @@ function renderInlineChunk(
       const token = match[0];
       const key = `${keyBase}-t${atomIdx}-${tokenIdx++}`;
 
-      if (token.startsWith('**') || token.startsWith('__')) {
+      if (/^(https?:\/\/|www\.)/i.test(token)) {
+        const trailing = token.match(/[.,;:!?)\]]+$/)?.[0] ?? '';
+        const raw = trailing ? token.slice(0, token.length - trailing.length) : token;
+        const href = /^www\./i.test(raw) ? `https://${raw}` : raw;
+        out.push(
+          <a
+            key={key}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="text-primary underline underline-offset-2 break-all hover:opacity-80"
+          >
+            {raw}
+          </a>
+        );
+        if (trailing) out.push(renderText(trailing, `${keyBase}-tr${atomIdx}-${tokenIdx++}`));
+      } else if (token.startsWith('**') || token.startsWith('__')) {
         out.push(<strong key={key} className="font-semibold text-foreground">{token.slice(2, -2)}</strong>);
       } else if (token.startsWith('~~')) {
         out.push(<s key={key} className="text-muted-foreground">{token.slice(2, -2)}</s>);

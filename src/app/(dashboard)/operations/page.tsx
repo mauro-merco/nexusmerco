@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { KanbanBoard } from '@/components/kanban-board';
 import { NewTaskDialog } from '@/components/new-task-dialog';
 import { TaskDetailModal } from '@/components/task-detail-modal';
+import { ProblemNotePrompt } from '@/components/problem-note-prompt';
 import { TaskRow } from '@/components/client-tasks-tab';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus, TaskPriority } from '@/lib/types';
@@ -39,6 +40,8 @@ export default function OperationsPage() {
   const [clientFilter, setClientFilter] = useState<Set<string>>(new Set());
   const [priorityFilter, setPriorityFilter] = useState<Set<TaskPriority>>(new Set());
   const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [problemMove, setProblemMove] = useState<{ taskId: string } | null>(null);
+  const [savingProblemMove, setSavingProblemMove] = useState(false);
 
   const loadAllTasks = useCallback(async () => {
     setAllLoading(true);
@@ -93,9 +96,24 @@ export default function OperationsPage() {
   const togglePriorityFilter = (p: TaskPriority) => setPriorityFilter(prev => { const next = new Set(prev); next.has(p) ? next.delete(p) : next.add(p); return next; });
 
   const handleTaskMove = useCallback(async (taskId: string, newStatus: TaskStatus) => {
+    if (newStatus === 'problemas') { setProblemMove({ taskId }); return; }
     setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
     await updateTask(taskId, { status: newStatus });
   }, [updateTask]);
+
+  const confirmProblemMove = useCallback(async (note: string) => {
+    if (!problemMove) return;
+    setSavingProblemMove(true);
+    try {
+      setAllTasks(prev => prev.map(t => t.id === problemMove.taskId ? { ...t, status: 'problemas', problem_note: note } : t));
+      await updateTask(problemMove.taskId, { status: 'problemas', problem_note: note });
+      setProblemMove(null);
+    } catch {
+      await loadAllTasks();
+    } finally {
+      setSavingProblemMove(false);
+    }
+  }, [problemMove, updateTask, loadAllTasks]);
 
   const handleTaskClick = useCallback((task: Task) => setSelectedTask(task), []);
 
@@ -277,6 +295,13 @@ export default function OperationsPage() {
           users={users}
         />
       )}
+
+      <ProblemNotePrompt
+        open={!!problemMove}
+        saving={savingProblemMove}
+        onCancel={() => setProblemMove(null)}
+        onSave={confirmProblemMove}
+      />
     </div>
   );
 }

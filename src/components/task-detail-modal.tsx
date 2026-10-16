@@ -13,6 +13,7 @@ import { useTaskComments, useTaskAttachments } from '@/lib/hooks/use-tasks';
 import { useAuthStore } from '@/store/auth-store';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MentionedText, MentionTextarea } from '@/components/mention';
+import { MarkdownBody } from '@/lib/markdown';
 import type { Task, TaskStatus, TaskPriority, TaskRole, TaskComment } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES, taskTypeInfo } from '@/lib/task-config';
 import { TaskRolesPicker, rolesToList, rolesFromAssignees, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
@@ -21,7 +22,7 @@ import { MaterialLinks } from '@/components/material-links';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
   Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X, Layers,
-  Share2, Copy, Globe, Lock,
+  Share2, Copy, Globe, Lock, AlertTriangle,
 } from 'lucide-react';
 
 interface TaskDetailModalProps {
@@ -65,6 +66,13 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [newAttachUrl, setNewAttachUrl] = useState('');
   const [addingAttach, setAddingAttach] = useState(false);
 
+  const [problemNote, setProblemNote] = useState(task.problem_note || '');
+  const [needsMaterial, setNeedsMaterial] = useState(!!task.needs_client_material);
+  const [materialNote, setMaterialNote] = useState(task.client_material_note || '');
+  const [problemPrompt, setProblemPrompt] = useState<null | { note: string }>(null);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const [savingProblem, setSavingProblem] = useState(false);
+
   useEffect(() => {
     setTitle(task.title);
     setDescription(task.description);
@@ -76,6 +84,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setPiecesStories(task.pieces_stories != null ? String(task.pieces_stories) : '');
     setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
     setPiecesReels(task.pieces_reels != null ? String(task.pieces_reels) : '');
+    setProblemNote(task.problem_note || '');
+    setNeedsMaterial(!!task.needs_client_material);
+    setMaterialNote(task.client_material_note || '');
+    setProblemPrompt(null);
     setEditing(false);
     setConfirmDelete(false);
     setSaveError(null);
@@ -98,6 +110,8 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
           assignees: rolesToList(roles),
           due_date: dueDate || null,
           task_type: taskType || null,
+          needs_client_material: needsMaterial,
+          client_material_note: needsMaterial ? materialNote : '',
           pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
           pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
           pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
@@ -112,16 +126,43 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     } finally {
       setSaving(false);
     }
-  }, [task.id, title, description, status, priority, roles, dueDate, piecesStories, piecesFeed, piecesReels, onTaskUpdated]);
+  }, [task.id, title, description, status, priority, roles, dueDate, piecesStories, piecesFeed, piecesReels, needsMaterial, materialNote, onTaskUpdated]);
 
+  /**
+   * Moving a task into `problemas` is blocked until the author writes down what
+   * is wrong: the prompt opens first and the status is only saved together with
+   * the note.
+   */
   const handleQuickStatus = useCallback(async (newStatus: TaskStatus) => {
-    if (newStatus === status) return;
+    if (newStatus === status || changingStatus) return;
+    if (newStatus === 'problemas') { setProblemPrompt({ note: problemNote }); return; }
+    setChangingStatus(true);
     try {
       const res = await fetch(`/api/tasks/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
       const json = await res.json();
       if (res.ok) { setStatus(newStatus); onTaskUpdated(json.data); }
-    } catch { /* */ }
-  }, [task.id, status, onTaskUpdated]);
+    } catch { /* */ } finally { setChangingStatus(false); }
+  }, [task.id, status, changingStatus, problemNote, onTaskUpdated]);
+
+  const saveProblem = useCallback(async () => {
+    const note = (problemPrompt?.note || '').trim();
+    if (!note) return;
+    setSavingProblem(true);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'problemas', problem_note: note }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setStatus('problemas');
+        setProblemNote(note);
+        setProblemPrompt(null);
+        onTaskUpdated(json.data);
+      }
+    } catch { /* */ } finally { setSavingProblem(false); }
+  }, [task.id, problemPrompt, onTaskUpdated]);
 
   const handleAddComment = useCallback(async () => {
     if (!newComment.trim() || !user?.id) return;
@@ -241,21 +282,64 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         </div>
 
         {/* Status pills */}
-        <div className="shrink-0">
-          <div className="flex gap-1.5 flex-wrap">
+        <div className="shrink-0 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Estado</p>
+          <div className="flex gap-1.5 flex-wrap items-center">
             {TASK_STATUSES.map(key => {
               const s = TASK_STATUS_CONFIG[key];
               const Icon = s.icon;
               const isActive = status === key;
               return (
-                <button key={key} type="button" onClick={() => handleQuickStatus(key)}
+                <button key={key} type="button" disabled={changingStatus} onClick={() => handleQuickStatus(key)}
                   className={cn('flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors',
-                    isActive ? cn(s.bgColorClass, s.colorClass, 'font-semibold') : 'bg-muted/35 text-muted-foreground/70 hover:bg-muted/55')}>
+                    isActive ? cn(s.bgColorClass, s.colorClass, 'font-semibold') : 'bg-muted/35 text-muted-foreground/70 hover:bg-muted/55',
+                    changingStatus && 'opacity-50 pointer-events-none')}>
                   <Icon className="h-4 w-4" /> {s.label}
                 </button>
               );
             })}
+            {changingStatus && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
+
+          {/* Blocking problem */}
+          {status === 'problemas' && !problemPrompt && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black uppercase text-red-600 dark:text-red-400">Problema</p>
+                {problemNote
+                  ? <MarkdownBody text={problemNote} className="mt-1 text-sm text-foreground/85" />
+                  : <p className="mt-1 text-sm italic text-muted-foreground">Sin descripción</p>}
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 shrink-0 text-xs" onClick={() => setProblemPrompt({ note: problemNote })}>
+                <Edit3 className="mr-1 h-3 w-3" /> Editar
+              </Button>
+            </div>
+          )}
+
+          {problemPrompt && (
+            <div className="space-y-2 rounded-xl border border-red-500/40 bg-red-500/5 p-3">
+              <Label htmlFor="task-problem-note" className="text-red-600 dark:text-red-400">
+                ¿Cuál es el problema?
+              </Label>
+              <textarea
+                id="task-problem-note"
+                autoFocus
+                value={problemPrompt.note}
+                onChange={e => setProblemPrompt({ note: e.target.value })}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveProblem(); } if (e.key === 'Escape') setProblemPrompt(null); }}
+                placeholder="Describí qué está pasando y qué bloquea la tarea..."
+                className="min-h-[70px] w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none"
+              />
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" className="h-8 rounded-lg" onClick={saveProblem} disabled={savingProblem || !problemPrompt.note.trim()}>
+                  {savingProblem && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 rounded-lg" onClick={() => setProblemPrompt(null)} disabled={savingProblem}>Cancelar</Button>
+                <span className="ml-auto text-[10px] text-muted-foreground">Ctrl + Enter</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Material links */}
@@ -264,10 +348,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         </div>
 
         {/* Two-column body */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:h-full md:min-h-0">
             {/* LEFT — Detail + Attachments */}
-            <div className="md:col-span-3 space-y-4">
+            <div className="md:col-span-3 space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
               {editing ? (
                 <div className="space-y-3">
                   {saveError && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
@@ -321,13 +405,30 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     <Label>Equipo y roles {totalPeople(roles) > 0 && <span className="text-muted-foreground font-normal">({totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''})</span>}</Label>
                     <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
                   </div>
+                  <div className="space-y-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-red-600 dark:text-red-400">
+                      <input type="checkbox" checked={needsMaterial} onChange={e => setNeedsMaterial(e.target.checked)} />
+                      NECESITO MATERIAL DEL CLIENTE
+                    </label>
+                    {needsMaterial && (
+                      <textarea value={materialNote} onChange={e => setMaterialNote(e.target.value)} rows={2}
+                        placeholder="Qué material se necesita para esta tarea..."
+                        className="min-h-[60px] w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {task.needs_client_material && (
+                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3">
+                      <p className="flex items-center gap-2 text-sm font-black uppercase text-red-600 dark:text-red-400"><AlertTriangle className="h-4 w-4" /> NECESITO MATERIAL DEL CLIENTE</p>
+                      {task.client_material_note && <MarkdownBody text={task.client_material_note} className="mt-2 text-sm text-foreground/85" />}
+                    </div>
+                  )}
                   {task.description ? (
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Descripción</p>
-                      <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{task.description}</p>
+                      <MarkdownBody text={task.description} className="text-sm text-foreground/80 leading-relaxed" />
                     </div>
                   ) : <p className="text-sm text-muted-foreground italic">Sin descripción</p>}
                   <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
@@ -420,7 +521,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             </div>
 
             {/* RIGHT — Comments */}
-            <div className="md:col-span-2 flex flex-col min-h-0 rounded-2xl bg-muted/25 p-4">
+            <div className="md:col-span-2 flex flex-col min-h-0 rounded-2xl bg-muted/25 p-4 md:overflow-hidden">
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1.5 mb-3 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Comentarios ({comments.length})</p>
               <div className="flex-1 overflow-y-auto min-h-0 space-y-4 mb-3">
                 {comments.length === 0 && <p className="text-sm text-muted-foreground/50 italic text-center py-6">Sin comentarios</p>}

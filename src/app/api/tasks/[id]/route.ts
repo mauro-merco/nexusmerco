@@ -59,7 +59,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public', 'task_type']) {
+    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public', 'task_type', 'problem_note', 'needs_client_material', 'client_material_note']) {
       if (body[key] !== undefined) updates[key] = body[key];
     }
     for (const key of ['pieces_stories', 'pieces_feed', 'pieces_reels']) {
@@ -69,7 +69,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
 
     if (body.status !== undefined) {
-      const { data: prevTask } = await supabase.from('tasks').select('status').eq('id', id).single();
+      const { data: prevTask } = await supabase.from('tasks').select('status, problem_note').eq('id', id).single();
+      if (body.status === 'problemas') {
+        const note = typeof body.problem_note === 'string' ? body.problem_note.trim() : '';
+        if (!note && !(prevTask?.problem_note || '').trim()) {
+          return NextResponse.json({ error: 'Escribí cuál es el problema' }, { status: 400 });
+        }
+      }
       if (body.status !== prevTask?.status) {
         if (body.status === 'cerrada') updates.completed_at = new Date().toISOString();
         else if (prevTask?.status === 'cerrada') updates.completed_at = null;

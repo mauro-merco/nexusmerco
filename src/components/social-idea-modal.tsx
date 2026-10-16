@@ -260,10 +260,10 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         </div>
 
         {/* Two-column body */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:h-full md:min-h-0">
             {/* LEFT COLUMN — Detail + Attachments */}
-            <div className="md:col-span-3 space-y-4">
+            <div className="md:col-span-3 space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
               {editing ? (
                 <div className="space-y-3">
                   {saveError && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
@@ -399,9 +399,9 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
             {/* RIGHT COLUMN — Comments */}
             {isSocial && (
-              <div className="md:col-span-2 flex flex-col min-h-0 rounded-2xl bg-muted/25 p-3.5">
+              <div className="md:col-span-2 flex flex-col min-h-0 rounded-2xl bg-muted/25 p-3.5 md:overflow-hidden">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1 mb-2 shrink-0">Comentarios ({comments.length})</p>
-                <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="flex-1 min-h-0">
                   <SocialComment ideaId={idea.id} comments={comments} onAddComment={addComment} onDeleteComment={deleteComment} onUpdateComment={updateComment} currentUserId={user?.id} />
                 </div>
               </div>

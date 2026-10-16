@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     const user = await getRequestUser(request, supabase);
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
-    const { client_id, title, description, status, assignee_ids, assignees, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels, task_type } = body;
+    const { client_id, title, description, status, assignee_ids, assignees, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels, task_type, problem_note, needs_client_material, client_material_note } = body;
     const toCount = (v: unknown) => v === undefined || v === null || v === '' ? null : Number(v);
 
     if (!client_id || !title) {
@@ -119,7 +119,10 @@ export async function POST(request: Request) {
       .select('id', { count: 'exact', head: true })
       .eq('client_id', client_id);
 
-    const initialStatus = status || 'en_espera';
+    const initialStatus = status || 'borrador';
+    if (initialStatus === 'problemas' && !(typeof problem_note === 'string' && problem_note.trim())) {
+      return NextResponse.json({ error: 'Escribí cuál es el problema' }, { status: 400 });
+    }
 
     const { data, error } = await supabase
       .from('tasks')
@@ -132,6 +135,9 @@ export async function POST(request: Request) {
         priority: priority || 'medium',
         due_date: due_date || null,
         task_type: task_type || null,
+        problem_note: problem_note || null,
+        needs_client_material: !!needs_client_material,
+        client_material_note: client_material_note || null,
         pieces_stories: toCount(pieces_stories),
         pieces_feed: toCount(pieces_feed),
         pieces_reels: toCount(pieces_reels),

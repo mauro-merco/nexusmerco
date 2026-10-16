@@ -5,11 +5,11 @@ import { useTasks } from '@/lib/hooks/use-tasks';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/types';
-import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, PIECE_TYPES, taskPieceTotal, taskTypeInfo } from '@/lib/task-config';
+import { TASK_ROLE_CONFIG, TASK_PRIORITY_CONFIG, PIECE_TYPES, taskPieceTotal, taskTypeInfo, taskStatusConfig } from '@/lib/task-config';
 import { Loader2, Calendar, KanbanSquare, CheckCircle2, Layers, ImageIcon } from 'lucide-react';
 
 export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: () => void; showClient?: boolean }) {
-  const sConfig = TASK_STATUS_CONFIG[task.status];
+  const sConfig = taskStatusConfig(task.status);
   const pConfig = TASK_PRIORITY_CONFIG[task.priority];
   const SIcon = sConfig.icon;
 

@@ -13,7 +13,7 @@ import { WorkStatistics } from '@/components/work-statistics';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ClientWall } from '@/components/client-wall';
 import { Input } from '@/components/ui/input';
-import { TASK_ROLE_CONFIG, TASK_STATUS_CONFIG, taskTypeInfo } from '@/lib/task-config';
+import { TASK_ROLE_CONFIG, taskStatusConfig, taskTypeInfo } from '@/lib/task-config';
 import { cn } from '@/lib/utils';
 import type { User, Task, NexusDocument } from '@/lib/types';
 import { KanbanSquare, CheckCircle2, Users2, Loader2, ChevronRight, FileText, Plus, Calendar, FolderOpen, ExternalLink, Trash2, MessageSquare, Send } from 'lucide-react';
@@ -26,7 +26,7 @@ type DriveFolder = {
 };
 
 function TaskRowInline({ task, onOpen, closed }: { task: Task; onOpen: () => void; closed?: boolean }) {
-  const sConfig = TASK_STATUS_CONFIG[task.status];
+  const sConfig = taskStatusConfig(task.status);
   const SIcon = sConfig.icon;
   return (
     <button

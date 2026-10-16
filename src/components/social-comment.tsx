@@ -186,35 +186,37 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
   const replyComment = replyTo ? comments.find(c => c.id === replyTo) : null;
 
   return (
-    <div className="space-y-4">
-      {comments.length === 0 ? (
-        <div className="text-center py-8 text-sm text-muted-foreground">
-          <p>No hay comentarios todavía</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {comments.map(comment => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              currentUserId={currentUserId}
-              onReply={setReplyTo}
-              onDelete={onDeleteComment}
-              onEdit={startEdit}
-              editingId={editingId}
-              editContent={editContent}
-              setEditContent={setEditContent}
-              saveEdit={saveEdit}
-              cancelEdit={cancelEdit}
-              savingEdit={savingEdit}
-              users={mentionUsers}
-            />
-          ))}
-        </div>
-      )}
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {comments.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            <p>No hay comentarios todavía</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {comments.map(comment => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                currentUserId={currentUserId}
+                onReply={setReplyTo}
+                onDelete={onDeleteComment}
+                onEdit={startEdit}
+                editingId={editingId}
+                editContent={editContent}
+                setEditContent={setEditContent}
+                saveEdit={saveEdit}
+                cancelEdit={cancelEdit}
+                savingEdit={savingEdit}
+                users={mentionUsers}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {currentUserId && (
-        <div className="pt-3 border-t border-border/30 space-y-2">
+        <div className="shrink-0 space-y-2 border-t border-border/30 pt-3">
           {replyComment && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-1.5">
               <Reply className="h-3 w-3" />

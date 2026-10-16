@@ -35,6 +35,9 @@ export function useTasks(clientId: string | null) {
     priority?: TaskPriority;
     due_date?: string;
     task_type?: string | null;
+    problem_note?: string | null;
+    needs_client_material?: boolean;
+    client_material_note?: string | null;
     pieces_stories?: number | null;
     pieces_feed?: number | null;
     pieces_reels?: number | null;
@@ -59,6 +62,9 @@ export function useTasks(clientId: string | null) {
     priority: TaskPriority;
     due_date: string | null;
     task_type: string | null;
+    problem_note: string | null;
+    needs_client_material: boolean;
+    client_material_note: string | null;
     pieces_stories: number | null;
     pieces_feed: number | null;
     pieces_reels: number | null;

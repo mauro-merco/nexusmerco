@@ -12,7 +12,7 @@ import type { TaskStatus, TaskPriority, TaskRole } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskTypeLabel } from '@/lib/task-config';
 import { TaskRolesPicker, emptyRoles, rolesToList, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
 import { TaskTypePicker } from '@/components/task-type-picker';
-import { Loader2, Calendar, Users2, ListChecks, LayoutList } from 'lucide-react';
+import { Loader2, Calendar, Users2, ListChecks, LayoutList, AlertTriangle } from 'lucide-react';
 
 interface UserRecord { id: string; full_name: string; email: string; avatar_url: string; }
 
@@ -31,6 +31,9 @@ interface NewTaskDialogProps {
     priority?: TaskPriority;
     due_date?: string;
     task_type?: string;
+    problem_note?: string;
+    needs_client_material?: boolean;
+    client_material_note?: string;
     pieces_stories?: number | null;
     pieces_feed?: number | null;
     pieces_reels?: number | null;
@@ -41,7 +44,7 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
   const [selClient, setSelClient] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<TaskStatus>('en_espera');
+  const [status, setStatus] = useState<TaskStatus>('borrador');
   const [roles, setRoles] = useState<TaskRolesState>(emptyRoles());
   const [taskType, setTaskType] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
@@ -49,20 +52,25 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
   const [piecesStories, setPiecesStories] = useState('');
   const [piecesFeed, setPiecesFeed] = useState('');
   const [piecesReels, setPiecesReels] = useState('');
+  const [problemNote, setProblemNote] = useState('');
+  const [needsMaterial, setNeedsMaterial] = useState(false);
+  const [materialNote, setMaterialNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setTitle(''); setDescription(''); setStatus('en_espera'); setRoles(emptyRoles());
+      setTitle(''); setDescription(''); setStatus('borrador'); setRoles(emptyRoles());
       setPriority('medium'); setDueDate(''); setTaskType(''); setSelClient('');
       setPiecesStories(''); setPiecesFeed(''); setPiecesReels(''); setError(null);
+      setProblemNote(''); setNeedsMaterial(false); setMaterialNote('');
     }
   }, [open]);
 
   const handleSave = async () => {
     if (!selClient) { setError('Seleccioná el cliente de la tarea'); return; }
     if (!title.trim()) { setError('Ingresá un título'); return; }
+    if (status === 'problemas' && !problemNote.trim()) { setError('Escribí cuál es el problema'); return; }
     if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) {
       setError('Asigná al menos una persona como responsable, ejecutor y control');
       return;
@@ -79,6 +87,9 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
         priority,
         due_date: dueDate || undefined,
         task_type: taskType || undefined,
+        problem_note: status === 'problemas' ? problemNote.trim() : undefined,
+        needs_client_material: needsMaterial,
+        client_material_note: needsMaterial ? materialNote.trim() : undefined,
         pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
         pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
         pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
@@ -163,6 +174,27 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
                 })}
               </div>
             </div>
+          </div>
+
+          {status === 'problemas' && (
+            <div className="space-y-1.5 rounded-xl border border-red-500/40 bg-red-500/5 p-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400"><AlertTriangle className="h-3.5 w-3.5" /> ¿Cuál es el problema?</div>
+              <textarea value={problemNote} onChange={e => setProblemNote(e.target.value)} rows={2}
+                placeholder="Describí qué está pasando y qué bloquea la tarea..."
+                className="min-h-[60px] w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
+            </div>
+          )}
+
+          <div className="space-y-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-red-600 dark:text-red-400">
+              <input type="checkbox" checked={needsMaterial} onChange={e => setNeedsMaterial(e.target.checked)} />
+              NECESITO MATERIAL DEL CLIENTE
+            </label>
+            {needsMaterial && (
+              <textarea value={materialNote} onChange={e => setMaterialNote(e.target.value)} rows={2}
+                placeholder="Qué material se necesita para esta tarea..."
+                className="min-h-[60px] w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
+            )}
           </div>
 
           {/* Fecha + piezas */}

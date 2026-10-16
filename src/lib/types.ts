@@ -184,7 +184,8 @@ export interface SocialAnnotation {
   created_at: string;
 }
 
-export type TaskStatus = 'en_espera' | 'ejecutando' | 'en_revision' | 'aprobado' | 'problemas' | 'cerrada';
+/** Tasks share the idea workflow and add the two workflow terminals we need. */
+export type TaskStatus = IdeaStatus | 'problemas' | 'cerrada';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskRole = WorkRole;
 
@@ -200,6 +201,12 @@ export interface Task {
   /** Type of the task: one of the ids in TASK_TYPE_CATEGORIES (e.g. redes_piezas, ads_gestion, web_landing...). */
   task_type: string | null;
   status: TaskStatus;
+  /** What is blocking the task. Required whenever status becomes `problemas`. */
+  problem_note?: string | null;
+  /** Mirrors the ideas' "NECESITO MATERIAL DEL CLIENTE" flag. */
+  needs_client_material?: boolean;
+  /** What material the client has to send. */
+  client_material_note?: string | null;
   author_id: string | null;
   priority: TaskPriority;
   due_date: string | null;
