@@ -177,7 +177,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn('flex! flex-col sm:max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl border-2', modalState.border)}>
+      <DialogContent className={cn('flex! flex-col sm:max-w-5xl h-[90dvh] overflow-hidden rounded-2xl border-2', modalState.border)}>
         <div className={cn('mx-[-1.5rem] mt-[-1.5rem] px-6 py-3 text-sm font-black uppercase tracking-wide shadow-sm', modalState.banner)}>
           {modalState.label}
         </div>
@@ -226,7 +226,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         </div>
 
         {/* Status pills */}
-        <div className="shrink-0">
+        <div className="shrink-0 max-h-[34vh] overflow-y-auto">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Estado</p>
           <div className="flex gap-1.5 flex-wrap">
             {STATUS_FLOW.map(key => {
@@ -255,7 +255,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         </div>
 
         {/* Material links */}
-        <div className="shrink-0">
+        <div className="shrink-0 max-h-[20vh] overflow-y-auto">
           <MaterialLinks entityType={calendarType === 'ads' ? 'ads_idea' : 'social_idea'} entityId={idea.id} />
         </div>
 
@@ -399,7 +399,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
             {/* RIGHT COLUMN — Comments */}
             {isSocial && (
-              <div className="md:col-span-2 flex flex-col min-h-0 rounded-2xl bg-muted/25 p-3.5 md:overflow-hidden">
+              <div className="md:col-span-2 flex flex-col min-h-0 h-[55vh] overflow-hidden rounded-2xl bg-muted/25 p-3.5 md:h-auto">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1 mb-2 shrink-0">Comentarios ({comments.length})</p>
                 <div className="flex-1 min-h-0">
                   <SocialComment ideaId={idea.id} comments={comments} onAddComment={addComment} onDeleteComment={deleteComment} onUpdateComment={updateComment} currentUserId={user?.id} />
