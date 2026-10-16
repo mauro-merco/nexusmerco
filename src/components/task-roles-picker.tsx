@@ -43,7 +43,13 @@ export function totalPeople(roles: TaskRolesState): number {
   return s.size;
 }
 
-type Person = { id: string; full_name: string; email: string; avatar_url: string };
+type Person = { id: string; full_name: string; email: string; avatar_url: string; role?: string };
+
+const isInternal = (u: Person) => {
+  const r = (u.role || '').toLowerCase();
+  if (!r) return true;
+  return r !== 'client' && r !== 'cliente' && r !== 'invitado' && r !== 'guest';
+};
 
 function initials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
@@ -136,6 +142,7 @@ interface TaskRolesPickerProps {
 }
 
 export function TaskRolesPicker({ roles, onChange, users }: TaskRolesPickerProps) {
+  const assignable = users.filter(isInternal);
   const toggle = (role: TaskRole, id: string) => {
     const next: TaskRolesState = { ...roles, [role]: roles[role].includes(id) ? roles[role].filter(x => x !== id) : [...roles[role], id] };
     onChange(next);
@@ -144,7 +151,7 @@ export function TaskRolesPicker({ roles, onChange, users }: TaskRolesPickerProps
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
       {TASK_ROLES.map(roleKey => (
-        <RolePickerField key={roleKey} roleKey={roleKey} users={users} selected={roles[roleKey]} onToggle={(id) => toggle(roleKey, id)} />
+        <RolePickerField key={roleKey} roleKey={roleKey} users={assignable} selected={roles[roleKey]} onToggle={(id) => toggle(roleKey, id)} />
       ))}
     </div>
   );

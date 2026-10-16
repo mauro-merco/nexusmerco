@@ -17,6 +17,7 @@ import type { Task, TaskStatus, TaskPriority, TaskRole, TaskComment } from '@/li
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES, taskTypeInfo } from '@/lib/task-config';
 import { TaskRolesPicker, rolesToList, rolesFromAssignees, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
 import { TaskTypePicker } from '@/components/task-type-picker';
+import { MaterialLinks } from '@/components/material-links';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
   Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X, Layers,
@@ -255,6 +256,11 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               );
             })}
           </div>
+        </div>
+
+        {/* Material links */}
+        <div className="shrink-0">
+          <MaterialLinks entityType="task" entityId={task.id} />
         </div>
 
         {/* Two-column body */}

@@ -32,7 +32,7 @@ export default function OperationsPage() {
   const { createTask, updateTask, deleteTask } = useTasks(null);
   const [showNewTask, setShowNewTask] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [users, setUsers] = useState<{ id: string; full_name: string; email: string; avatar_url: string; }[]>([]);
+  const [users, setUsers] = useState<{ id: string; full_name: string; email: string; avatar_url: string; role?: string; }[]>([]);
   const [view, setView] = useState<ViewMode>('kanban');
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [allLoading, setAllLoading] = useState(true);
@@ -52,7 +52,7 @@ export default function OperationsPage() {
   useEffect(() => { loadAllTasks(); }, [loadAllTasks]);
 
   useEffect(() => {
-    fetch('/api/users').then(r => r.json()).then(json => setUsers(json.data || [])).catch(() => {});
+    fetch('/api/users').then(r => r.json()).then(json => setUsers((json.data || []).filter((u: { role?: string }) => u.role === 'admin' || u.role === 'operador'))).catch(() => {});
   }, []);
 
   useEffect(() => {

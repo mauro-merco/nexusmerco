@@ -19,6 +19,7 @@ import type { SocialIdea, PostType, IdeaStatus, User as NexusUser } from '@/lib/
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
 import { MarkdownTextarea } from '@/components/markdown-textarea';
+import { MaterialLinks } from '@/components/material-links';
 import { MarkdownBody } from '@/lib/markdown';
 import {
   Loader2, Trash2, Link, Paperclip, Copy, AlertTriangle,
@@ -251,6 +252,11 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
             })}
             {changingStatus && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground self-center" />}
           </div>
+        </div>
+
+        {/* Material links */}
+        <div className="shrink-0">
+          <MaterialLinks entityType={calendarType === 'ads' ? 'ads_idea' : 'social_idea'} entityId={idea.id} />
         </div>
 
         {/* Two-column body */}
