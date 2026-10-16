@@ -177,7 +177,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn('sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl border-2', modalState.border)}>
+      <DialogContent className={cn('flex! flex-col sm:max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl border-2', modalState.border)}>
         <div className={cn('mx-[-1.5rem] mt-[-1.5rem] px-6 py-3 text-sm font-black uppercase tracking-wide shadow-sm', modalState.banner)}>
           {modalState.label}
         </div>

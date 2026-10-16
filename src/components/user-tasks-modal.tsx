@@ -41,7 +41,7 @@ export function UserTasksModal({ user, tasks, open, onOpenChange }: UserTasksMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="flex! flex-col sm:max-w-2xl max-h-[85vh] overflow-hidden">
         <div className="flex items-center gap-3 shrink-0">
           <Avatar className="h-10 w-10">
             <AvatarImage src={user.avatar_url} />

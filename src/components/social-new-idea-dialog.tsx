@@ -118,7 +118,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden sm:max-w-lg md:w-[min(92vw,680px)] md:max-w-none rounded-2xl p-0">
+      <DialogContent className="flex! max-h-[90dvh] flex-col overflow-hidden sm:max-w-lg md:w-[min(92vw,680px)] md:max-w-none rounded-2xl p-0">
         <div className="px-6 pt-6 pb-4">
           <DialogTitle>{calendarType === 'ads' ? 'Nueva pieza ADS' : 'Nueva idea de publicación'}</DialogTitle>
           <DialogDescription>Creá contenido y definí quién responde, ejecuta y controla</DialogDescription>

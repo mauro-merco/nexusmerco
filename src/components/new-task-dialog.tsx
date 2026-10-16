@@ -104,7 +104,7 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden sm:max-w-lg md:w-[min(92vw,760px)] md:max-w-none rounded-2xl p-0">
+      <DialogContent className="flex! max-h-[90dvh] flex-col overflow-hidden sm:max-w-lg md:w-[min(92vw,760px)] md:max-w-none rounded-2xl p-0">
         <div className="px-6 pt-6 pb-4">
           <DialogTitle>Nueva Tarea</DialogTitle>
           <DialogDescription>Creá una nueva tarea para el tablero Kanban</DialogDescription>

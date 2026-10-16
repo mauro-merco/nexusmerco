@@ -99,7 +99,7 @@ export function SuggestionDetailModal({ suggestion, open, onOpenChange, onUpdate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[85dvh] overflow-hidden flex flex-col">
+      <DialogContent className="flex! flex-col sm:max-w-2xl max-h-[85dvh] overflow-hidden">
         <DialogTitle className="sr-only">{current.title}</DialogTitle>
 
         <div className="flex items-start justify-between gap-3 pb-3 border-b shrink-0">

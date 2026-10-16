@@ -199,7 +199,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl">
+      <DialogContent className="flex! flex-col sm:max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 shrink-0 pr-10">
           <div className="flex-1 min-w-0">
