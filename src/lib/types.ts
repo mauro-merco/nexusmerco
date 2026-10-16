@@ -184,8 +184,8 @@ export interface SocialAnnotation {
   created_at: string;
 }
 
-/** Tasks share the idea workflow and add the two workflow terminals we need. */
-export type TaskStatus = IdeaStatus | 'problemas' | 'cerrada';
+/** Tasks use the idea workflow minus the idea/publication-only states, plus two task terminals. */
+export type TaskStatus = Exclude<IdeaStatus, 'idea_aprobada' | 'idea_rechazada' | 'listo_para_postear' | 'posteado'> | 'problemas' | 'cerrada';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskRole = WorkRole;
 

@@ -1,12 +1,10 @@
 import type { TaskStatus, TaskPriority, TaskRole, Task } from '@/lib/types';
-import { IDEA_STATUS_ORDER } from '@/lib/social-config';
-import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck, Share2, Megaphone, Globe, ShoppingCart, Target, Hourglass, RefreshCw, ThumbsUp, ThumbsDown, Sparkles, Send } from 'lucide-react';
+import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck, Share2, Megaphone, Globe, ShoppingCart, Target, Hourglass, RefreshCw, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
- * Tasks share the idea workflow (see STATUS_CONFIG in social-config) so both
- * calendars and the task board read the same vocabulary; `problemas` and
- * `cerrada` are the task-only terminal states.
+ * Tasks share the idea workflow except the states that only make sense for an
+ * idea or a published piece; `problemas` and `cerrada` are the task terminals.
  */
 export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: LucideIcon; colorClass: string; bgColorClass: string; dotColor: string }> = {
   borrador: {
@@ -37,20 +35,6 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: Lucid
     bgColorClass: 'bg-orange-50 dark:bg-orange-950',
     dotColor: 'bg-orange-500',
   },
-  idea_aprobada: {
-    label: 'Idea aprobada',
-    icon: ThumbsUp,
-    colorClass: 'text-teal-600',
-    bgColorClass: 'bg-teal-50 dark:bg-teal-950',
-    dotColor: 'bg-teal-500',
-  },
-  idea_rechazada: {
-    label: 'Idea rechazada',
-    icon: ThumbsDown,
-    colorClass: 'text-rose-600',
-    bgColorClass: 'bg-rose-50 dark:bg-rose-950',
-    dotColor: 'bg-rose-500',
-  },
   listo_para_disenar: {
     label: 'Listo para diseñar',
     icon: Hammer,
@@ -71,20 +55,6 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: Lucid
     colorClass: 'text-emerald-600',
     bgColorClass: 'bg-emerald-50 dark:bg-emerald-950',
     dotColor: 'bg-emerald-500',
-  },
-  listo_para_postear: {
-    label: 'Listo para postear',
-    icon: Send,
-    colorClass: 'text-blue-600',
-    bgColorClass: 'bg-blue-50 dark:bg-blue-950',
-    dotColor: 'bg-blue-500',
-  },
-  posteado: {
-    label: 'Publicado',
-    icon: Globe,
-    colorClass: 'text-green-600',
-    bgColorClass: 'bg-green-50 dark:bg-green-950',
-    dotColor: 'bg-green-500',
   },
   problemas: {
     label: 'Problemas',
@@ -121,10 +91,21 @@ export const TASK_PRIORITY_CONFIG: Record<TaskPriority, { label: string; colorCl
 };
 
 /**
- * Same canonical order as the ideas, plus the two task-only states. The kanban
- * renders one column per entry and the modal renders one pill per entry.
+ * Canonical task order: the idea workflow minus the idea/publication-only
+ * states, plus the two task terminals. One kanban column and one modal pill
+ * per entry.
  */
-export const TASK_STATUSES: TaskStatus[] = [...IDEA_STATUS_ORDER, 'problemas', 'cerrada'];
+export const TASK_STATUSES: TaskStatus[] = [
+  'borrador',
+  'en_revision',
+  'espera_cliente',
+  'necesita_modificaciones',
+  'listo_para_disenar',
+  'diseno_listo',
+  'aprobada',
+  'problemas',
+  'cerrada',
+];
 export const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
 /**

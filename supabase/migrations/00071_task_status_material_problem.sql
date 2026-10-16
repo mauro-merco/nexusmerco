@@ -9,23 +9,20 @@ ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS client_material_note TEXT;
 -- migration below would violate it.
 ALTER TABLE public.tasks DROP CONSTRAINT IF EXISTS tasks_status_check;
 
--- Map the retired/renamed statuses onto the new vocabulary.
-UPDATE public.tasks SET status = 'borrador'          WHERE status = 'en_espera';
-UPDATE public.tasks SET status = 'listo_para_disenar' WHERE status = 'ejecutando';
-UPDATE public.tasks SET status = 'aprobada'          WHERE status = 'aprobado';
+-- Map the retired/renamed/idea-only statuses onto the new task vocabulary.
+UPDATE public.tasks SET status = 'borrador'           WHERE status = 'en_espera';
+UPDATE public.tasks SET status = 'listo_para_disenar'  WHERE status = 'ejecutando';
+UPDATE public.tasks SET status = 'aprobada'            WHERE status IN ('aprobado', 'idea_aprobada', 'listo_para_postear', 'posteado');
+UPDATE public.tasks SET status = 'necesita_modificaciones' WHERE status = 'idea_rechazada';
 
 ALTER TABLE public.tasks ADD CONSTRAINT tasks_status_check CHECK (status IN (
   'borrador',
   'en_revision',
   'espera_cliente',
   'necesita_modificaciones',
-  'idea_aprobada',
-  'idea_rechazada',
   'listo_para_disenar',
   'diseno_listo',
   'aprobada',
-  'listo_para_postear',
-  'posteado',
   'problemas',
   'cerrada'
 ));
