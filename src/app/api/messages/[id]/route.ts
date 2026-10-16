@@ -1,35 +1,32 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { decodeJwt } from 'jose';
+import { getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-function getUserId(request: Request): string | null {
-  const authHeader = request.headers.get('authorization') || '';
-  const token = authHeader.replace('Bearer ', '');
-  if (!token) return null;
-  try {
-    const payload = decodeJwt(token);
-    return payload.sub || null;
-  } catch {
-    return null;
-  }
+async function isGroupMember(groupId: string, userId: string) {
+  const { data } = await supabase
+    .from('message_group_members')
+    .select('user_id')
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  return !!data;
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const userId = getUserId(request);
-    if (!userId) {
+    const user = await getRequestUser(request, supabase);
+    if (!user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const { id } = await params;
     const body = await request.json();
 
-    // Only the recipient can mark as read
     const { data: existing } = await supabase
       .from('messages')
       .select('*')
@@ -40,7 +37,22 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Mensaje no encontrado' }, { status: 404 });
     }
 
-    if (existing.recipient_id !== userId) {
+    if (existing.group_id) {
+      if (!(await isGroupMember(existing.group_id, user.id))) {
+        return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
+      }
+      if (body.read) {
+        await supabase
+          .from('message_group_members')
+          .update({ last_read_at: new Date().toISOString() })
+          .eq('group_id', existing.group_id)
+          .eq('user_id', user.id);
+      }
+      return NextResponse.json({ data: existing });
+    }
+
+    // Only the recipient can mark a DM as read
+    if (existing.recipient_id !== user.id) {
       return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
     }
 
@@ -67,8 +79,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const userId = getUserId(request);
-    if (!userId) {
+    const user = await getRequestUser(request, supabase);
+    if (!user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -84,7 +96,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Mensaje no encontrado' }, { status: 404 });
     }
 
-    if (existing.sender_id !== userId && existing.recipient_id !== userId) {
+    const canDelete = existing.group_id
+      ? await isGroupMember(existing.group_id, user.id)
+      : existing.sender_id === user.id || existing.recipient_id === user.id;
+    if (!canDelete) {
       return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
     }
 

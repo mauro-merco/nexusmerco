@@ -355,13 +355,29 @@ export interface StickyNote {
 export interface Message {
   id: string;
   sender_id: string;
-  recipient_id: string;
+  recipient_id: string | null;
+  group_id?: string | null;
   content: string;
   read: boolean;
   read_at: string | null;
   created_at: string;
   sender?: User | null;
   recipient?: User | null;
+}
+
+export interface MessageGroupMember {
+  user_id: string;
+  last_read_at: string;
+  user?: User | null;
+}
+
+export interface MessageGroup {
+  id: string;
+  name: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  members: MessageGroupMember[];
 }
 
 export interface EcommerceDate {
