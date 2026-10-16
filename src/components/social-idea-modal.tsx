@@ -261,7 +261,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
         {/* Two-column body */}
         <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:h-full md:min-h-0">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]">
             {/* LEFT COLUMN — Detail + Attachments */}
             <div className="md:col-span-3 space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
               {editing ? (
