@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-function getAdmin() {
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { persistSession: false },
-  });
-}
+import { getAdminClient, getRequestUser } from '@/lib/api-security';
 
 /**
  * POST /api/clients/init-multipoint
  * Inicializa el cliente "Multipoint" si no existe
  */
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const supabase = getAdmin();
+    const supabase = getAdminClient();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (user.role !== 'admin') return NextResponse.json({ error: 'Solo administradores' }, { status: 403 });
 
     // Verificar si ya existe
     const { data: existing } = await supabase

@@ -64,7 +64,9 @@ export const useAuthStore = create<AuthState>()(
           const accessToken = authData.session?.access_token || '';
 
           try {
-            const res = await fetch(`/api/auth/profile?userId=${authData.user.id}`);
+            const res = await fetch(`/api/auth/profile?userId=${authData.user.id}`, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
             if (res.ok) {
               const json = await res.json();
               if (json.data) {

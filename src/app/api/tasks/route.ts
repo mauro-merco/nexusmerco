@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,11 +9,15 @@ const supabase = createClient(
 
 export async function GET(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const client_id = searchParams.get('client_id');
     const status = searchParams.get('status');
     const assignee_id = searchParams.get('assignee_id');
     const role_filter = searchParams.get('role');
+    if (client_id && !canAccessClient(user, client_id)) return NextResponse.json({ error: 'Sin acceso al cliente' }, { status: 403 });
+    if (!client_id && !isStaff(user)) return NextResponse.json({ error: 'client_id requerido' }, { status: 400 });
 
     let query = supabase
       .from('tasks')
@@ -98,6 +103,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
     const { client_id, title, description, status, assignee_ids, assignees, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels, task_type } = body;
     const toCount = (v: unknown) => v === undefined || v === null || v === '' ? null : Number(v);
@@ -105,6 +112,7 @@ export async function POST(request: Request) {
     if (!client_id || !title) {
       return NextResponse.json({ error: 'client_id and title required' }, { status: 400 });
     }
+    if (!canAccessClient(user, client_id)) return NextResponse.json({ error: 'Sin acceso al cliente' }, { status: 403 });
 
     const { count } = await supabase
       .from('tasks')
@@ -120,7 +128,7 @@ export async function POST(request: Request) {
         title,
         description: description || '',
         status: initialStatus,
-        author_id: author_id || null,
+        author_id: user.id,
         priority: priority || 'medium',
         due_date: due_date || null,
         task_type: task_type || null,
@@ -161,11 +169,11 @@ export async function POST(request: Request) {
       assigneesOut = assigneeRoles.map(a => ({ ...(usersMap[a.user_id] || {}), task_role: a.role })).filter(a => a.id);
 
       let authorName = 'Alguien';
-      if (author_id) {
-        const { data: author } = await supabase.from('users').select('full_name, email').eq('id', author_id).single();
+      if (user.id) {
+        const { data: author } = await supabase.from('users').select('full_name, email').eq('id', user.id).single();
         if (author) authorName = author.full_name || author.email || 'Alguien';
       }
-      const notifyIds = [...new Set(assigneeRoles.map(a => a.user_id).filter(id => id !== author_id))];
+      const notifyIds = [...new Set(assigneeRoles.map(a => a.user_id).filter(id => id !== user.id))];
       if (notifyIds.length > 0) {
         await supabase.from('notifications').insert(notifyIds.map(user_id => ({
           user_id,

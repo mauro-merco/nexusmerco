@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createMentionNotifications } from '@/lib/mentions';
+import { canAccessClient, getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,9 +17,22 @@ async function fetchUsers(ids: string[]) {
 
 export async function GET(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const task_id = searchParams.get('task_id');
     if (!task_id) return NextResponse.json({ error: 'task_id required' }, { status: 400 });
+
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .select('client_id')
+      .eq('id', task_id)
+      .single();
+    if (taskError) throw taskError;
+    if (!canAccessClient(user, task.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
 
     const { data, error } = await supabase
       .from('task_comments')
@@ -51,13 +65,42 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
     const body = await request.json();
-    const { task_id, user_id, content, parent_id } = body;
-    if (!task_id || !user_id || !content) {
+    const { task_id, content, parent_id } = body;
+    if (!task_id || typeof content !== 'string' || !content.trim()) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+    const normalizedContent = content.trim();
+    if (normalizedContent.length > 5000) {
+      return NextResponse.json({ error: 'content too long' }, { status: 400 });
+    }
 
-    const payload: Record<string, unknown> = { task_id, user_id, content };
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .select('client_id')
+      .eq('id', task_id)
+      .single();
+    if (taskError) throw taskError;
+    if (!canAccessClient(user, task.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
+
+    if (parent_id) {
+      const { data: parent, error: parentError } = await supabase
+        .from('task_comments')
+        .select('task_id')
+        .eq('id', parent_id)
+        .single();
+      if (parentError) throw parentError;
+      if (parent.task_id !== task_id) {
+        return NextResponse.json({ error: 'Parent comment does not belong to task' }, { status: 400 });
+      }
+    }
+
+    const payload: Record<string, unknown> = { task_id, user_id: user.id, content: normalizedContent };
     if (parent_id) payload.parent_id = parent_id;
 
     const { data, error } = await supabase
@@ -69,13 +112,13 @@ export async function POST(request: Request) {
 
     await createMentionNotifications(
       supabase,
-      content,
-      user_id,
+      normalizedContent,
+      user.id,
       { link: `/operations?task=${task_id}`, entityLabel: 'un comentario de tarea' }
     );
 
-    const usersMap = await fetchUsers([user_id]);
-    return NextResponse.json({ data: { ...data, user: usersMap[user_id] || null } });
+    const usersMap = await fetchUsers([user.id]);
+    return NextResponse.json({ data: { ...data, user: usersMap[user.id] || null } });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }

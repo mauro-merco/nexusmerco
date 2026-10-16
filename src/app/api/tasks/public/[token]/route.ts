@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { decodeJwt } from 'jose';
+import { getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,23 +10,20 @@ const supabase = createClient(
 const INTERNAL_DOMAIN = '@mercodigital.com';
 
 async function getRequesterEmail(request: Request): Promise<string | null> {
-  const authHeader = request.headers.get('authorization') || '';
-  const token = authHeader.replace('Bearer ', '');
-  if (!token) return null;
-  try {
-    const payload = decodeJwt(token);
-    if (!payload.sub) return null;
-    const { data } = await supabase.from('users').select('email').eq('id', payload.sub).single();
-    return data?.email || null;
-  } catch {
-    return null;
-  }
+  const requester = await getRequestUser(request, supabase);
+  if (!requester) return null;
+  const { data } = await supabase.from('users').select('email').eq('id', requester.id).single();
+  return data?.email || null;
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params;
-    const { data: task, error } = await supabase.from('tasks').select('*').eq('share_token', token).single();
+    const { data: task, error } = await supabase
+      .from('tasks')
+      .select('id, client_id, title, description, task_type, status, priority, due_date, pieces_stories, pieces_feed, pieces_reels, is_public')
+      .eq('share_token', token)
+      .single();
     if (error || !task) {
       return NextResponse.json({ error: 'Tarea no encontrada' }, { status: 404 });
     }
@@ -44,9 +41,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     const { data: assigneeRows } = await supabase.from('task_assignees').select('user_id').eq('task_id', task.id);
     const assigneeIds = (assigneeRows || []).map(r => r.user_id);
 
-    const userIds = [...new Set([...assigneeIds, task.author_id].filter(Boolean))];
-    const { data: users } = userIds.length > 0
-      ? await supabase.from('users').select('id, full_name, avatar_url, email, role').in('id', userIds)
+    const { data: users } = assigneeIds.length > 0
+      ? await supabase.from('users').select('id, full_name, avatar_url').in('id', assigneeIds)
       : { data: [] };
     const usersMap = Object.fromEntries((users || []).map(u => [u.id, u]));
 
@@ -71,12 +67,38 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     return NextResponse.json({
       access: task.is_public ? 'public' : 'private',
       data: {
-        ...task,
-        assignees: assigneeIds.map(uid => usersMap[uid]).filter(Boolean),
-        author: task.author_id ? usersMap[task.author_id] || null : null,
-        client: client || null,
-        comments: (comments || []).map(c => ({ ...c, user: commentUsersMap[c.user_id] || null })),
-        attachments: attachments || [],
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        task_type: task.task_type,
+        status: task.status,
+        priority: task.priority,
+        due_date: task.due_date,
+        pieces_stories: task.pieces_stories,
+        pieces_feed: task.pieces_feed,
+        pieces_reels: task.pieces_reels,
+        is_public: task.is_public,
+        assignees: (assigneeRows || []).flatMap(row => {
+          const assignee = usersMap[row.user_id];
+          if (!assignee) return [];
+          return task.is_public
+            ? [{ full_name: assignee.full_name, avatar_url: assignee.avatar_url }]
+            : [{ id: assignee.id, full_name: assignee.full_name, avatar_url: assignee.avatar_url }];
+        }),
+        client: client ? { name: client.name, logo_url: client.logo_url } : null,
+        comments: (comments || []).map(c => ({
+          id: c.id,
+          content: c.content,
+          created_at: c.created_at,
+          user: commentUsersMap[c.user_id]
+            ? { full_name: commentUsersMap[c.user_id].full_name, avatar_url: commentUsersMap[c.user_id].avatar_url }
+            : null,
+        })),
+        attachments: (attachments || []).map(attachment => ({
+          id: attachment.id,
+          url: attachment.url,
+          name: attachment.name,
+        })),
       },
     });
   } catch (e) {

@@ -1,20 +1,13 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { canAccessClient, getAdminClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ error: 'Supabase no configurado' }, { status: 500 });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = getAdminClient();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!isStaff(user)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
     const { data: wi, error: fetchError } = await supabase
       .from('weekly_inputs')
@@ -24,6 +17,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     if (fetchError || !wi) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    }
+    if (!canAccessClient(user, wi.client_id)) {
+      return NextResponse.json({ error: 'Sin permisos para este cliente' }, { status: 403 });
     }
 
     const { error: ga4Error } = await supabase

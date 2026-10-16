@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,12 +9,17 @@ const supabase = createClient(
 
 export async function GET(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const client_id = searchParams.get('client_id');
     const month = searchParams.get('month');
 
     if (!client_id) {
       return NextResponse.json({ error: 'client_id required' }, { status: 400 });
+    }
+    if (!canAccessClient(user, client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
     let query = supabase
@@ -40,11 +46,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
     const { client_id, name, color, start_date, end_date } = body;
 
     if (!client_id || !name || !start_date || !end_date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!canAccessClient(user, client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
     if (start_date > end_date) {

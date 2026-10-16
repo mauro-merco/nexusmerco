@@ -1,37 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-let migrationChecked = false;
-
-async function ensureMigration() {
-  if (migrationChecked) return;
-  migrationChecked = true;
-  try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseServiceKey,
-        Authorization: `Bearer ${supabaseServiceKey}`,
-      },
-      body: JSON.stringify({
-        query: `
-          ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS share_token UUID DEFAULT gen_random_uuid();
-          ALTER TABLE public.social_comments ADD COLUMN IF NOT EXISTS guest_name TEXT;
-          ALTER TABLE public.social_comments ADD COLUMN IF NOT EXISTS action_type TEXT DEFAULT 'comment';
-        `,
-      }),
-    });
-    if (!res.ok) {
-      console.warn('Auto-migration: exec_sql not available, run 00030 manually');
-    }
-  } catch {
-    // ignore
-  }
-}
 
 function getAdmin() {
   return createClient(supabaseUrl, supabaseServiceKey, {
@@ -39,23 +11,11 @@ function getAdmin() {
   });
 }
 
-function getCurrentUserId(request: Request): string | null {
-  const authHeader = request.headers.get('authorization') || '';
-  const token = authHeader.replace('Bearer ', '');
-  if (!token || token === 'undefined') return null;
-  try {
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    return payload.sub || null;
-  } catch {
-    return null;
-  }
-}
-
 async function resolveClient(token: string) {
   const supabase = getAdmin();
   const { data: link } = await supabase
     .from('calendar_share_links')
-    .select('client_id, enabled')
+    .select('client_id, allowed_client_id, calendar_type, month, allowed_user_ids, enabled')
     .eq('token', token)
     .maybeSingle();
 
@@ -66,7 +26,7 @@ async function resolveClient(token: string) {
       .select('id, name')
       .eq('id', link.client_id)
       .single();
-    return { client, error };
+    return { client, link, error };
   }
 
   const { data: client, error } = await supabase
@@ -74,25 +34,41 @@ async function resolveClient(token: string) {
     .select('id, name')
     .eq('share_token', token)
     .single();
-  return { client, error };
+  return { client, link: null, error };
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
-    await ensureMigration();
     const { token } = await params;
-    const userId = getCurrentUserId(request);
     const body = await request.json();
     const { idea_id, content, guest_name, action_type, status, publish_date, calendar_type, title, description, post_type, links } = body;
     const ideasTable = calendar_type === 'ads' ? 'ads_ideas' : 'social_ideas';
     const commentsTable = calendar_type === 'ads' ? 'ads_comments' : 'social_comments';
 
-    const { client, error: clientError } = await resolveClient(token);
+    const { client, link, error: clientError } = await resolveClient(token);
     if (clientError || !client) {
       return NextResponse.json({ error: 'Calendario no encontrado' }, { status: 404 });
     }
 
     const supabase = getAdmin();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const explicitlyAllowed = Array.isArray(link?.allowed_user_ids) && link.allowed_user_ids.includes(user.id);
+    if (!isStaff(user) && !canAccessClient(user, client.id) && !explicitlyAllowed) {
+      return NextResponse.json({ error: 'Sin acceso a este calendario' }, { status: 403 });
+    }
+    const userId = user.id;
+    if (link?.calendar_type && calendar_type !== link.calendar_type) {
+      return NextResponse.json({ error: 'Tipo de calendario inválido' }, { status: 400 });
+    }
+    if (link?.month && publish_date && !String(publish_date).startsWith(`${link.month}-`)) {
+      return NextResponse.json({ error: 'La fecha está fuera del mes compartido' }, { status: 400 });
+    }
+
+    if (action_type !== 'create_idea') {
+      const { data: targetIdea } = await supabase.from(ideasTable).select('id').eq('id', idea_id).eq('client_id', client.id).maybeSingle();
+      if (!targetIdea) return NextResponse.json({ error: 'Idea no encontrada' }, { status: 404 });
+    }
 
     if (action_type === 'create_idea') {
       const cleanTitle = String(title || '').trim();
@@ -108,7 +84,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
           publish_date: publish_date || new Date().toISOString().slice(0, 10),
           status: 'borrador',
           copy_text: Array.isArray(links) ? links.filter(Boolean).join('\n') : '',
-          author_id: userId || null,
+          author_id: userId,
         })
         .select()
         .single();
@@ -117,7 +93,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       if (content || guest_name) {
         await supabase.from(commentsTable).insert({
           idea_id: idea.id,
-          user_id: userId || null,
+          user_id: userId,
           guest_name: guest_name || null,
           content: content || 'Idea creada por cliente',
           action_type: 'comment',
@@ -141,7 +117,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       if (content || guest_name) {
         await supabase.from(commentsTable).insert({
           idea_id,
-          user_id: userId || null,
+          user_id: userId,
           guest_name: guest_name || null,
           content: content || '',
           action_type: 'status_change',
@@ -163,7 +139,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       if (content || guest_name) {
         await supabase.from(commentsTable).insert({
           idea_id,
-          user_id: userId || null,
+          user_id: userId,
           guest_name: guest_name || null,
           content: content || '',
           action_type: 'date_move',
@@ -180,7 +156,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
     const { error } = await supabase.from(commentsTable).insert({
       idea_id,
-      user_id: userId || null,
+      user_id: userId,
       guest_name: guest_name || null,
       content: content.trim(),
       action_type: action_type || 'comment',
@@ -218,12 +194,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
     const { token } = await params;
     const { action_type, new_status, new_date } = await request.json();
 
-    const { client, error: clientError } = await resolveClient(token);
+    const { client, link, error: clientError } = await resolveClient(token);
     if (clientError || !client) {
       return NextResponse.json({ error: 'Calendario no encontrado' }, { status: 404 });
     }
 
     const supabase = getAdmin();
+    const user = await getRequestUser(request, supabase);
+    const explicitlyAllowed = !!user && Array.isArray(link?.allowed_user_ids) && link.allowed_user_ids.includes(user.id);
+    if (!user || (!isStaff(user) && !canAccessClient(user, client.id) && !explicitlyAllowed)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
 
     if (action_type === 'status_change' && new_status) {
       // This is handled via PATCH/PUT for bulk or single status updates

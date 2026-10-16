@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const { data: task, error } = await supabase.from('tasks').select('*').eq('id', id).single();
     if (error) throw error;
+    const user = await getRequestUser(request, supabase);
+    if (!user || !canAccessClient(user, task.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
     const { data: assigneeRows } = await supabase.from('task_assignees').select('user_id, role').eq('task_id', id);
     const assigneeIds = (assigneeRows || []).map(r => r.user_id);
@@ -45,6 +48,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { data: targetTask } = await supabase.from('tasks').select('client_id').eq('id', id).single();
+    if (!targetTask || !canAccessClient(user, targetTask.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const body = await request.json();
     const roleList = ['lead', 'executor', 'reviewer'];
     if (Array.isArray(body.assignees) && !roleList.every(role => body.assignees.some((assignee: { role?: string }) => assignee?.role === role))) {
@@ -153,9 +160,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const user = await getRequestUser(request, supabase);
+    if (!user || !isStaff(user)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    const { data: targetTask } = await supabase.from('tasks').select('client_id').eq('id', id).single();
+    if (!targetTask || !canAccessClient(user, targetTask.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const { error } = await supabase.from('tasks').delete().eq('id', id);
     if (error) throw error;
     return NextResponse.json({ ok: true });

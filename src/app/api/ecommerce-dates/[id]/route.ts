@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,7 +9,18 @@ const supabase = createClient(
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { id } = await params;
+    const { data: targetDate, error: targetError } = await supabase
+      .from('ecommerce_dates')
+      .select('client_id')
+      .eq('id', id)
+      .single();
+    if (targetError) throw targetError;
+    if (!canAccessClient(user, targetDate.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
     const body = await request.json();
     const updates: Record<string, unknown> = {};
 
@@ -25,9 +37,20 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { id } = await params;
+    const { data: targetDate, error: targetError } = await supabase
+      .from('ecommerce_dates')
+      .select('client_id')
+      .eq('id', id)
+      .single();
+    if (targetError) throw targetError;
+    if (!canAccessClient(user, targetDate.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
     const { error } = await supabase.from('ecommerce_dates').delete().eq('id', id);
     if (error) throw error;
     return NextResponse.json({ ok: true });

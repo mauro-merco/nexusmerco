@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { decodeJwt } from 'jose';
 
 export type CalendarType = 'social' | 'ads';
 
@@ -8,10 +7,8 @@ export function isCalendarType(value: string): value is CalendarType {
 }
 
 export function getSupabaseAdmin() {
-  // The service role key is exposed under two names in this project: the local
-  // .env.local only defines SUPABASE_SERVICE_ROLE_KEY, while Vercel defines the
-  // NEXT_PUBLIC_-prefixed variant. Accept both so the API works in both places.
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY no configurada');
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!, {
     auth: { persistSession: false },
   });
@@ -92,8 +89,8 @@ export async function resolveCalendarViewer(
   const token = authHeader.replace('Bearer ', '');
   if (token && token !== 'undefined') {
     try {
-      const payload = decodeJwt(token);
-      const userId = String(payload.sub || '');
+      const { data: authData } = await supabase.auth.getUser(token);
+      const userId = authData.user?.id || '';
       if (userId) {
         const { data: user } = await supabase
           .from('users')
@@ -111,26 +108,6 @@ export async function resolveCalendarViewer(
     }
   }
 
-  const url = new URL(request.url);
-  const guestEmail = (request.headers.get('x-guest-email') || url.searchParams.get('guest_email') || '').trim().toLowerCase();
-  if (!guestEmail) return null;
-  if (!link.legacy && !link.guest_enabled) return null;
-
-  const { data: allowedUser } = await supabase
-    .from('users')
-    .select('id, client_id, allowed_client_ids')
-    .ilike('email', guestEmail)
-    .maybeSingle();
-
-  if (!allowedUser) return null;
-  if (
-    link.legacy ||
-    allowedUser.client_id === link.allowed_client_id ||
-    (allowedUser.allowed_client_ids || []).includes(link.allowed_client_id) ||
-    (link.allowed_user_ids || []).includes(allowedUser.id)
-  ) {
-    return { id: allowedUser.id, isStaff: false };
-  }
   return null;
 }
 

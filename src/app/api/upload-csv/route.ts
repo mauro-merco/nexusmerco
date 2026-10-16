@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { parseCSV } from '@/lib/csv-parser';
+import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -30,6 +31,9 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    const user = await getRequestUser(request, supabase);
+    if (!user || !isStaff(user) || !canAccessClient(user, client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    if (csv_data_raw !== undefined && (typeof csv_data_raw !== 'string' || csv_data_raw.length > 10_000_000)) return NextResponse.json({ error: 'CSV inválido o demasiado grande' }, { status: 413 });
 
     let parsed = null;
     let effectiveSource = source_type || 'unknown';
@@ -51,7 +55,7 @@ export async function POST(request: Request) {
       status: 'completed',
     };
 
-    if (created_by) upsertData.created_by = created_by;
+    upsertData.created_by = user.id;
 
     if (parsed) {
       const t = parsed.totals;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { enrichIdeasWithAssignees, hasEveryWorkRole, normalizeWorkAssignees, syncIdeaAssignees } from '@/lib/idea-assignees-server';
+import { canAccessClient, getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,12 +10,17 @@ const supabase = createClient(
 
 export async function GET(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const client_id = searchParams.get('client_id');
     const month = searchParams.get('month');
 
     if (!client_id) {
       return NextResponse.json({ error: 'client_id required' }, { status: 400 });
+    }
+    if (!canAccessClient(user, client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
     let query = supabase
@@ -40,11 +46,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
-    const { client_id, title, description, brief, eje_contenido, copy_text, responsable, post_type, status, publish_date, author_id, assignees } = body;
+    const { client_id, title, description, brief, eje_contenido, copy_text, responsable, post_type, status, publish_date, assignees } = body;
 
     if (!client_id || !title || !post_type || !publish_date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!canAccessClient(user, client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
     if (!hasEveryWorkRole(normalizeWorkAssignees(assignees))) {
       return NextResponse.json({ error: 'Responsable, ejecutor y control son obligatorios' }, { status: 400 });
@@ -62,7 +73,7 @@ export async function POST(request: Request) {
         post_type,
         status: status || 'borrador',
         publish_date,
-        author_id: author_id || null,
+        author_id: user.id,
         completed_at: status === 'posteado' ? new Date().toISOString() : null,
       })
       .select()
@@ -72,7 +83,7 @@ export async function POST(request: Request) {
     try {
       const { added } = await syncIdeaAssignees(supabase, 'ads_idea_assignees', data.id, assignees);
       if (added.length > 0) {
-        const notifyIds = [...new Set(added.map(a => a.user_id).filter(id => id !== author_id))];
+        const notifyIds = [...new Set(added.map(a => a.user_id).filter(id => id !== user.id))];
         await supabase.from('notifications').insert(notifyIds.map(user_id => ({
           user_id,
           type: 'calendar_piece_assigned',

@@ -18,6 +18,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (!normalizedEmail) return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
 
     const supabase = getAdmin();
+    const authToken = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    const { data: authData, error: authError } = await supabase.auth.getUser(authToken);
+    if (authError || !authData.user || authData.user.email?.toLowerCase() !== normalizedEmail) {
+      return NextResponse.json({ error: 'Sesión de invitado inválida' }, { status: 401 });
+    }
     const { data: link } = await supabase
       .from('calendar_share_links')
       .select('allowed_client_id, guest_enabled, allowed_user_ids, enabled')
@@ -44,7 +49,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const { data: user } = await supabase
       .from('users')
       .select('id, email, full_name, client_id, allowed_client_ids, role')
-      .ilike('email', normalizedEmail)
+      .eq('id', authData.user.id)
       .maybeSingle();
 
     if (!user) return NextResponse.json({ error: 'Este email no está creado como usuario cliente' }, { status: 403 });

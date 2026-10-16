@@ -1,25 +1,20 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { canAccessClient, getAdminClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get('client_id');
+    const supabase = getAdminClient();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     if (!clientId) {
       return NextResponse.json({ error: 'client_id es requerido' }, { status: 400 });
     }
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ error: 'Supabase no configurado' }, { status: 500 });
+    if (!canAccessClient(user, clientId)) {
+      return NextResponse.json({ error: 'Sin permisos para este cliente' }, { status: 403 });
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
 
     const { data, error } = await supabase
       .from('optimizations')
@@ -39,20 +34,28 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ error: 'Supabase no configurado' }, { status: 500 });
-    }
-
+    const supabase = getAdminClient();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
     const { client_id, platform, title, action_taken, expected_impact, status, priority, weekly_input_id } = body;
 
     if (!client_id || !title) {
       return NextResponse.json({ error: 'Faltan campos requeridos: client_id, title' }, { status: 400 });
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    if (!isStaff(user) || !canAccessClient(user, client_id)) {
+      return NextResponse.json({ error: 'Sin permisos para este cliente' }, { status: 403 });
+    }
+    if (weekly_input_id) {
+      const { data: weeklyInput } = await supabase
+        .from('weekly_inputs')
+        .select('client_id')
+        .eq('id', weekly_input_id)
+        .maybeSingle();
+      if (!weeklyInput || weeklyInput.client_id !== client_id || !canAccessClient(user, weeklyInput.client_id)) {
+        return NextResponse.json({ error: 'Sin permisos para el registro semanal' }, { status: 403 });
+      }
+    }
 
     const { data, error } = await supabase
       .from('optimizations')

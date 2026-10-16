@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdminClient, getRequestUser, isStaff, safeError } from '@/lib/api-security';
 
 const BUCKET = 'blog-images';
+const generationLimits = new Map<string, { count: number; resetAt: number }>();
 
 const IMAGE_STYLES: Record<string, string> = {
   hyperrealistic: 'Hyperrealistic professional photography, natural materials and skin texture, physically accurate light, realistic depth of field, premium commercial camera look. Show people, nature, or unbranded abstract objects only.',
@@ -37,6 +38,13 @@ export async function POST(request: Request) {
     if (!user || !isStaff(user)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
+    const now = Date.now();
+    const usage = generationLimits.get(user.id);
+    if (usage && usage.resetAt > now && usage.count >= 10) {
+      return NextResponse.json({ error: 'Alcanzaste el límite de 10 imágenes cada 10 minutos.' }, { status: 429 });
+    }
+    if (!usage || usage.resetAt <= now) generationLimits.set(user.id, { count: 1, resetAt: now + 10 * 60_000 });
+    else usage.count += 1;
 
     const token = process.env.CLOUDFLARE_AI_TOKEN;
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;

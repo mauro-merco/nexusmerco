@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { TOTP } from '@otplib/totp';
 import { NobleCryptoPlugin } from '@otplib/plugin-crypto-noble';
 import { ScureBase32Plugin } from '@otplib/plugin-base32-scure';
-import { decodeJwt } from 'jose';
+import { getRequestUser } from '@/lib/api-security';
+import { createTwoFactorProof } from '@/lib/two-factor-session';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,13 +20,8 @@ const totp = new TOTP({
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization') || '';
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-    const payload = decodeJwt(token);
-    const userId = String(payload.sub || '');
-    if (!userId) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
     const { token: code } = await request.json();
     if (!code) return NextResponse.json({ error: 'Código requerido' }, { status: 400 });
@@ -33,7 +29,7 @@ export async function POST(request: Request) {
     const { data: dbUser } = await supabase
       .from('users')
       .select('totp_secret')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single();
 
     if (!dbUser?.totp_secret) {
@@ -48,9 +44,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Código inválido' }, { status: 400 });
     }
 
-    await supabase.from('users').update({ totp_enabled: true }).eq('id', userId);
+    await supabase.from('users').update({ totp_enabled: true }).eq('id', user.id);
 
-    return NextResponse.json({ data: { totp_enabled: true } });
+    const response = NextResponse.json({ data: { totp_enabled: true } });
+    response.cookies.set('nexus_2fa', await createTwoFactorProof(user.id), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 12 * 60 * 60,
+    });
+    return response;
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }

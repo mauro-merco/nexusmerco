@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -10,10 +11,12 @@ function getAdmin() {
   });
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const supabase = getAdmin();
+    const user = await getRequestUser(request, supabase);
+    if (!user || !canAccessClient(user, id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const { data, error } = await supabase
       .from('clients')
       .select('*')
@@ -44,6 +47,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
 
     const supabase = getAdmin();
+    const user = await getRequestUser(request, supabase);
+    if (!user || !isStaff(user) || !canAccessClient(user, id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name.trim();
     if (logo_url !== undefined) updates.logo_url = logo_url;
@@ -102,10 +107,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const supabase = getAdmin();
+    const user = await getRequestUser(request, supabase);
+    if (!user || user.role !== 'admin') return NextResponse.json({ error: 'Solo administradores' }, { status: 403 });
     const { error } = await supabase
       .from('clients')
       .delete()

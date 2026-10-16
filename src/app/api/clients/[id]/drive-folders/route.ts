@@ -1,26 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { decodeJwt } from 'jose';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-function getAdmin() {
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { persistSession: false },
-  });
-}
-
-function getUserId(request: Request) {
-  const token = (request.headers.get('authorization') || '').replace('Bearer ', '');
-  if (!token || token === 'undefined') return null;
-  try {
-    const payload = decodeJwt(token);
-    return payload.sub ? String(payload.sub) : null;
-  } catch {
-    return null;
-  }
-}
+import { canAccessClient, getAdminClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 function isValidUrl(value: string) {
   try {
@@ -31,10 +10,13 @@ function isValidUrl(value: string) {
   }
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const supabase = getAdmin();
+    const supabase = getAdminClient();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!canAccessClient(user, id)) return NextResponse.json({ error: 'Sin permisos para este cliente' }, { status: 403 });
     const { data, error } = await supabase
       .from('client_drive_folders')
       .select('*')
@@ -52,6 +34,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const supabase = getAdminClient();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!isStaff(user) || !canAccessClient(user, id)) return NextResponse.json({ error: 'Sin permisos para este cliente' }, { status: 403 });
     const { name, url } = await request.json();
     const cleanName = String(name || '').trim();
     const cleanUrl = String(url || '').trim();
@@ -59,10 +45,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!cleanName) return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 });
     if (!isValidUrl(cleanUrl)) return NextResponse.json({ error: 'Ingresá una URL válida' }, { status: 400 });
 
-    const supabase = getAdmin();
     const { data, error } = await supabase
       .from('client_drive_folders')
-      .insert({ client_id: id, name: cleanName, url: cleanUrl, created_by: getUserId(request) })
+      .insert({ client_id: id, name: cleanName, url: cleanUrl, created_by: user.id })
       .select()
       .single();
 
@@ -77,10 +62,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const supabase = getAdminClient();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (!isStaff(user) || !canAccessClient(user, id)) return NextResponse.json({ error: 'Sin permisos para este cliente' }, { status: 403 });
     const folderId = new URL(request.url).searchParams.get('folder_id');
     if (!folderId) return NextResponse.json({ error: 'folder_id requerido' }, { status: 400 });
 
-    const supabase = getAdmin();
     const { error } = await supabase
       .from('client_drive_folders')
       .delete()

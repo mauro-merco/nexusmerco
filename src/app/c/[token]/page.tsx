@@ -110,7 +110,7 @@ function AuthGate({ token, client, calendarType, onEnter }: {
 
       const res = await fetch(`/api/calendar-links/${token}/guest`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
         body: JSON.stringify({ email: guestEmail.trim() }),
       });
       const json = await res.json();

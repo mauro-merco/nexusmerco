@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/mentions';
+import { getRequestUser } from '@/lib/api-security';
 
 /**
  * Marks due (reminder_at <= now) reminders as notified and creates a
@@ -8,9 +9,9 @@ import { getSupabase } from '@/lib/mentions';
 export async function POST(request: Request) {
   try {
     const supabase = getSupabase();
-    const body = await request.json();
-    const user_id = typeof body?.user_id === 'string' ? body.user_id : '';
-    if (!user_id) return NextResponse.json({ error: 'user_id required' }, { status: 400 });
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const user_id = user.id;
 
     const now = new Date().toISOString();
 

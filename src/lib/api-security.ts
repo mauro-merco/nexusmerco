@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { decodeJwt } from 'jose';
 
 export function getAdminClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -7,14 +6,22 @@ export function getAdminClient() {
   });
 }
 
-export function getRequestUserId(request: Request): string | null {
-  const token = (request.headers.get('authorization') || '').replace('Bearer ', '');
+export function getBearerToken(request: Request): string | null {
+  const header = request.headers.get('authorization') || '';
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+export async function getRequestUserId(request: Request): Promise<string | null> {
+  const token = getBearerToken(request);
   if (!token) return null;
-  try { return String(decodeJwt(token).sub || ''); } catch { return null; }
+  const { data, error } = await getAdminClient().auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
 }
 
 export async function getRequestUser(request: Request, supabase: SupabaseClient = getAdminClient()) {
-  const id = getRequestUserId(request);
+  const id = await getRequestUserId(request);
   if (!id) return null;
   const { data } = await supabase.from('users').select('id, role, client_id, allowed_client_ids').eq('id', id).single();
   return data || null;

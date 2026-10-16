@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { parseMetaAds } from '@/lib/parse-meta-ads';
+import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 import type { MetaAdSetRow, MetaAdRow } from '@/lib/parse-meta-ads';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -155,6 +156,9 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    const user = await getRequestUser(request, supabase);
+    if (!user || !isStaff(user) || !canAccessClient(user, client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    if (typeof csv_data_raw !== 'string' || csv_data_raw.length > 10_000_000) return NextResponse.json({ error: 'CSV inválido o demasiado grande' }, { status: 413 });
 
     const parsed = parseMetaAds(csv_data_raw);
     if (parsed.reportType === 'unknown') {

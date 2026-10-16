@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     // 1. Verify client exists and public is enabled
     const { data: client, error: clientErr } = await supabase
       .from('clients')
-      .select('id, name, logo_url, description, public_description, industry, public_enabled, status')
+      .select('name, logo_url, description, public_description, public_enabled, status')
       .eq('id', id)
       .single();
 
@@ -37,27 +37,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const filterMonth = (q: any) => month ? q.eq('month', month) : q;
 
     // 2. Fetch Google Ads data
-    let gaQuery = supabase.from('ga_campaigns').select('*').eq('client_id', id);
+    const gaQuery = supabase.from('ga_campaigns').select('month, campaign_name, cost, impressions, clicks, conversions, conv_value').eq('client_id', id);
     const { data: gaCampaigns } = await filterMonth(gaQuery).order('cost', { ascending: false });
 
-    let kwQuery = supabase.from('ga_search_keywords').select('*').eq('client_id', id);
+    const kwQuery = supabase.from('ga_search_keywords').select('keyword, match_type, clicks, cost').eq('client_id', id);
     const { data: gaKeywords } = await filterMonth(kwQuery).order('cost', { ascending: false }).limit(10);
 
-    let agQuery = supabase.from('ga_asset_groups').select('*').eq('client_id', id);
-    const { data: gaAssetGroups } = await filterMonth(agQuery).order('cost', { ascending: false });
-
     // 3. Fetch Meta Ads data
-    let mcQuery = supabase.from('meta_campaigns').select('*').eq('client_id', id);
+    const mcQuery = supabase.from('meta_campaigns').select('month, campaign_name, spend, impressions, reach, results').eq('client_id', id);
     const { data: metaCampaigns } = await filterMonth(mcQuery).order('spend', { ascending: false });
 
-    let masQuery = supabase.from('meta_ad_sets').select('*').eq('client_id', id);
+    const masQuery = supabase.from('meta_ad_sets').select('ad_set_name, impressions, spend').eq('client_id', id);
     const { data: metaAdSets } = await filterMonth(masQuery).order('spend', { ascending: false }).limit(10);
 
-    let maQuery = supabase.from('meta_ads').select('*').eq('client_id', id);
-    const { data: metaAds } = await filterMonth(maQuery).order('spend', { ascending: false }).limit(10);
-
     // 4. Fetch Analytics data
-    let anQuery = supabase.from('analytics_traffic').select('*').eq('client_id', id);
+    const anQuery = supabase.from('analytics_traffic').select('source_medium, sessions, engaged_sessions, total_revenue, key_events').eq('client_id', id);
     const { data: analyticsRows } = await filterMonth(anQuery).order('sessions', { ascending: false });
 
     // 5. Compute Google Ads totals
@@ -110,7 +104,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           logo_url: client.logo_url,
           description: client.description,
           public_description: client.public_description,
-          industry: client.industry,
         },
         summary: {
           gaTotals,
@@ -126,12 +119,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         googleAds: {
           campaigns: gaCampaigns || [],
           keywords: gaKeywords || [],
-          assetGroups: gaAssetGroups || [],
+          assetGroups: [],
         },
         metaAds: {
           campaigns: metaCampaigns || [],
           adSets: metaAdSets || [],
-          ads: metaAds || [],
+          ads: [],
         },
         analytics: {
           rows: analyticsRows || [],

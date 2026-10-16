@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -20,6 +21,10 @@ export async function DELETE(
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    const user = await getRequestUser(request, supabase);
+    if (!user || !isStaff(user)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    const { data: file } = await supabase.from('uploaded_files').select('client_id').eq('id', id).maybeSingle();
+    if (!file || !canAccessClient(user, file.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
     const { error } = await supabase.from('uploaded_files').delete().eq('id', id);
 

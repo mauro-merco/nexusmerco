@@ -1,12 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import type { PostType, WorkRole } from '@/lib/types';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { canAccessClient, getAdminClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 type Source = 'task' | 'social' | 'ads';
 type AssignmentRow = { item_id: string; user_id: string; role: WorkRole };
@@ -31,6 +26,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get('client_id');
     const userId = searchParams.get('user_id');
+    const supabase = getAdminClient();
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    if (clientId && !canAccessClient(user, clientId)) {
+      return NextResponse.json({ error: 'Sin permisos para este cliente' }, { status: 403 });
+    }
 
     let taskQuery = supabase.from('tasks').select('*');
     let socialQuery = supabase.from('social_ideas').select('*');
@@ -39,6 +40,16 @@ export async function GET(request: Request) {
       taskQuery = taskQuery.eq('client_id', clientId);
       socialQuery = socialQuery.eq('client_id', clientId);
       adsQuery = adsQuery.eq('client_id', clientId);
+    } else if (Array.isArray(user.allowed_client_ids)) {
+      const allowedClientIds = user.allowed_client_ids.length ? user.allowed_client_ids : ['__none__'];
+      taskQuery = taskQuery.in('client_id', allowedClientIds);
+      socialQuery = socialQuery.in('client_id', allowedClientIds);
+      adsQuery = adsQuery.in('client_id', allowedClientIds);
+    } else if (!isStaff(user)) {
+      const ownClientId = user.client_id || '__none__';
+      taskQuery = taskQuery.eq('client_id', ownClientId);
+      socialQuery = socialQuery.eq('client_id', ownClientId);
+      adsQuery = adsQuery.eq('client_id', ownClientId);
     }
 
     const [{ data: tasks, error: taskError }, { data: social, error: socialError }, { data: ads, error: adsError }] = await Promise.all([

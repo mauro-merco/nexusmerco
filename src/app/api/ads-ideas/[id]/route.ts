@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { enrichIdeasWithAssignees, hasEveryWorkRole, normalizeWorkAssignees, syncIdeaAssignees } from '@/lib/idea-assignees-server';
+import { canAccessClient, getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,11 +18,16 @@ async function createMaterialBotComment(ideaId: string, note: string, clientId?:
   await supabase.from('ads_comments').insert({ idea_id: ideaId, user_id, content: `🤖 MERCO BOT: Para esta idea se necesita "${note.trim()}" de parte del equipo de ${clientName || 'cliente'}.` });
 }
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { id } = await params;
     const { data, error } = await supabase.from('ads_ideas').select('*').eq('id', id).single();
     if (error) throw error;
+    if (!canAccessClient(user, data.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
     const [enriched] = await enrichIdeasWithAssignees(supabase, 'ads_idea_assignees', [data]);
     return NextResponse.json({ data: enriched });
   } catch (e) {
@@ -31,7 +37,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { id } = await params;
+    const { data: targetIdea, error: targetError } = await supabase
+      .from('ads_ideas')
+      .select('client_id, status')
+      .eq('id', id)
+      .single();
+    if (targetError) throw targetError;
+    if (!canAccessClient(user, targetIdea.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
     const body = await request.json();
     if (Array.isArray(body.assignees) && !hasEveryWorkRole(normalizeWorkAssignees(body.assignees))) {
       return NextResponse.json({ error: 'Responsable, ejecutor y control son obligatorios' }, { status: 400 });
@@ -44,9 +61,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
 
     if (body.status !== undefined) {
-      const { data: previous } = await supabase.from('ads_ideas').select('status').eq('id', id).single();
-      if (body.status === 'posteado' && previous?.status !== 'posteado') updates.completed_at = new Date().toISOString();
-      if (body.status !== 'posteado' && previous?.status === 'posteado') updates.completed_at = null;
+      if (body.status === 'posteado' && targetIdea.status !== 'posteado') updates.completed_at = new Date().toISOString();
+      if (body.status !== 'posteado' && targetIdea.status === 'posteado') updates.completed_at = null;
     }
 
     const { data, error } = await supabase.from('ads_ideas').update(updates).eq('id', id).select().single();
@@ -74,9 +90,20 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { id } = await params;
+    const { data: targetIdea, error: targetError } = await supabase
+      .from('ads_ideas')
+      .select('client_id')
+      .eq('id', id)
+      .single();
+    if (targetError) throw targetError;
+    if (!canAccessClient(user, targetIdea.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
     const { error } = await supabase.from('ads_ideas').delete().eq('id', id);
     if (error) throw error;
     return NextResponse.json({ ok: true });

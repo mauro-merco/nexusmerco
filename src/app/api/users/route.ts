@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { decodeJwt } from 'jose';
+import { canAccessClient, getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,18 +13,22 @@ const ALLOWED_DOMAINS = ['@mercodigital.com', '@mercouser.com'];
 
 export async function GET(request: Request) {
   try {
+    const caller = await getRequestUser(request, supabase);
+    if (!caller) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { searchParams } = new URL(request.url);
-    const appFilter = searchParams.get('app_id') || APP_ID;
     const clientId = searchParams.get('client_id');
     const role = searchParams.get('role');
 
     let query = supabase
       .from('users')
       .select('id, email, full_name, avatar_url, role, client_id, visible_modules, allowed_client_ids')
-      .eq('app_id', appFilter)
+      .eq('app_id', APP_ID)
       .order('full_name', { ascending: true });
 
-    if (clientId) query = query.eq('client_id', clientId).eq('role', 'client');
+    if (clientId) {
+      if (!canAccessClient(caller, clientId)) return NextResponse.json({ error: 'Sin acceso al cliente' }, { status: 403 });
+      query = query.eq('client_id', clientId).eq('role', 'client');
+    }
     if (role) query = query.eq('role', role);
 
     const { data, error } = await query;
@@ -33,7 +37,10 @@ export async function GET(request: Request) {
     const filtered = clientId ? (data || []) : (data || []).filter(u =>
       ALLOWED_DOMAINS.some(d => u.email?.toLowerCase().endsWith(d))
     );
-    return NextResponse.json({ data: filtered });
+    const safeData = caller.role === 'admin'
+      ? filtered
+      : filtered.map(({ id, email, full_name, avatar_url, role, client_id }) => ({ id, email, full_name, avatar_url, role, client_id }));
+    return NextResponse.json({ data: safeData });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }
@@ -41,29 +48,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization') || '';
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'No hay token en el header Authorization' }, { status: 401 });
-    }
-
-    let userId: string;
-    try {
-      const payload = decodeJwt(token);
-      if (!payload.sub) throw new Error('JWT no contiene sub');
-      userId = payload.sub;
-    } catch (e) {
-      return NextResponse.json({ error: `Token inválido: ${e instanceof Error ? e.message : 'Error'}` }, { status: 401 });
-    }
-
-    const { data: dbUser, error: dbError } = await supabase.from('users').select('id, email, role').eq('id', userId).single();
-    if (dbError || !dbUser) {
-      return NextResponse.json({ error: `Usuario no encontrado en DB (id=${userId}): ${dbError?.message || 'sin datos'}` }, { status: 404 });
-    }
-
-    if (dbUser.role !== 'admin') {
-      return NextResponse.json({ error: `Rol actual: "${dbUser.role}" — se requiere admin` }, { status: 403 });
-    }
+    const dbUser = await getRequestUser(request, supabase);
+    if (!dbUser || dbUser.role !== 'admin') return NextResponse.json({ error: 'Solo administradores' }, { status: 403 });
 
     const body = await request.json();
     const { email, password, full_name: fullName, role: newRole, visible_modules, allowed_client_ids, client_id } = body;
@@ -71,6 +57,8 @@ export async function POST(request: Request) {
     if (!email || !password || !fullName || !newRole) {
       return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
     }
+    if (!['admin', 'operador', 'client'].includes(newRole)) return NextResponse.json({ error: 'Rol inválido' }, { status: 400 });
+    if (String(password).length < 10) return NextResponse.json({ error: 'La contraseña debe tener al menos 10 caracteres' }, { status: 400 });
 
     const INTERNAL_DOMAIN = '@mercodigital.com';
     const CLIENT_DOMAIN = '@mercouser.com';

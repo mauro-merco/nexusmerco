@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createMentionNotifications } from '@/lib/mentions';
+import { canAccessClient, getRequestUser } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,9 +17,21 @@ async function fetchUsers(ids: string[]) {
 
 export async function GET(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const idea_id = searchParams.get('idea_id');
     if (!idea_id) return NextResponse.json({ error: 'idea_id required' }, { status: 400 });
+
+    const { data: idea, error: ideaError } = await supabase
+      .from('social_ideas')
+      .select('client_id')
+      .eq('id', idea_id)
+      .single();
+    if (ideaError) throw ideaError;
+    if (!canAccessClient(user, idea.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
 
     const { data, error } = await supabase
       .from('social_comments')
@@ -78,13 +91,37 @@ async function buildIdeaLink(ideaId: string) {
 
 export async function POST(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
-    const { idea_id, user_id, content, parent_id } = body;
-    if (!idea_id || !user_id || !content) {
+    const { idea_id, content, parent_id } = body;
+    if (!idea_id || !content) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const payload: Record<string, unknown> = { idea_id, user_id, content };
+    const { data: idea, error: ideaError } = await supabase
+      .from('social_ideas')
+      .select('client_id')
+      .eq('id', idea_id)
+      .single();
+    if (ideaError) throw ideaError;
+    if (!canAccessClient(user, idea.client_id)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
+
+    if (parent_id) {
+      const { data: parent, error: parentError } = await supabase
+        .from('social_comments')
+        .select('idea_id')
+        .eq('id', parent_id)
+        .single();
+      if (parentError) throw parentError;
+      if (parent.idea_id !== idea_id) {
+        return NextResponse.json({ error: 'El comentario padre no pertenece a la idea' }, { status: 400 });
+      }
+    }
+
+    const payload: Record<string, unknown> = { idea_id, user_id: user.id, content };
     if (parent_id) payload.parent_id = parent_id;
 
     const { data, error } = await supabase
@@ -97,12 +134,12 @@ export async function POST(request: Request) {
     await createMentionNotifications(
       supabase,
       content,
-      user_id,
+      user.id,
       { link: await buildIdeaLink(idea_id), entityLabel: 'un comentario de una idea' }
     );
 
-    const usersMap = await fetchUsers([user_id]);
-    return NextResponse.json({ data: { ...data, user: usersMap[user_id] || null } });
+    const usersMap = await fetchUsers([user.id]);
+    return NextResponse.json({ data: { ...data, user: usersMap[user.id] || null } });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
   }

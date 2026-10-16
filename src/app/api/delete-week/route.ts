@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -19,6 +20,8 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    const user = await getRequestUser(request, supabase);
+    if (!user || !isStaff(user) || !canAccessClient(user, client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
     if (!platform || platform === 'all') {
       const { error: ufErr } = await supabase

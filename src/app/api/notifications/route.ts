@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getRequestUser, isStaff } from '@/lib/api-security';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,12 +25,12 @@ async function purgeExpired(): Promise<void> {
 
 export async function GET(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const { searchParams } = new URL(request.url);
-    const user_id = searchParams.get('user_id');
+    const user_id = user.id;
     const unread_only = searchParams.get('unread_only') === 'true';
     const view = searchParams.get('view') || 'active'; // active | deleted | all
-
-    if (!user_id) return NextResponse.json({ error: 'user_id required' }, { status: 400 });
 
     void purgeExpired();
 
@@ -63,6 +64,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const caller = await getRequestUser(request, supabase);
+    if (!caller || !isStaff(caller)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const body = await request.json();
     const { user_id, type, title, message, task_id, link } = body;
     if (!user_id || !type || !title) {
@@ -83,6 +86,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
     const { notification_ids, mark_all_read, user_id, restore_ids } = body;
 
@@ -91,16 +96,17 @@ export async function PUT(request: Request) {
       const { error } = await supabase
         .from('notifications')
         .update({ deleted_at: null })
-        .in('id', restore_ids);
+        .in('id', restore_ids)
+        .eq('user_id', user.id);
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }
 
-    if (mark_all_read && user_id) {
+    if (mark_all_read) {
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
-        .eq('user_id', user_id)
+        .eq('user_id', user.id)
         .eq('read', false)
         .is('deleted_at', null);
       if (error) throw error;
@@ -111,7 +117,8 @@ export async function PUT(request: Request) {
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
-        .in('id', notification_ids);
+        .in('id', notification_ids)
+        .eq('user_id', user.id);
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }
@@ -124,6 +131,8 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
     const { notification_ids } = body;
     if (!notification_ids || !Array.isArray(notification_ids) || notification_ids.length === 0) {
@@ -134,7 +143,8 @@ export async function DELETE(request: Request) {
     const { error } = await supabase
       .from('notifications')
       .update({ deleted_at: new Date().toISOString() })
-      .in('id', notification_ids);
+      .in('id', notification_ids)
+      .eq('user_id', user.id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {

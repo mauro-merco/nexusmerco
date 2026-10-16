@@ -2,8 +2,10 @@
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/components/theme-provider';
+import { installApiAuth } from '@/lib/install-api-auth';
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  installApiAuth();
   return (
     <ThemeProvider>
       <TooltipProvider>{children}</TooltipProvider>
