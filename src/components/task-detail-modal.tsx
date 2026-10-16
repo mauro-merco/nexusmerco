@@ -281,8 +281,13 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
           </div>
         </div>
 
-        {/* Status pills */}
-        <div className="shrink-0 space-y-2 max-h-[34vh] overflow-y-auto">
+        {/* Two-column body: LEFT = everything, RIGHT = comments */}
+        <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]">
+            {/* LEFT — Status, material, detail, attachments */}
+            <div className="space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
+              {/* Status pills */}
+              <div className="space-y-2">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Estado</p>
           <div className="flex gap-1.5 flex-wrap items-center">
             {TASK_STATUSES.map(key => {
@@ -343,15 +348,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         </div>
 
         {/* Material links */}
-        <div className="shrink-0 max-h-[20vh] overflow-y-auto">
+        <div>
           <MaterialLinks entityType="task" entityId={task.id} />
         </div>
 
-        {/* Two-column body */}
-        <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]">
-            {/* LEFT — Detail + Attachments */}
-            <div className="space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
               {editing ? (
                 <div className="space-y-3">
                   {saveError && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
