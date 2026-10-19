@@ -225,8 +225,13 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
           </div>
         </div>
 
-        {/* Status pills */}
-        <div className="shrink-0 max-h-[34vh] overflow-y-auto">
+        {/* Two-column body: LEFT = everything, RIGHT = comments */}
+        <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
+          <div className={cn('grid grid-cols-1 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]', isSocial ? 'md:grid-cols-2' : 'md:grid-cols-1')}>
+            {/* LEFT COLUMN — Status, material, detail, attachments */}
+            <div className="space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
+              {/* Status pills */}
+              <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Estado</p>
           <div className="flex gap-1.5 flex-wrap">
             {STATUS_FLOW.map(key => {
@@ -255,15 +260,10 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         </div>
 
         {/* Material links */}
-        <div className="shrink-0 max-h-[20vh] overflow-y-auto">
+        <div>
           <MaterialLinks entityType={calendarType === 'ads' ? 'ads_idea' : 'social_idea'} entityId={idea.id} />
         </div>
 
-        {/* Two-column body */}
-        <div className="flex-1 overflow-y-auto min-h-0 md:overflow-hidden">
-          <div className={cn('grid grid-cols-1 gap-4 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)]', isSocial ? 'md:grid-cols-2' : 'md:grid-cols-1')}>
-            {/* LEFT COLUMN — Detail + Attachments */}
-            <div className="space-y-4 md:overflow-y-auto md:min-h-0 md:pr-1">
               {editing ? (
                 <div className="space-y-3">
                   {saveError && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}

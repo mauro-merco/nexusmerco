@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
   DialogFooter, DialogClose,
@@ -19,6 +19,8 @@ import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIE
 import { TaskRolesPicker, rolesToList, rolesFromAssignees, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
 import { TaskTypePicker } from '@/components/task-type-picker';
 import { MaterialLinks } from '@/components/material-links';
+import { CommentReadEye } from '@/components/comment-read';
+import { useCommentReads, collectCommentIds, type CommentReader } from '@/lib/hooks/use-comment-reads';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip,
   Edit3, Calendar, User, Send, MessageSquare, Reply, Check, X, Layers,
@@ -38,6 +40,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const { user } = useAuthStore();
   const { comments, addComment, deleteComment, updateComment } = useTaskComments(task.id);
   const { attachments, addAttachment, removeAttachment } = useTaskAttachments(task.id);
+
+  const commentIds = useMemo(() => collectCommentIds(comments), [comments]);
+  const reads = useCommentReads('task_comment', commentIds, user ? { id: user.id, name: user.full_name || '' } : null);
 
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -543,6 +548,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     }}
                     cancelCommentEdit={() => { setEditingCommentId(null); setEditCommentContent(''); }}
                     savingCommentEdit={savingCommentEdit}
+                    readers={reads.readers}
+                    onToggleRead={reads.toggle}
+                    readPendingId={reads.pending}
                   />
                 ))}
               </div>
@@ -598,6 +606,7 @@ function TaskCommentItem({
   comment, currentUserId, onReply, onDelete,
   editingCommentId, setEditingCommentId, editCommentContent, setEditCommentContent,
   saveCommentEdit, cancelCommentEdit, savingCommentEdit, isReply,
+  readers, onToggleRead, readPendingId,
 }: {
   comment: TaskComment;
   currentUserId?: string;
@@ -611,6 +620,9 @@ function TaskCommentItem({
   cancelCommentEdit: () => void;
   savingCommentEdit: boolean;
   isReply?: boolean;
+  readers: Record<string, CommentReader[]>;
+  onToggleRead: (id: string) => void;
+  readPendingId: string | null;
 }) {
   const isOwn = currentUserId === comment.user_id;
   const isEditing = editingCommentId === comment.id;
@@ -644,20 +656,28 @@ function TaskCommentItem({
             <MentionedText text={comment.content} className={cn('text-foreground/80 mt-1 leading-relaxed', isReply ? 'text-sm' : 'text-sm')} />
           )}
           {!isEditing && (
-            <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              {!isReply && (
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground gap-1" onClick={() => onReply(comment.id)}>
-                  <Reply className="h-3 w-3" /> Responder
-                </Button>
-              )}
-              {isOwn && (
-                <>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground gap-1" onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(comment.content); }}>
-                    <Edit3 className="h-3 w-3" /> Editar
+            <div className="mt-1.5 flex items-center gap-1">
+              <CommentReadEye
+                readers={readers[comment.id]}
+                currentUserId={currentUserId}
+                onToggle={() => onToggleRead(comment.id)}
+                pending={readPendingId === comment.id}
+              />
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {!isReply && (
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground gap-1" onClick={() => onReply(comment.id)}>
+                    <Reply className="h-3 w-3" /> Responder
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-red-400 hover:text-red-600 gap-1" onClick={() => onDelete(comment.id)}><Trash2 className="h-3 w-3" /></Button>
-                </>
-              )}
+                )}
+                {isOwn && (
+                  <>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground gap-1" onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(comment.content); }}>
+                      <Edit3 className="h-3 w-3" /> Editar
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] rounded-lg text-red-400 hover:text-red-600 gap-1" onClick={() => onDelete(comment.id)}><Trash2 className="h-3 w-3" /></Button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -669,7 +689,8 @@ function TaskCommentItem({
               onReply={onReply} onDelete={onDelete}
               editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}
               editCommentContent={editCommentContent} setEditCommentContent={setEditCommentContent}
-              saveCommentEdit={saveCommentEdit} cancelCommentEdit={cancelCommentEdit} savingCommentEdit={savingCommentEdit} />
+              saveCommentEdit={saveCommentEdit} cancelCommentEdit={cancelCommentEdit} savingCommentEdit={savingCommentEdit}
+              readers={readers} onToggleRead={onToggleRead} readPendingId={readPendingId} />
           ))}
         </div>
       )}

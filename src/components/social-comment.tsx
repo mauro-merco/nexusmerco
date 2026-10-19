@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { SocialComment as SocialCommentType } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MentionedText, MentionTextarea, type MentionUser } from '@/components/mention';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
+import { CommentReadEye } from '@/components/comment-read';
+import { useCommentReads, collectCommentIds, type CommentReader } from '@/lib/hooks/use-comment-reads';
 import { Send, Trash2, Loader2, Pencil, Check, X, Reply } from 'lucide-react';
 
 interface SocialCommentProps {
@@ -32,6 +34,9 @@ function CommentItem({
   cancelEdit,
   savingEdit,
   users,
+  readers,
+  onToggleRead,
+  readPendingId,
 }: {
   comment: SocialCommentType;
   currentUserId?: string;
@@ -46,6 +51,9 @@ function CommentItem({
   cancelEdit: () => void;
   savingEdit: boolean;
   users: MentionUser[];
+  readers: Record<string, CommentReader[]>;
+  onToggleRead: (id: string) => void;
+  readPendingId: string | null;
 }) {
   const isOwn = currentUserId === comment.user_id;
   const isEditing = editingId === comment.id;
@@ -89,25 +97,33 @@ function CommentItem({
           )}
 
           {!isEditing && (
-            <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              {!isReply && (
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
-                  onClick={() => onReply(comment.id)}>
-                  <Reply className="h-3 w-3" /> Responder
-                </Button>
-              )}
-              {isOwn && (
-                <>
+            <div className="flex items-center gap-1 mt-1.5">
+              <CommentReadEye
+                readers={readers[comment.id]}
+                currentUserId={currentUserId}
+                onToggle={() => onToggleRead(comment.id)}
+                pending={readPendingId === comment.id}
+              />
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {!isReply && (
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
-                    onClick={() => onEdit(comment)}>
-                    <Pencil className="h-3 w-3" /> Editar
+                    onClick={() => onReply(comment.id)}>
+                    <Reply className="h-3 w-3" /> Responder
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-red-400 hover:text-red-600 gap-1"
-                    onClick={() => onDelete(comment.id)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </>
-              )}
+                )}
+                {isOwn && (
+                  <>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
+                      onClick={() => onEdit(comment)}>
+                      <Pencil className="h-3 w-3" /> Editar
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-red-400 hover:text-red-600 gap-1"
+                      onClick={() => onDelete(comment.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -132,6 +148,9 @@ function CommentItem({
               cancelEdit={cancelEdit}
               savingEdit={savingEdit}
               users={users}
+              readers={readers}
+              onToggleRead={onToggleRead}
+              readPendingId={readPendingId}
             />
           ))}
         </div>
@@ -148,6 +167,9 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
   const [savingEdit, setSavingEdit] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const mentionUsers = useInternalUsers();
+
+  const commentIds = useMemo(() => collectCommentIds(comments), [comments]);
+  const reads = useCommentReads('social_comment', commentIds, currentUserId ? { id: currentUserId, name: '' } : null);
 
   const handleSend = async () => {
     if (!newComment.trim() || !currentUserId) return;
@@ -209,6 +231,9 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
                 cancelEdit={cancelEdit}
                 savingEdit={savingEdit}
                 users={mentionUsers}
+                readers={reads.readers}
+                onToggleRead={reads.toggle}
+                readPendingId={reads.pending}
               />
             ))}
           </div>

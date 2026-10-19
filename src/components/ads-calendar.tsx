@@ -204,6 +204,7 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
     <div
       ref={setNodeRef}
       onClick={() => onAddClick(date)}
+      style={active.length > 0 ? { backgroundColor: `${active[0].color}1f` } : undefined}
       className={cn(
         'min-h-[122px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
         !isCurrentMonth && 'opacity-40',
@@ -211,10 +212,14 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
       )}
     >
       {active.length > 0 && (
-        <div className="flex flex-col gap-px mb-1">
+        <div className="flex flex-col gap-1 mb-1.5">
           {active.map(ed => (
-            <div key={ed.id} style={{ backgroundColor: ed.color + '22', borderLeft: `2px solid ${ed.color}`, color: ed.color }} className="text-[9px] font-bold px-1 py-px rounded-r-sm truncate leading-tight">
-              {ed.start_date === date ? ed.name : ' '}
+            <div
+              key={ed.id}
+              style={{ backgroundColor: `${ed.color}38`, color: ed.color, boxShadow: `inset 0 0 0 1.5px ${ed.color}` }}
+              className="truncate rounded-lg px-1.5 py-1 text-center text-[11px] font-black uppercase leading-tight tracking-wide"
+            >
+              {ed.name}
             </div>
           ))}
         </div>

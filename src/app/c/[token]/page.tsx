@@ -251,16 +251,21 @@ function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick
     <div
       ref={setNodeRef}
       onClick={() => onAddClick(dateStr)}
+      style={active.length > 0 ? { backgroundColor: `${active[0].color}1f` } : undefined}
       className={cn(
         'min-h-[122px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
         isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : 'bg-muted/25 hover:bg-muted/45',
       )}
     >
       {active.length > 0 && (
-        <div className="flex flex-col gap-px mb-1">
+        <div className="flex flex-col gap-1 mb-1.5">
           {active.map(ed => (
-            <div key={ed.id} style={{ backgroundColor: ed.color + '22', borderLeft: `2px solid ${ed.color}`, color: ed.color }} className="text-[8px] font-bold px-1 py-px rounded-r-sm truncate leading-tight">
-              {ed.start_date === dateStr ? ed.name : ' '}
+            <div
+              key={ed.id}
+              style={{ backgroundColor: `${ed.color}38`, color: ed.color, boxShadow: `inset 0 0 0 1.5px ${ed.color}` }}
+              className="truncate rounded-lg px-1.5 py-1 text-center text-[11px] font-black uppercase leading-tight tracking-wide"
+            >
+              {ed.name}
             </div>
           ))}
         </div>
