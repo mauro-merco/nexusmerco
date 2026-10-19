@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
+import { logActivity } from '@/lib/activity-events';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -192,6 +193,10 @@ export async function POST(request: Request) {
       }
     }
 
+    await logActivity(supabase, [
+      { clientId: client_id, area: 'task', entityType: 'task', entityId: data.id, entityTitle: title, action: 'created', detail: 'Creó la tarea', actorId: user.id },
+      ...assigneesOut.map((a) => ({ clientId: client_id, area: 'task' as const, entityType: 'task', entityId: data.id, entityTitle: title, action: 'assignee_added', detail: a.full_name || a.email || '', toValue: a.task_role, actorId: user.id })),
+    ]);
     return NextResponse.json({ data: { ...data, assignees: assigneesOut } });
   } catch (e) {
     console.error('POST /api/tasks error:', e);

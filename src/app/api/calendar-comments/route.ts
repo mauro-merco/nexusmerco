@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { decodeJwt } from 'jose';
 import { createMentionNotifications } from '@/lib/mentions';
+import { logActivity } from '@/lib/activity-events';
 import {
   getSupabaseAdmin,
   isCalendarType,
@@ -258,6 +259,18 @@ export async function POST(request: Request) {
       .select()
       .single();
     if (error) throw error;
+
+    await logActivity(supabase, {
+      clientId: access.clientId,
+      area: 'general',
+      entityType: 'calendar',
+      entityId: data.id,
+      entityTitle: access.calendarType === 'ads' ? 'Calendario ADS' : 'Calendario de Redes',
+      action: 'commented',
+      detail: content,
+      toValue: access.calendarType,
+      actorId: access.userId,
+    });
 
     await createMentionNotifications(supabase, content, access.userId, {
       link: `/calendarios?client=${access.clientId}&type=${access.calendarType === 'ads' ? 'ads' : 'redes'}&month=${access.month}`,

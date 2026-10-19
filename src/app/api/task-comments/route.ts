@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createMentionNotifications } from '@/lib/mentions';
 import { canAccessClient, getRequestUser } from '@/lib/api-security';
+import { logActivity } from '@/lib/activity-events';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
 
     const { data: task, error: taskError } = await supabase
       .from('tasks')
-      .select('client_id')
+      .select('client_id, title')
       .eq('id', task_id)
       .single();
     if (taskError) throw taskError;
@@ -116,6 +117,8 @@ export async function POST(request: Request) {
       user.id,
       { link: `/operations?task=${task_id}`, entityLabel: 'un comentario de tarea' }
     );
+
+    await logActivity(supabase, { clientId: task.client_id, area: 'task', entityType: 'task', entityId: task_id, entityTitle: task.title, action: 'commented', detail: normalizedContent, actorId: user.id });
 
     const usersMap = await fetchUsers([user.id]);
     return NextResponse.json({ data: { ...data, user: usersMap[user.id] || null } });

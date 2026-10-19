@@ -5,9 +5,10 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { TaskRow } from '@/components/client-tasks-tab';
+import { ActivityHistory } from '@/components/activity-history';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import type { Task, TaskRole, User } from '@/lib/types';
-import { KanbanSquare, CheckCircle2 } from 'lucide-react';
+import { KanbanSquare, CheckCircle2, History } from 'lucide-react';
 
 interface UserTasksModalProps {
   user: User | null;
@@ -41,7 +42,7 @@ export function UserTasksModal({ user, tasks, open, onOpenChange }: UserTasksMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex! flex-col sm:max-w-2xl max-h-[85vh] overflow-hidden">
+      <DialogContent className="flex! flex-col sm:max-w-3xl max-h-[85vh] overflow-hidden">
         <div className="flex items-center gap-3 shrink-0">
           <Avatar className="h-10 w-10">
             <AvatarImage src={user.avatar_url} />
@@ -78,6 +79,9 @@ export function UserTasksModal({ user, tasks, open, onOpenChange }: UserTasksMod
             <TabsTrigger value="history" className="gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5" /> Historial ({historyTasks.length})
             </TabsTrigger>
+            <TabsTrigger value="activity" className="gap-1.5">
+              <History className="h-3.5 w-3.5" /> Actividad
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="active" className="flex-1 overflow-y-auto mt-3 space-y-2">
             {activeTasks.length === 0 ? (
@@ -92,6 +96,9 @@ export function UserTasksModal({ user, tasks, open, onOpenChange }: UserTasksMod
             ) : (
               historyTasks.map(t => <TaskRow key={t.id} task={t} onClick={() => openTask(t.id)} showClient />)
             )}
+          </TabsContent>
+          <TabsContent value="activity" className="flex-1 overflow-y-auto mt-3">
+            <ActivityHistory userId={user.id} title="Historial del integrante" />
           </TabsContent>
         </Tabs>
       </DialogContent>

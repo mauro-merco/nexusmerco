@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { TeamActivity } from '@/components/team-activity';
+import { ActivityHistory } from '@/components/activity-history';
 import { WorkStatistics } from '@/components/work-statistics';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ClientWall } from '@/components/client-wall';
@@ -208,6 +209,13 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
       <Card className="border-0 ring-0 shadow-none rounded-2xl">
         <CardContent className="p-4">
           <TeamActivity tasks={tasks} />
+        </CardContent>
+      </Card>
+
+      {/* Row 3b — historial exhaustivo (tareas, redes, ADS) */}
+      <Card className="border-0 ring-0 shadow-none rounded-2xl">
+        <CardContent className="p-4">
+          <ActivityHistory clientId={clientId} scrollHeight={440} />
         </CardContent>
       </Card>
 

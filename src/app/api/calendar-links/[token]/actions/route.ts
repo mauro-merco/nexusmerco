@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
+import { logActivity } from '@/lib/activity-events';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -44,6 +45,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const { idea_id, content, guest_name, action_type, status, publish_date, calendar_type, title, description, post_type, links } = body;
     const ideasTable = calendar_type === 'ads' ? 'ads_ideas' : 'social_ideas';
     const commentsTable = calendar_type === 'ads' ? 'ads_comments' : 'social_comments';
+    const area = calendar_type === 'ads' ? 'ads' : 'social';
+    const entityType = calendar_type === 'ads' ? 'ads_idea' : 'social_idea';
 
     const { client, link, error: clientError } = await resolveClient(token);
     if (clientError || !client) {
@@ -65,9 +68,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       return NextResponse.json({ error: 'La fecha está fuera del mes compartido' }, { status: 400 });
     }
 
+    let targetIdea: { id: string; status: string | null; title: string | null; publish_date: string | null } | null = null;
     if (action_type !== 'create_idea') {
-      const { data: targetIdea } = await supabase.from(ideasTable).select('id').eq('id', idea_id).eq('client_id', client.id).maybeSingle();
-      if (!targetIdea) return NextResponse.json({ error: 'Idea no encontrada' }, { status: 404 });
+      const { data } = await supabase.from(ideasTable).select('id, status, title, publish_date').eq('id', idea_id).eq('client_id', client.id).maybeSingle();
+      if (!data) return NextResponse.json({ error: 'Idea no encontrada' }, { status: 404 });
+      targetIdea = data;
     }
 
     if (action_type === 'create_idea') {
@@ -100,6 +105,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         });
       }
 
+      await logActivity(supabase, { clientId: client.id, area, entityType, entityId: idea.id, entityTitle: cleanTitle, action: 'created', detail: guest_name || '', actorId: userId });
+
       return NextResponse.json({ data: idea }, { status: 201 });
     }
 
@@ -124,6 +131,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         });
       }
 
+      await logActivity(supabase, { clientId: client.id, area, entityType, entityId: idea_id, entityTitle: targetIdea?.title || '', action: 'status_changed', detail: 'Cambió el estado', fromValue: targetIdea?.status || '', toValue: status, actorId: userId });
+
       return NextResponse.json({ success: true });
     }
 
@@ -146,6 +155,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         });
       }
 
+      await logActivity(supabase, { clientId: client.id, area, entityType, entityId: idea_id, entityTitle: targetIdea?.title || '', action: 'updated', detail: 'Movió la fecha', fromValue: targetIdea?.publish_date || '', toValue: publish_date, actorId: userId });
+
       return NextResponse.json({ success: true });
     }
 
@@ -163,6 +174,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     });
 
     if (error) throw error;
+    await logActivity(supabase, { clientId: client.id, area, entityType, entityId: idea_id, entityTitle: targetIdea?.title || '', action: 'commented', detail: content.trim(), actorId: userId });
     const { data: idea } = await supabase.from(ideasTable).select('id, title, author_id, publish_date').eq('id', idea_id).single();
     const { data: assignees } = await supabase
       .from(calendar_type === 'ads' ? 'ads_idea_assignees' : 'social_idea_assignees')

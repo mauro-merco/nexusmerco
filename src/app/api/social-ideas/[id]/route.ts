@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { enrichIdeasWithAssignees, hasEveryWorkRole, normalizeWorkAssignees, syncIdeaAssignees } from '@/lib/idea-assignees-server';
 import { canAccessClient, getRequestUser } from '@/lib/api-security';
+import { logActivity, type ActivityLogInput } from '@/lib/activity-events';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,7 +52,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const { data: targetIdea, error: targetError } = await supabase
       .from('social_ideas')
-      .select('client_id, status')
+      .select('client_id, status, title, needs_client_material')
       .eq('id', id)
       .single();
     if (targetError) throw targetError;
@@ -105,11 +106,33 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       console.error('PUT /api/social-ideas/[id] Supabase error:', JSON.stringify(result.error));
       return NextResponse.json({ error: result.error.message || JSON.stringify(result.error) }, { status: 500 });
     }
+
+    const events: ActivityLogInput[] = [];
+    const updatedIdea = result.data;
+    if (body.title !== undefined && body.title !== targetIdea.title) {
+      events.push({ clientId: updatedIdea.client_id, area: 'social', entityType: 'social_idea', entityId: id, entityTitle: updatedIdea.title, action: 'updated', detail: 'Editó el título', fromValue: targetIdea.title, toValue: body.title, actorId: user.id });
+    }
+    if (body.status !== undefined && body.status !== targetIdea.status) {
+      events.push({ clientId: updatedIdea.client_id, area: 'social', entityType: 'social_idea', entityId: id, entityTitle: updatedIdea.title, action: 'status_changed', detail: 'Cambió el estado', fromValue: targetIdea.status, toValue: body.status, actorId: user.id });
+      if (body.status === 'posteado') events.push({ clientId: updatedIdea.client_id, area: 'social', entityType: 'social_idea', entityId: id, entityTitle: updatedIdea.title, action: 'completed', detail: 'Publicó la idea', actorId: user.id });
+    }
+    if (body.needs_client_material === true && !targetIdea.needs_client_material) {
+      events.push({ clientId: updatedIdea.client_id, area: 'social', entityType: 'social_idea', entityId: id, entityTitle: updatedIdea.title, action: 'material_requested', detail: String(body.client_material_note || ''), actorId: user.id });
+    }
+
     if (body.needs_client_material === true && body.client_material_note) {
       await createMaterialBotComment(id, body.client_material_note, result.data.client_id);
     }
     if (Array.isArray(body.assignees)) {
-      const { added } = await syncIdeaAssignees(supabase, 'social_idea_assignees', id, body.assignees);
+      const { added, removed } = await syncIdeaAssignees(supabase, 'social_idea_assignees', id, body.assignees);
+      const ids = [...new Set([...added.map(a => a.user_id), ...removed.map((r: { user_id: string }) => r.user_id)])];
+      const names: Record<string, string> = {};
+      if (ids.length > 0) {
+        const { data: people } = await supabase.from('users').select('id, full_name, email').in('id', ids);
+        for (const p of people || []) names[p.id] = p.full_name || p.email || '';
+      }
+      for (const a of added) events.push({ clientId: updatedIdea.client_id, area: 'social', entityType: 'social_idea', entityId: id, entityTitle: updatedIdea.title, action: 'assignee_added', detail: names[a.user_id] || '', toValue: a.role, actorId: user.id });
+      for (const r of removed) events.push({ clientId: updatedIdea.client_id, area: 'social', entityType: 'social_idea', entityId: id, entityTitle: updatedIdea.title, action: 'assignee_removed', detail: names[r.user_id] || '', fromValue: r.role, actorId: user.id });
       if (added.length > 0) {
         const notifyIds = [...new Set(added.map(a => a.user_id))];
         await supabase.from('notifications').insert(notifyIds.map(user_id => ({
@@ -121,6 +144,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         })));
       }
     }
+    await logActivity(supabase, events);
     const [enriched] = await enrichIdeasWithAssignees(supabase, 'social_idea_assignees', [result.data]);
     return NextResponse.json({ data: enriched });
   } catch (e) {
@@ -137,7 +161,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { id } = await params;
     const { data: targetIdea, error: targetError } = await supabase
       .from('social_ideas')
-      .select('client_id')
+      .select('client_id, title')
       .eq('id', id)
       .single();
     if (targetError) throw targetError;
@@ -149,6 +173,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       console.error('DELETE /api/social-ideas/[id] Supabase error:', JSON.stringify(error));
       throw error;
     }
+    await logActivity(supabase, { clientId: targetIdea.client_id, area: 'social', entityType: 'social_idea', entityId: id, entityTitle: targetIdea.title, action: 'deleted', detail: 'Eliminó la idea de Redes', actorId: user.id });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('DELETE /api/social-ideas/[id] error:', e);

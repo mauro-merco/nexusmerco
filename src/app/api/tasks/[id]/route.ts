@@ -1,11 +1,30 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
+import { logActivity, type ActivityLogInput } from '@/lib/activity-events';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+async function logAssigneeChanges(
+  events: ActivityLogInput[],
+  clientId: string,
+  taskId: string,
+  title: string,
+  actorId: string,
+  added: { user_id: string; role: string }[],
+  removed: { user_id: string; role: string }[],
+) {
+  const ids = [...new Set([...added.map((a) => a.user_id), ...removed.map((r) => r.user_id)])];
+  if (ids.length === 0) return;
+  const { data: people } = await supabase.from('users').select('id, full_name, email').in('id', ids);
+  const names: Record<string, string> = {};
+  for (const p of people || []) names[p.id] = p.full_name || p.email || '';
+  for (const a of added) events.push({ clientId, area: 'task', entityType: 'task', entityId: taskId, entityTitle: title, action: 'assignee_added', detail: names[a.user_id] || '', toValue: a.role, actorId });
+  for (const r of removed) events.push({ clientId, area: 'task', entityType: 'task', entityId: taskId, entityTitle: title, action: 'assignee_removed', detail: names[r.user_id] || '', fromValue: r.role, actorId });
+}
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -50,7 +69,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const user = await getRequestUser(request, supabase);
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    const { data: targetTask } = await supabase.from('tasks').select('client_id').eq('id', id).single();
+    const { data: targetTask } = await supabase.from('tasks').select('client_id, status, title, needs_client_material').eq('id', id).single();
     if (!targetTask || !canAccessClient(user, targetTask.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const body = await request.json();
     const roleList = ['lead', 'executor', 'reviewer'];
@@ -85,6 +104,21 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).select().single();
     if (error) throw error;
 
+    const events: ActivityLogInput[] = [];
+    const prevStatus = targetTask?.status;
+    const prevTitle = targetTask?.title;
+    if (body.title !== undefined && body.title !== prevTitle) {
+      events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'updated', detail: 'Editó el título', fromValue: prevTitle, toValue: body.title, actorId: user.id });
+    }
+    if (body.status !== undefined && body.status !== prevStatus) {
+      events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'status_changed', detail: 'Cambió el estado', fromValue: prevStatus, toValue: body.status, actorId: user.id });
+      if (body.status === 'cerrada') events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'completed', detail: 'Cerró la tarea', actorId: user.id });
+      if (body.status === 'problemas') events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'problem_reported', detail: String(body.problem_note || ''), actorId: user.id });
+    }
+    if (body.needs_client_material === true && !targetTask?.needs_client_material) {
+      events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'material_requested', detail: String(body.client_material_note || ''), actorId: user.id });
+    }
+
     const assigneesProvided = Array.isArray(body.assignees);
     if (assigneesProvided) {
       const desiredRaw = (body.assignees as { id?: string; role?: string }[])
@@ -96,6 +130,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       const existing = existingRows || [];
       const existingKeys = new Set(existing.map(r => `${r.user_id}:${r.role}`));
       const toAdd = desired.filter(a => !existingKeys.has(`${a.user_id}:${a.role}`));
+      const desiredKeys = new Set(desired.map(a => `${a.user_id}:${a.role}`));
+      const toRemoveRows = existing.filter(r => !desiredKeys.has(`${r.user_id}:${r.role}`));
+      await logAssigneeChanges(events, data.client_id, id, data.title, user.id, toAdd, toRemoveRows);
 
       const { error: deleteError } = await supabase.from('task_assignees').delete().eq('task_id', id);
       if (deleteError) throw deleteError;
@@ -127,6 +164,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         const toAdd = newIds.filter(uid => !existingIds.includes(uid));
         const toRemove = existingIds.filter(uid => !newIds.includes(uid));
 
+        await logAssigneeChanges(
+          events,
+          data.client_id,
+          id,
+          data.title,
+          user.id,
+          toAdd.map((user_id) => ({ user_id, role: 'executor' })),
+          toRemove.map((user_id) => ({ user_id, role: 'executor' })),
+        );
+
         if (toRemove.length > 0) {
           await supabase.from('task_assignees').delete().eq('task_id', id).in('user_id', toRemove);
         }
@@ -155,6 +202,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       : { data: [] };
     const usersMap = Object.fromEntries((assigneeUsers || []).map(u => [u.id, u]));
 
+    await logActivity(supabase, events);
+
     return NextResponse.json({
       data: {
         ...data,
@@ -171,10 +220,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { id } = await params;
     const user = await getRequestUser(request, supabase);
     if (!user || !isStaff(user)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-    const { data: targetTask } = await supabase.from('tasks').select('client_id').eq('id', id).single();
+    const { data: targetTask } = await supabase.from('tasks').select('client_id, title').eq('id', id).single();
     if (!targetTask || !canAccessClient(user, targetTask.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const { error } = await supabase.from('tasks').delete().eq('id', id);
     if (error) throw error;
+    await logActivity(supabase, { clientId: targetTask.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: targetTask.title, action: 'deleted', detail: 'Eliminó la tarea', actorId: user.id });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createMentionNotifications } from '@/lib/mentions';
 import { canAccessClient, getRequestUser } from '@/lib/api-security';
+import { logActivity } from '@/lib/activity-events';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
 
     const { data: idea, error: ideaError } = await supabase
       .from('social_ideas')
-      .select('client_id')
+      .select('client_id, title')
       .eq('id', idea_id)
       .single();
     if (ideaError) throw ideaError;
@@ -137,6 +138,8 @@ export async function POST(request: Request) {
       user.id,
       { link: await buildIdeaLink(idea_id), entityLabel: 'un comentario de una idea' }
     );
+
+    await logActivity(supabase, { clientId: idea.client_id, area: 'social', entityType: 'social_idea', entityId: idea_id, entityTitle: idea.title, action: 'commented', detail: content, actorId: user.id });
 
     const usersMap = await fetchUsers([user.id]);
     return NextResponse.json({ data: { ...data, user: usersMap[user.id] || null } });

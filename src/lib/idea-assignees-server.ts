@@ -71,6 +71,8 @@ export async function syncIdeaAssignees(
   const existing = existingRows || [];
   const existingKeys = new Set(existing.map((row: any) => `${row.user_id}:${row.role}`));
   const toAdd = desired.filter(row => !existingKeys.has(`${row.user_id}:${row.role}`));
+  const desiredKeys = new Set(desired.map(row => `${row.user_id}:${row.role}`));
+  const toRemove = existing.filter((row: any) => !desiredKeys.has(`${row.user_id}:${row.role}`));
 
   const { error: deleteError } = await supabase.from(table).delete().eq('idea_id', ideaId);
   if (deleteError) throw deleteError;
@@ -79,5 +81,5 @@ export async function syncIdeaAssignees(
     if (error) throw error;
   }
 
-  return { added: toAdd, desired };
+  return { added: toAdd, removed: toRemove, desired };
 }

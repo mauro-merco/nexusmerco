@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { enrichIdeasWithAssignees, hasEveryWorkRole, normalizeWorkAssignees, syncIdeaAssignees } from '@/lib/idea-assignees-server';
 import { canAccessClient, getRequestUser } from '@/lib/api-security';
+import { logActivity } from '@/lib/activity-events';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,8 +81,10 @@ export async function POST(request: Request) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    let assignedAdditions: { user_id: string; role: string }[] = [];
     try {
       const { added } = await syncIdeaAssignees(supabase, 'ads_idea_assignees', data.id, assignees);
+      assignedAdditions = added;
       if (added.length > 0) {
         const notifyIds = [...new Set(added.map(a => a.user_id).filter(id => id !== user.id))];
         await supabase.from('notifications').insert(notifyIds.map(user_id => ({
@@ -96,6 +99,19 @@ export async function POST(request: Request) {
       await supabase.from('ads_ideas').delete().eq('id', data.id);
       throw assignmentError;
     }
+    let addedUsers: { id: string; full_name: string | null; email: string | null }[] = [];
+    const addedIds = [...new Set(assignedAdditions.map(a => a.user_id))];
+    if (addedIds.length > 0) {
+      const { data: people } = await supabase.from('users').select('id, full_name, email').in('id', addedIds);
+      addedUsers = people || [];
+    }
+    const addedNames: Record<string, string> = {};
+    for (const u of addedUsers) addedNames[u.id] = u.full_name || u.email || '';
+    await logActivity(supabase, [
+      { clientId: client_id, area: 'ads', entityType: 'ads_idea', entityId: data.id, entityTitle: data.title, action: 'created', detail: 'Creó la idea de ADS', actorId: user.id },
+      ...assignedAdditions.map((a) => ({ clientId: client_id, area: 'ads' as const, entityType: 'ads_idea', entityId: data.id, entityTitle: data.title, action: 'assignee_added', detail: addedNames[a.user_id] || '', toValue: a.role, actorId: user.id })),
+    ]);
+
     const [enriched] = await enrichIdeasWithAssignees(supabase, 'ads_idea_assignees', [data]);
     return NextResponse.json({ data: enriched });
   } catch (e) {
