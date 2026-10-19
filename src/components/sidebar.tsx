@@ -107,11 +107,18 @@ function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolea
         <button
           type="button"
           onClick={() => onNavigate('/dashboard', _('nav.dashboard'))}
-          className="bg-gradient-tech flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+          aria-label="Merco Nexus"
+          className="flex shrink-0 items-center justify-center"
         >
-          M
+          {collapsed ? (
+            <img src="/merco-iso.svg" alt="Merco" className="h-[19px] w-auto" />
+          ) : (
+            <>
+              <img src="/merco-light-mode.svg" alt="Merco Nexus" className="h-[18px] w-auto dark:hidden" />
+              <img src="/merco-dark-mode.svg" alt="Merco Nexus" className="hidden h-[18px] w-auto dark:block" />
+            </>
+          )}
         </button>
-        {!collapsed && <span className="text-sm font-bold text-foreground truncate">Nexus</span>}
       </div>
 
       <div className="sidebar-scroll flex-1 overflow-y-auto px-2.5 py-2 space-y-0.5">

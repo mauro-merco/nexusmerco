@@ -1,6 +1,7 @@
 'use client';
 
-import { MessageSquare, ArrowUpRight } from 'lucide-react';
+import { useState } from 'react';
+import { MessageSquare, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MarkdownBody } from '@/lib/markdown';
 import { MentionedText } from '@/components/mention';
@@ -36,19 +37,26 @@ export function CalendarRecentComments({
   className,
 }: CalendarRecentCommentsProps) {
   const { comments, loading } = useCalendarComments({ clientId, calendarType, month, shareToken, guestEmail, viewerAuthToken });
+  const [expanded, setExpanded] = useState(false);
   const ideaById = new Map(ideas.map(i => [i.id, i]));
-  const latest = comments
+  const all = comments
     .flatMap(c => [c, ...c.replies.map(r => ({ ...r, scope: c.scope, idea: c.idea, replies: [] }))] as FlatComment[])
     .map(c => ({ ...c, ideaMeta: c.idea, ideaStatus: c.idea?.id ? ideaById.get(c.idea.id)?.status : undefined }))
     .filter(c => c.scope === 'idea' && c.ideaMeta)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 6);
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const latest = expanded ? all : all.slice(0, 6);
+  const hasMore = all.length > 6;
 
   return (
     <section className={cn('rounded-2xl border border-border bg-card p-4', className)}>
       <header className="mb-3 flex items-center gap-2">
         <MessageSquare className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold">Últimos comentarios</h3>
+        {all.length > 0 && (
+          <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {all.length}
+          </span>
+        )}
       </header>
 
       {loading ? (
@@ -56,7 +64,7 @@ export function CalendarRecentComments({
       ) : latest.length === 0 ? (
         <p className="py-4 text-xs text-muted-foreground">Todavía no hay comentarios en ideas este mes.</p>
       ) : (
-        <div className="space-y-2.5">
+        <div className={cn('space-y-2.5', expanded && 'max-h-[60vh] overflow-y-auto pr-1 sidebar-scroll')}>
           {latest.map(comment => {
             const statusCfg = comment.ideaStatus ? STATUS_CONFIG[comment.ideaStatus] : null;
             const author = comment.user?.full_name || comment.user?.email || 'Cliente';
@@ -91,6 +99,17 @@ export function CalendarRecentComments({
             );
           })}
         </div>
+      )}
+
+      {!loading && hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded(prev => !prev)}
+          className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-background/55 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+        >
+          {expanded ? 'Ver menos' : `Ver todos (${all.length})`}
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')} />
+        </button>
       )}
     </section>
   );
