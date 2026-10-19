@@ -440,6 +440,7 @@ function modalStatusStyle(status: IdeaStatus) {
   if (status === 'diseno_listo') return { label: '✓ DISEÑO LISTO', border: 'border-cyan-400/75', banner: 'bg-cyan-500/20 text-cyan-800 dark:text-cyan-100' };
   if (status === 'aprobada') return { label: '✓ APROBADO', border: 'border-emerald-500/80', banner: 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-100' };
   if (status === 'listo_para_postear') return { label: 'LISTO PARA POSTEAR', border: 'border-violet-500/80', banner: 'bg-gradient-to-r from-blue-600/25 via-indigo-600/25 to-violet-600/30 text-violet-900 dark:text-violet-100' };
+  if (status === 'programando') return { label: '⏱ PROGRAMANDO', border: 'border-violet-500/80', banner: 'bg-violet-600 text-white' };
   if (status === 'posteado') return { label: '✓ POSTEADO', border: 'border-green-600/80', banner: 'bg-green-600 text-white' };
   return { label: String(status), border: 'border-border', banner: 'bg-muted/50 text-muted-foreground' };
 }

@@ -61,6 +61,7 @@ export const STATUS_CONFIG: Record<IdeaStatus, { label: string; colorClass: stri
   diseno_listo: { label: 'Diseño listo', colorClass: 'bg-cyan-400/20 text-cyan-600 border-cyan-400/30', dotColor: 'bg-cyan-400', group: 2 },
   aprobada: { label: 'Aprobado', colorClass: 'bg-emerald-400/20 text-emerald-600 border-emerald-400/30', dotColor: 'bg-emerald-400', group: 2 },
   listo_para_postear: { label: 'Listo para postear', colorClass: 'bg-blue-400/20 text-blue-600 border-blue-400/30', dotColor: 'bg-blue-400', group: 2 },
+  programando: { label: 'Programando', colorClass: 'bg-violet-400/20 text-violet-600 border-violet-400/30', dotColor: 'bg-violet-400', group: 2 },
   posteado: { label: 'Publicado', colorClass: 'bg-green-400/20 text-green-600 border-green-400/30', dotColor: 'bg-green-500', group: 2 },
 };
 
@@ -80,5 +81,6 @@ export const IDEA_STATUS_ORDER: IdeaStatus[] = [
   'diseno_listo',
   'aprobada',
   'listo_para_postear',
+  'programando',
   'posteado',
 ];

@@ -59,6 +59,7 @@ function statusHighlight(status: SocialIdea['status']) {
   if (status === 'diseno_listo') return { label: 'Diseño listo', className: 'border-emerald-300 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', iconClass: 'text-emerald-600 dark:text-emerald-300', fill: false };
   if (status === 'espera_cliente') return { label: 'Cliente pendiente', className: 'border-red-500 bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 text-[11px]', iconClass: 'text-red-600 dark:text-red-300', fill: false };
   if (status === 'aprobada') return { label: 'Aprobado', className: 'border-green-400 bg-green-200 text-green-800 dark:bg-green-500/25 dark:text-green-200 text-[11px]', iconClass: 'text-cyan-500', fill: false };
+  if (status === 'programando') return { label: 'Programando', className: 'border-violet-400 bg-violet-200 text-violet-800 dark:bg-violet-500/25 dark:text-violet-200 text-[11px]', iconClass: 'text-violet-600 dark:text-violet-300', fill: false };
   if (status === 'posteado') return { label: 'Posteado', className: 'border-green-500 bg-green-500 text-white text-[11px]', iconClass: 'text-white', fill: true };
   return null;
 }

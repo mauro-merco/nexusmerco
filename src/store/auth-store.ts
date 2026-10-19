@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, UserRole } from '@/lib/types';
+import { DEFAULT_MODULES } from '@/lib/types';
 
 interface AuthState {
   user: User | null;
@@ -106,7 +107,7 @@ export const useAuthStore = create<AuthState>()(
             full_name: fullName,
             avatar_url: (authData.user.user_metadata?.avatar_url as string) || '',
             role: role as UserRole,
-            visible_modules: [],
+            visible_modules: DEFAULT_MODULES[role as UserRole] || [],
             client_id: (authData.user.user_metadata?.client_id as string) || null,
             totp_enabled: false,
           };
@@ -119,19 +120,24 @@ export const useAuthStore = create<AuthState>()(
       },
 
       verify2FA: async (code: string) => {
-        const { pendingUserId } = get();
+        const { pendingUserId, token } = get();
         if (!pendingUserId) return { success: false, error: 'No hay sesión pendiente' };
         set({ isLoading: true });
         try {
           const res = await fetch('/api/auth/2fa/challenge', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
             body: JSON.stringify({ userId: pendingUserId, code }),
           });
           const json = await res.json();
           if (!res.ok) throw new Error(json.error || 'Código inválido');
           // Fetch full profile and set user
-          const profileRes = await fetch(`/api/auth/profile?userId=${pendingUserId}`);
+          const profileRes = await fetch(`/api/auth/profile?userId=${pendingUserId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
           if (profileRes.ok) {
             const profileJson = await profileRes.json();
             if (profileJson.data) {
@@ -181,7 +187,9 @@ export const useAuthStore = create<AuthState>()(
             const au = data.session.user;
             const accessToken = data.session.access_token || '';
             try {
-              const res = await fetch(`/api/auth/profile?userId=${au.id}`);
+              const res = await fetch(`/api/auth/profile?userId=${au.id}`, {
+                headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+              });
               if (res.ok) {
                 const json = await res.json();
                 if (json.data) {
@@ -209,14 +217,22 @@ export const useAuthStore = create<AuthState>()(
             } catch {
               // fall through
             }
+            const current = get().user;
+            if (current && current.id === au.id) {
+              // Profile fetch failed (network/transient error): keep the persisted
+              // user intact instead of wiping its modules and role.
+              set({ token: accessToken, isLoading: false });
+              return;
+            }
+            const role = (au.user_metadata?.role as UserRole) || 'client';
             set({
               user: {
                 id: au.id,
                 email: au.email || '',
                 full_name: (au.user_metadata?.full_name as string) || au.email || '',
                 avatar_url: (au.user_metadata?.avatar_url as string) || '',
-                role: (au.user_metadata?.role as UserRole) || 'client',
-                visible_modules: [],
+                role,
+                visible_modules: DEFAULT_MODULES[role] || [],
                 client_id: (au.user_metadata?.client_id as string) || null,
                 totp_enabled: false,
               },

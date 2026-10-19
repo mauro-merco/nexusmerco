@@ -121,7 +121,7 @@ export interface NavItem {
 }
 
 export type PostType = 'historia' | 'reel' | 'carrusel' | 'posteo' | 'sugerencia';
-export type IdeaStatus = 'borrador' | 'en_revision' | 'espera_cliente' | 'necesita_modificaciones' | 'idea_aprobada' | 'idea_rechazada' | 'listo_para_disenar' | 'diseno_listo' | 'aprobada' | 'listo_para_postear' | 'posteado';
+export type IdeaStatus = 'borrador' | 'en_revision' | 'espera_cliente' | 'necesita_modificaciones' | 'idea_aprobada' | 'idea_rechazada' | 'listo_para_disenar' | 'diseno_listo' | 'aprobada' | 'listo_para_postear' | 'programando' | 'posteado';
 export type Responsable = 'nico' | 'mau';
 export type WorkRole = 'lead' | 'executor' | 'reviewer';
 
@@ -185,7 +185,7 @@ export interface SocialAnnotation {
 }
 
 /** Tasks use the idea workflow minus the idea/publication-only states, plus two task terminals. */
-export type TaskStatus = Exclude<IdeaStatus, 'idea_aprobada' | 'idea_rechazada' | 'listo_para_postear' | 'posteado'> | 'problemas' | 'cerrada';
+export type TaskStatus = Exclude<IdeaStatus, 'idea_aprobada' | 'idea_rechazada' | 'listo_para_postear' | 'programando' | 'posteado'> | 'problemas' | 'cerrada';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskRole = WorkRole;
 

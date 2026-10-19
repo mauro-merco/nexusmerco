@@ -10,7 +10,7 @@ import { Camera, LogOut, Settings, User, Loader2, X, Globe } from 'lucide-react'
 import Link from 'next/link';
 
 export function ProfileMenu() {
-  const { user, logout } = useAuthStore();
+  const { user, token, logout } = useAuthStore();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(user?.full_name || '');
@@ -28,6 +28,7 @@ export function ProfileMenu() {
       formData.append('userId', user.id);
       const res = await fetch('/api/auth/profile', {
         method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: formData,
       });
       const json = await res.json();
@@ -49,7 +50,10 @@ export function ProfileMenu() {
     try {
       const res = await fetch('/api/auth/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ userId: user.id, full_name: fullName }),
       });
       const json = await res.json();

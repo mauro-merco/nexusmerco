@@ -99,7 +99,7 @@ export default function SettingsPage() {
 }
 
 function ProfileTab() {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [bio, setBio] = useState('');
@@ -127,7 +127,10 @@ function ProfileTab() {
     try {
       const res = await fetch('/api/auth/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           userId: user.id,
           full_name: fullName.trim(),
