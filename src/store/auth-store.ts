@@ -94,6 +94,13 @@ export const useAuthStore = create<AuthState>()(
                 set({ user, token: accessToken, isLoading: false });
                 return { success: true };
               }
+            } else if (res.status === 401) {
+              // The proxy blocks profile reads until the 2FA challenge is solved.
+              const json = await res.json().catch(() => ({}));
+              if (/dos pasos/i.test(json?.error || '')) {
+                set({ pending2FA: true, pendingUserId: authData.user.id, token: accessToken, isLoading: false });
+                return { success: true, needs2FA: true };
+              }
             }
           } catch {
             // fall through
@@ -213,6 +220,12 @@ export const useAuthStore = create<AuthState>()(
                   });
                   return;
                 }
+              } else if (res.status === 401) {
+                // Token invalid or the 12h 2FA proof expired: force a fresh
+                // login instead of keeping a session that can't call any API.
+                await supabase.auth.signOut().catch(() => {});
+                set({ user: null, token: '', isLoading: false });
+                return;
               }
             } catch {
               // fall through

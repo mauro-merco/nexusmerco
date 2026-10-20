@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { verifyTwoFactorProof } from '@/lib/two-factor-session';
+import { createTwoFactorProof, verifyTwoFactorProof } from '@/lib/two-factor-session';
 
 const requestBuckets = new Map<string, { count: number; resetAt: number }>();
 
@@ -27,6 +27,10 @@ function isPublicApi(request: NextRequest) {
   return false;
 }
 
+function unauthorized(message: string) {
+  return NextResponse.json({ error: message }, { status: 401, headers: { 'x-nexus-auth': 'required' } });
+}
+
 export async function proxy(request: NextRequest) {
   if (rateLimited(request)) return NextResponse.json({ error: 'Demasiadas solicitudes' }, { status: 429 });
   const contentLength = Number(request.headers.get('content-length') || 0);
@@ -39,7 +43,7 @@ export async function proxy(request: NextRequest) {
 
   const authorization = request.headers.get('authorization') || '';
   if (!/^Bearer\s+\S+$/i.test(authorization)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    return unauthorized('No autorizado');
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -52,9 +56,11 @@ export async function proxy(request: NextRequest) {
     headers: { apikey: anonKey, Authorization: authorization },
     cache: 'no-store',
   });
-  if (!verification.ok) return NextResponse.json({ error: 'Sesión inválida o vencida' }, { status: 401 });
+  if (!verification.ok) return unauthorized('Sesión inválida o vencida');
   const authUser = await verification.json() as { id?: string };
-  if (!authUser.id) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+  if (!authUser.id) return unauthorized('Sesión inválida');
+
+  let renewTwoFactorFor: string | null = null;
 
   if (request.nextUrl.pathname !== '/api/auth/2fa/challenge') {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -67,7 +73,10 @@ export async function proxy(request: NextRequest) {
     if (profiles[0]?.totp_enabled) {
       try {
         const valid = await verifyTwoFactorProof(request.cookies.get('nexus_2fa')?.value, authUser.id);
-        if (!valid) return NextResponse.json({ error: 'Se requiere verificación de dos pasos' }, { status: 401 });
+        if (!valid) return unauthorized('Se requiere verificación de dos pasos');
+        // Sliding window: every authenticated call extends the 2FA session so
+        // active users are not silently logged out after 12 hours.
+        renewTwoFactorFor = authUser.id;
       } catch {
         return NextResponse.json({ error: 'Verificación de dos pasos no configurada' }, { status: 503 });
       }
@@ -75,6 +84,15 @@ export async function proxy(request: NextRequest) {
   }
 
   const response = NextResponse.next();
+  if (renewTwoFactorFor) {
+    response.cookies.set('nexus_2fa', await createTwoFactorProof(renewTwoFactorFor), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 12 * 60 * 60,
+    });
+  }
   response.headers.set('Cache-Control', 'no-store');
   return response;
 }
