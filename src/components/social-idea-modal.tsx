@@ -21,9 +21,10 @@ import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social
 import { MarkdownTextarea } from '@/components/markdown-textarea';
 import { MaterialLinks } from '@/components/material-links';
 import { MarkdownBody } from '@/lib/markdown';
+import { MoveIdeaDialog } from '@/components/move-idea-dialog';
 import {
   Loader2, Trash2, Link, Paperclip, Copy, AlertTriangle,
-  Edit3, Calendar, Check,
+  Edit3, Calendar, Check, Zap,
 } from 'lucide-react';
 
 const POST_TYPES: { value: PostType; label: string }[] = [
@@ -73,6 +74,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
   const [newAttachUrl, setNewAttachUrl] = useState('');
   const [addingAttach, setAddingAttach] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
 
   useEffect(() => {
     setTitle(idea.title);
@@ -204,6 +206,11 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
             </DialogDescription>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {isSocial && !editing && (
+              <Button variant="ghost" size="sm" className="rounded-lg text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/20" onClick={() => setShowMoveDialog(true)} title="Mover a calendario ADS">
+                <Zap className="h-3.5 w-3.5 mr-1" /> Mover a ADS
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="rounded-lg" onClick={copyIdeaLink} title="Copiar link de la idea">
               <Copy className="h-3.5 w-3.5" /> {copiedLink ? 'Copiado' : null}
             </Button>
@@ -425,6 +432,19 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
           </div>
         </DialogFooter>
       </DialogContent>
+
+      {showMoveDialog && (
+        <MoveIdeaDialog
+          ideaId={idea.id}
+          ideaTitle={idea.title}
+          clientId={idea.client_id}
+          onClose={() => setShowMoveDialog(false)}
+          onSuccess={() => {
+            onIdeaDeleted();
+            onOpenChange(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
