@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 import { logActivity } from '@/lib/activity-events';
+import { departmentInfo, calculateDueDate } from '@/lib/department-config';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -107,13 +108,38 @@ export async function POST(request: Request) {
     const user = await getRequestUser(request, supabase);
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
-    const { client_id, title, description, status, assignee_ids, assignees, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels, task_type, problem_note, needs_client_material, client_material_note } = body;
+    const { client_id, title, description, status, assignee_ids, assignees, author_id, priority, due_date, pieces_stories, pieces_feed, pieces_reels, task_type, problem_note, needs_client_material, client_material_note, department, start_date, is_urgent, blocked_by_task_id } = body;
     const toCount = (v: unknown) => v === undefined || v === null || v === '' ? null : Number(v);
 
     if (!client_id || !title) {
       return NextResponse.json({ error: 'client_id and title required' }, { status: 400 });
     }
     if (!canAccessClient(user, client_id)) return NextResponse.json({ error: 'Sin acceso al cliente' }, { status: 403 });
+
+    // Validate urgency limit: only 1 urgent task per department
+    if (is_urgent && department) {
+      const { data: existingUrgent } = await supabase
+        .from('tasks')
+        .select('id, title')
+        .eq('department', department)
+        .eq('is_urgent', true)
+        .not('status', 'in', '(cerrada,problemas)')
+        .limit(1);
+      
+      if (existingUrgent && existingUrgent.length > 0) {
+        return NextResponse.json({
+          error: 'Solo 1 tarea urgente por departamento',
+          urgentTask: existingUrgent[0],
+          message: '⚠️ SI TODO ES URGENTE, NADA ES URGENTE\n\nEste departamento ya tiene una tarea urgente activa. Completá o quitá la urgencia de la tarea actual antes de crear una nueva.',
+        }, { status: 400 });
+      }
+    }
+
+    // Calculate SLA and due_date
+    const taskStartDate = start_date || new Date().toISOString();
+    const deptConfig = departmentInfo(department);
+    const slaHours = is_urgent && deptConfig ? deptConfig.urgentSlaHours : (deptConfig?.slaHours || 48);
+    const calculatedDueDate = due_date || calculateDueDate(taskStartDate, slaHours);
 
     const { count } = await supabase
       .from('tasks')
@@ -134,7 +160,12 @@ export async function POST(request: Request) {
         status: initialStatus,
         author_id: user.id,
         priority: priority || 'medium',
-        due_date: due_date || null,
+        department: department || null,
+        start_date: taskStartDate,
+        due_date: calculatedDueDate,
+        sla_hours: slaHours,
+        is_urgent: !!is_urgent,
+        blocked_by_task_id: blocked_by_task_id || null,
         task_type: task_type || null,
         problem_note: problem_note || null,
         needs_client_material: !!needs_client_material,

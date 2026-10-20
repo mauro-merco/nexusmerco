@@ -189,6 +189,13 @@ export type TaskStatus = Exclude<IdeaStatus, 'idea_aprobada' | 'idea_rechazada' 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskRole = WorkRole;
 
+export type TaskDepartment = 
+  | 'diseno_redes' | 'diseno_ads' | 'diseno_web'
+  | 'pauta_google' | 'pauta_meta' | 'pauta_tiktok'
+  | 'contenido_copy' | 'contenido_estrategia'
+  | 'desarrollo_web' | 'desarrollo_ecommerce'
+  | 'atencion_consultas' | 'atencion_reportes';
+
 export interface TaskAssignee extends User {
   task_role: TaskRole;
 }
@@ -200,6 +207,8 @@ export interface Task {
   description: string;
   /** Type of the task: one of the ids in TASK_TYPE_CATEGORIES (e.g. redes_piezas, ads_gestion, web_landing...). */
   task_type: string | null;
+  /** Department responsible for this task */
+  department: TaskDepartment | null;
   status: TaskStatus;
   /** What is blocking the task. Required whenever status becomes `problemas`. */
   problem_note?: string | null;
@@ -209,7 +218,16 @@ export interface Task {
   client_material_note?: string | null;
   author_id: string | null;
   priority: TaskPriority;
+  /** Task start date (creation date by default) */
+  start_date: string | null;
+  /** Task due date (calculated from start_date + sla_hours) */
   due_date: string | null;
+  /** SLA in hours for this task (department default or custom) */
+  sla_hours: number;
+  /** Urgent flag (max 1 per department) */
+  is_urgent: boolean;
+  /** Task that blocks this one */
+  blocked_by_task_id: string | null;
   /** @deprecated superseded by pieces_stories/pieces_feed/pieces_reels; kept for tasks created before the breakdown existed */
   pieces_count: number | null;
   pieces_stories: number | null;
@@ -230,6 +248,7 @@ export interface Task {
   client?: Client | null;
   comment_count?: number;
   attachment_count?: number;
+  blocked_by?: Task | null;
 }
 
 export interface TaskComment {

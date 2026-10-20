@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 import { logActivity, type ActivityLogInput } from '@/lib/activity-events';
+import { departmentInfo, calculateDueDate } from '@/lib/department-config';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,7 +70,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const user = await getRequestUser(request, supabase);
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    const { data: targetTask } = await supabase.from('tasks').select('client_id, status, title, needs_client_material').eq('id', id).single();
+    const { data: targetTask } = await supabase.from('tasks').select('client_id, status, title, needs_client_material, department, start_date').eq('id', id).single();
     if (!targetTask || !canAccessClient(user, targetTask.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const body = await request.json();
     const roleList = ['lead', 'executor', 'reviewer'];
@@ -78,8 +79,44 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public', 'task_type', 'problem_note', 'needs_client_material', 'client_material_note']) {
+    for (const key of ['title', 'description', 'status', 'author_id', 'priority', 'due_date', 'position', 'is_public', 'task_type', 'problem_note', 'needs_client_material', 'client_material_note', 'department', 'start_date', 'sla_hours', 'blocked_by_task_id']) {
       if (body[key] !== undefined) updates[key] = body[key];
+    }
+
+    // Handle is_urgent with validation
+    if (body.is_urgent !== undefined) {
+      const willBeUrgent = !!body.is_urgent;
+      const dept = body.department !== undefined ? body.department : targetTask?.department;
+      
+      if (willBeUrgent && dept) {
+        const { data: existingUrgent } = await supabase
+          .from('tasks')
+          .select('id, title')
+          .eq('department', dept)
+          .eq('is_urgent', true)
+          .neq('id', id)
+          .not('status', 'in', '(cerrada,problemas)')
+          .limit(1);
+        
+        if (existingUrgent && existingUrgent.length > 0) {
+          return NextResponse.json({
+            error: 'Solo 1 tarea urgente por departamento',
+            urgentTask: existingUrgent[0],
+            message: '⚠️ SI TODO ES URGENTE, NADA ES URGENTE\n\nEste departamento ya tiene una tarea urgente activa. Completá o quitá la urgencia de la tarea actual antes de marcar esta.',
+          }, { status: 400 });
+        }
+      }
+      
+      updates.is_urgent = willBeUrgent;
+      
+      // Recalculate due_date if urgency changes
+      if (body.start_date !== undefined || body.department !== undefined || body.is_urgent !== undefined) {
+        const startDate = body.start_date || targetTask?.start_date || new Date().toISOString();
+        const deptConfig = departmentInfo(dept);
+        const newSlaHours = willBeUrgent && deptConfig ? deptConfig.urgentSlaHours : (deptConfig?.slaHours || 48);
+        updates.sla_hours = newSlaHours;
+        updates.due_date = calculateDueDate(startDate, newSlaHours);
+      }
     }
     for (const key of ['pieces_stories', 'pieces_feed', 'pieces_reels']) {
       if (body[key] !== undefined) {

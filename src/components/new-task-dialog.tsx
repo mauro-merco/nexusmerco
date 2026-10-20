@@ -8,11 +8,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { TaskStatus, TaskPriority, TaskRole } from '@/lib/types';
+import type { TaskStatus, TaskPriority, TaskRole, TaskDepartment } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskTypeLabel } from '@/lib/task-config';
 import { TaskRolesPicker, emptyRoles, rolesToList, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
 import { TaskTypePicker } from '@/components/task-type-picker';
-import { Loader2, Calendar, Users2, ListChecks, LayoutList, AlertTriangle } from 'lucide-react';
+import { DepartmentPicker } from '@/components/department-picker';
+import { departmentInfo, calculateDueDate } from '@/lib/department-config';
+import { Loader2, Calendar, Users2, ListChecks, LayoutList, AlertTriangle, Zap } from 'lucide-react';
 
 interface UserRecord { id: string; full_name: string; email: string; avatar_url: string; }
 
@@ -31,6 +33,10 @@ interface NewTaskDialogProps {
     priority?: TaskPriority;
     due_date?: string;
     task_type?: string;
+    department?: TaskDepartment;
+    start_date?: string;
+    is_urgent?: boolean;
+    blocked_by_task_id?: string;
     problem_note?: string;
     needs_client_material?: boolean;
     client_material_note?: string;
@@ -47,6 +53,9 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
   const [status, setStatus] = useState<TaskStatus>('borrador');
   const [roles, setRoles] = useState<TaskRolesState>(emptyRoles());
   const [taskType, setTaskType] = useState('');
+  const [department, setDepartment] = useState<TaskDepartment | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [isUrgent, setIsUrgent] = useState(false);
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
   const [piecesStories, setPiecesStories] = useState('');
@@ -64,12 +73,26 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
       setPriority('medium'); setDueDate(''); setTaskType(''); setSelClient('');
       setPiecesStories(''); setPiecesFeed(''); setPiecesReels(''); setError(null);
       setProblemNote(''); setNeedsMaterial(false); setMaterialNote('');
+      setDepartment(null); setStartDate(''); setIsUrgent(false);
     }
   }, [open]);
+
+  // Auto-calculate due_date when department/start_date/urgency changes
+  useEffect(() => {
+    if (department && startDate) {
+      const deptConfig = departmentInfo(department);
+      if (deptConfig) {
+        const slaHours = isUrgent ? deptConfig.urgentSlaHours : deptConfig.slaHours;
+        const calculated = calculateDueDate(startDate, slaHours);
+        setDueDate(calculated.substring(0, 16)); // "YYYY-MM-DDTHH:MM"
+      }
+    }
+  }, [department, startDate, isUrgent]);
 
   const handleSave = async () => {
     if (!selClient) { setError('Seleccioná el cliente de la tarea'); return; }
     if (!title.trim()) { setError('Ingresá un título'); return; }
+    if (!department) { setError('Seleccioná el departamento responsable'); return; }
     if (status === 'problemas' && !problemNote.trim()) { setError('Escribí cuál es el problema'); return; }
     if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) {
       setError('Asigná al menos una persona como responsable, ejecutor y control');
@@ -85,6 +108,9 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
         status,
         assignees: rolesToList(roles),
         priority,
+        department,
+        start_date: startDate || new Date().toISOString(),
+        is_urgent: isUrgent,
         due_date: dueDate || undefined,
         task_type: taskType || undefined,
         problem_note: status === 'problemas' ? problemNote.trim() : undefined,
@@ -96,7 +122,12 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
       });
       onOpenChange(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      const err = e as any;
+      if (err?.message && err?.urgentTask) {
+        setError(err.message + '\n\nTarea urgente actual: ' + err.urgentTask.title);
+      } else {
+        setError(e instanceof Error ? e.message : 'Error');
+      }
     } finally {
       setSaving(false);
     }
@@ -140,6 +171,56 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
             </div>
             <TaskTypePicker value={taskType} onChange={setTaskType} />
           </div>
+
+          {/* Departamento */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <Users2 className="h-3.5 w-3.5" /> Departamento responsable
+            </div>
+            <DepartmentPicker value={department} onChange={setDepartment} />
+          </div>
+
+          {/* Fechas + Urgencia */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" /> Inicio
+              </div>
+              <input
+                type="datetime-local"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" /> Vencimiento {department && <span className="text-muted-foreground/70 font-normal">(SLA: {isUrgent ? departmentInfo(department)?.urgentSlaHours : departmentInfo(department)?.slaHours}hs)</span>}
+              </div>
+              <input
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+          </div>
+
+          {department && (
+            <div className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+              <input
+                type="checkbox"
+                id="urgent-check"
+                checked={isUrgent}
+                onChange={(e) => setIsUrgent(e.target.checked)}
+                className="w-4 h-4 rounded"
+              />
+              <label htmlFor="urgent-check" className="flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400 cursor-pointer">
+                <Zap className="h-4 w-4" />
+                TAREA DE SUMA URGENCIA (24hs)
+              </label>
+            </div>
+          )}
 
           {/* Estado / Prioridad */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
