@@ -11,14 +11,15 @@ import { useT } from '@/lib/use-t';
 import { useClients } from '@/lib/hooks/use-clients';
 import { SocialCalendar } from '@/components/social-calendar';
 import { AdsCalendar } from '@/components/ads-calendar';
+import { TasksCalendar } from '@/components/tasks-calendar';
 import { NoAccess } from '@/components/no-access';
 import { hasModuleAccess, getAllowedClientIds } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
-  Building2, Search, Calendar, ArrowLeft, Loader2, ChevronRight, ShoppingBag,
+  Building2, Search, Calendar, ArrowLeft, Loader2, ChevronRight, ShoppingBag, ListTodo,
 } from 'lucide-react';
 
-type CalendarTab = 'redes' | 'ads';
+type CalendarTab = 'redes' | 'ads' | 'tareas';
 
 const CATEGORY_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 function colorForClient(key: string) {
@@ -40,7 +41,7 @@ export default function CalendariosPage() {
     const client = searchParams.get('client');
     const type = searchParams.get('type');
     if (client) setSelectedClientId(client);
-    if (type === 'ads' || type === 'redes') setActiveTab(type);
+    if (type === 'ads' || type === 'redes' || type === 'tareas') setActiveTab(type);
     if (type === 'social') setActiveTab('redes');
   }, [searchParams]);
 
@@ -109,11 +110,10 @@ export default function CalendariosPage() {
             <p className="text-xs text-muted-foreground">Calendario de clientes</p>
           </div>
         </div>
-        {hasSocial && hasAds && (
-          <CalendarTabs active={tab as CalendarTab} onChange={setActiveTab} />
-        )}
-        {tab === 'redes' && <SocialCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
-        {tab === 'ads' && <AdsCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
+        <CalendarTabs active={activeTab} onChange={setActiveTab} />
+        {activeTab === 'redes' && hasSocial && <SocialCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
+        {activeTab === 'ads' && hasAds && <AdsCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
+        {activeTab === 'tareas' && <TasksCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} />}
       </div>
     );
   }
@@ -220,14 +220,15 @@ export default function CalendariosPage() {
           <p className="text-xs text-muted-foreground">Calendario de clientes</p>
         </div>
       </div>
-      {hasSocial && hasAds && (
-        <CalendarTabs active={tab as CalendarTab} onChange={setActiveTab} />
-      )}
-      {selectedClient && tab === 'redes' && (
+      <CalendarTabs active={activeTab} onChange={setActiveTab} />
+      {selectedClient && activeTab === 'redes' && hasSocial && (
         <SocialCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} initialIdeaId={urlIdea} />
       )}
-      {selectedClient && tab === 'ads' && (
+      {selectedClient && activeTab === 'ads' && hasAds && (
         <AdsCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} initialIdeaId={urlIdea} />
+      )}
+      {selectedClient && activeTab === 'tareas' && (
+        <TasksCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} />
       )}
     </div>
   );
@@ -261,6 +262,19 @@ function CalendarTabs({ active, onChange }: { active: CalendarTab; onChange: (t:
       >
         <ShoppingBag className="h-4 w-4 text-violet-500" />
         ADS
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('tareas')}
+        className={cn(
+          'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+          active === 'tareas'
+            ? 'bg-background text-foreground'
+            : 'text-muted-foreground hover:text-foreground',
+        )}
+      >
+        <ListTodo className="h-4 w-4 text-cyan-500" />
+        Tareas
       </button>
     </div>
   );

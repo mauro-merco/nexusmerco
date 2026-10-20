@@ -14,10 +14,12 @@ import { useAuthStore } from '@/store/auth-store';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MentionedText, MentionTextarea } from '@/components/mention';
 import { MarkdownBody } from '@/lib/markdown';
-import type { Task, TaskStatus, TaskPriority, TaskRole, TaskComment } from '@/lib/types';
+import type { Task, TaskStatus, TaskPriority, TaskRole, TaskComment, TaskDepartment } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES, taskTypeInfo } from '@/lib/task-config';
 import { TaskRolesPicker, rolesToList, rolesFromAssignees, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
 import { TaskTypePicker } from '@/components/task-type-picker';
+import { DepartmentPicker } from '@/components/department-picker';
+import { departmentInfo } from '@/lib/department-config';
 import { MaterialLinks } from '@/components/material-links';
 import { CommentReadEye } from '@/components/comment-read';
 import { useCommentReads, collectCommentIds, type CommentReader } from '@/lib/hooks/use-comment-reads';
@@ -52,6 +54,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [roles, setRoles] = useState<TaskRolesState>(() => rolesFromAssignees(task.assignees));
   const [dueDate, setDueDate] = useState(task.due_date || '');
   const [taskType, setTaskType] = useState(task.task_type || '');
+  const [department, setDepartment] = useState<TaskDepartment | null>(task.department || null);
+  const [startDate, setStartDate] = useState(task.start_date || '');
+  const [isUrgent, setIsUrgent] = useState(!!task.is_urgent);
   const [piecesStories, setPiecesStories] = useState(task.pieces_stories != null ? String(task.pieces_stories) : '');
   const [piecesFeed, setPiecesFeed] = useState(task.pieces_feed != null ? String(task.pieces_feed) : '');
   const [piecesReels, setPiecesReels] = useState(task.pieces_reels != null ? String(task.pieces_reels) : '');
@@ -86,6 +91,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setRoles(rolesFromAssignees(task.assignees));
     setDueDate(task.due_date || '');
     setTaskType(task.task_type || '');
+    setDepartment(task.department || null);
+    setStartDate(task.start_date || '');
+    setIsUrgent(!!task.is_urgent);
     setPiecesStories(task.pieces_stories != null ? String(task.pieces_stories) : '');
     setPiecesFeed(task.pieces_feed != null ? String(task.pieces_feed) : '');
     setPiecesReels(task.pieces_reels != null ? String(task.pieces_reels) : '');
@@ -113,6 +121,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         body: JSON.stringify({
           title, description, status, priority,
           assignees: rolesToList(roles),
+          department,
+          start_date: startDate || null,
+          is_urgent: isUrgent,
           due_date: dueDate || null,
           task_type: taskType || null,
           needs_client_material: needsMaterial,
@@ -364,6 +375,28 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     <Label>Tipo de tarea {taskType && <span className="text-muted-foreground font-normal">· {taskTypeInfo(taskType)?.label}</span>}</Label>
                     <TaskTypePicker value={taskType} onChange={setTaskType} />
                   </div>
+                  <div className="space-y-1.5">
+                    <Label>Departamento responsable</Label>
+                    <DepartmentPicker value={department} onChange={setDepartment} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Inicio</Label>
+                      <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Vencimiento</Label>
+                      <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                        className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
+                    </div>
+                  </div>
+                  {department && (
+                    <label className="flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                      <input type="checkbox" checked={isUrgent} onChange={(e) => setIsUrgent(e.target.checked)} />
+                      URGENTE (SLA: {isUrgent ? departmentInfo(department)?.urgentSlaHours : departmentInfo(department)?.slaHours}hs)
+                    </label>
+                  )}
                   <div className="space-y-1.5">
                     <Label>Descripción</Label>
                     <textarea className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm min-h-[100px] resize-none outline-none"
