@@ -60,7 +60,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (!link && !hasClientAccess) {
       return NextResponse.json({ error: 'Este email no está autorizado para este calendario' }, { status: 403 });
     }
-    if (link && !hasClientAccess && !(link.allowed_user_ids || []).includes(user.id)) {
+    // If guest_enabled is true and allowed_user_ids is empty, allow all users from the allowed_client
+    const allowedUserIds = link?.allowed_user_ids || [];
+    const hasUserListRestriction = allowedUserIds.length > 0;
+    
+    if (link && !hasClientAccess && hasUserListRestriction && !allowedUserIds.includes(user.id)) {
       return NextResponse.json({ error: 'Este usuario no está habilitado para este calendario' }, { status: 403 });
     }
     return NextResponse.json({ ok: true, name: user.full_name || user.email, email: user.email });

@@ -48,8 +48,8 @@ export async function POST(request: Request) {
       month,
       allowed_client_id: allowed_client_id || existing?.allowed_client_id || client_id,
       enabled: true,
+      guest_enabled: guest_enabled !== undefined ? !!guest_enabled : (existing?.guest_enabled ?? true), // Default true
     };
-    if (guest_enabled !== undefined) payload.guest_enabled = !!guest_enabled;
     if (Array.isArray(allowed_user_ids)) payload.allowed_user_ids = allowed_user_ids;
 
     const { data, error } = await supabase
