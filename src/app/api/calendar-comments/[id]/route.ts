@@ -47,6 +47,56 @@ async function resolveActor(request: Request): Promise<{ id: string; isAdmin: bo
   return { id: userId, isAdmin: me?.role === 'admin' };
 }
 
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const content = typeof body.content === 'string' ? body.content.trim() : '';
+    
+    if (!content) return NextResponse.json({ error: 'El comentario está vacío' }, { status: 400 });
+    if (content.length > 5000) return NextResponse.json({ error: 'El comentario es demasiado largo' }, { status: 400 });
+
+    const supabase = getSupabaseAdmin();
+    const { searchParams } = new URL(request.url);
+    const scope = searchParams.get('scope') === 'idea' ? 'idea' : 'calendar';
+    const typeParam = searchParams.get('calendar_type') || 'social';
+    const calendarType = isCalendarType(typeParam) ? typeParam : 'social';
+    const table =
+      scope === 'idea'
+        ? calendarType === 'ads'
+          ? 'ads_comments'
+          : 'social_comments'
+        : 'calendar_comments';
+
+    const actor = await resolveActor(request);
+    if (!actor) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+    const { data: comment } = await supabase
+      .from(table)
+      .select('id, user_id')
+      .eq('id', id)
+      .maybeSingle();
+    if (!comment) return NextResponse.json({ error: 'Comentario no encontrado' }, { status: 404 });
+
+    // Only the author can edit
+    if (comment.user_id !== actor.id) {
+      return NextResponse.json({ error: 'Solo el autor puede editar' }, { status: 403 });
+    }
+
+    const { data, error } = await supabase
+      .from(table)
+      .update({ content })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+
+    return NextResponse.json({ data });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;

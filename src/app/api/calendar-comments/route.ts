@@ -180,7 +180,9 @@ async function listComments(access: ResolvedAccess) {
   ];
   const usersMap = await fetchUsersMap(allUserIds);
 
-  const generalItems = generalComments.map(c => ({
+  // Build threaded replies for general comments
+  const topLevelGeneral = generalComments.filter(c => !c.parent_id);
+  const generalItems = topLevelGeneral.map(c => ({
     id: c.id,
     scope: 'calendar' as const,
     user_id: c.user_id,
@@ -188,7 +190,16 @@ async function listComments(access: ResolvedAccess) {
     created_at: c.created_at,
     user: usersMap[c.user_id] || null,
     idea: null,
-    replies: [],
+    replies: generalComments
+      .filter(r => r.parent_id === c.id)
+      .map(r => ({
+        id: r.id,
+        scope: 'calendar' as const,
+        user_id: r.user_id,
+        content: r.content,
+        created_at: r.created_at,
+        user: usersMap[r.user_id] || null,
+      })),
   }));
 
   const ideaItems = ideaComments
@@ -251,6 +262,8 @@ export async function POST(request: Request) {
     if (!content) return NextResponse.json({ error: 'El comentario está vacío' }, { status: 400 });
     if (content.length > 5000) return NextResponse.json({ error: 'El comentario es demasiado largo' }, { status: 400 });
 
+    const parentId = body.parent_id || null;
+
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('calendar_comments')
@@ -260,6 +273,7 @@ export async function POST(request: Request) {
         month: access.month,
         user_id: access.userId,
         content,
+        parent_id: parentId,
       })
       .select()
       .single();
