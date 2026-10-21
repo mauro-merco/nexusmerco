@@ -54,17 +54,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
     if (!user) return NextResponse.json({ error: 'Este email no está creado como usuario cliente' }, { status: 403 });
     if (user.role !== 'client') return NextResponse.json({ error: 'Este usuario no es un cliente invitado' }, { status: 403 });
-    const allowedClientIds = user.allowed_client_ids as string[] | null | undefined;
-    const hasClientAccess = user.client_id === allowedClientId || (allowedClientIds || []).includes(allowedClientId);
+    
+    // Ensure allowed_client_ids is always an array
+    const allowedClientIds = Array.isArray(user.allowed_client_ids) 
+      ? user.allowed_client_ids.map(id => String(id)) 
+      : [];
+    
+    const allowedClientIdStr = String(allowedClientId);
+    const userClientIdStr = user.client_id ? String(user.client_id) : null;
+    
+    const hasClientAccess = userClientIdStr === allowedClientIdStr || allowedClientIds.includes(allowedClientIdStr);
 
     console.log('[CALENDAR GUEST AUTH]', {
       user_id: user.id,
       user_email: user.email,
       user_role: user.role,
-      user_client_id: user.client_id,
+      user_client_id: userClientIdStr,
       user_allowed_client_ids: allowedClientIds,
-      link_allowed_client_id: allowedClientId,
+      link_allowed_client_id: allowedClientIdStr,
       hasClientAccess,
+      comparison_check: {
+        client_id_match: userClientIdStr === allowedClientIdStr,
+        allowed_ids_match: allowedClientIds.includes(allowedClientIdStr),
+      }
     });
 
     // Access logic:
