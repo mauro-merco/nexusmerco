@@ -67,12 +67,17 @@ async function resolveAccess(request: Request, clientId?: string | null, calenda
 
   const { data: me } = await supabase
     .from('users')
-    .select('id, role, client_id')
+    .select('id, role, client_id, allowed_client_ids')
     .eq('id', sessionUserId)
     .maybeSingle();
   if (!me) return { error: 'No autenticado', status: 401 };
   if (!clientId) return { error: 'client_id requerido', status: 400 };
-  if (me.role !== 'admin' && me.role !== 'operador' && me.client_id !== clientId) {
+  
+  // Check access: admin/operador, or client_id match, or in allowed_client_ids
+  const isStaffUser = me.role === 'admin' || me.role === 'operador';
+  const hasClientAccess = me.client_id === clientId || (Array.isArray(me.allowed_client_ids) && me.allowed_client_ids.includes(clientId));
+  
+  if (!isStaffUser && !hasClientAccess) {
     return { error: 'No autorizado para este cliente', status: 403 };
   }
   if (!calendarType || !isCalendarType(calendarType)) return { error: 'Tipo de calendario inválido', status: 400 };
