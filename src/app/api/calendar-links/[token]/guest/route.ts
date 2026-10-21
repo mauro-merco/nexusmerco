@@ -57,6 +57,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const allowedClientIds = user.allowed_client_ids as string[] | null | undefined;
     const hasClientAccess = user.client_id === allowedClientId || (allowedClientIds || []).includes(allowedClientId);
 
+    console.log('[CALENDAR GUEST AUTH]', {
+      user_id: user.id,
+      user_email: user.email,
+      user_role: user.role,
+      user_client_id: user.client_id,
+      user_allowed_client_ids: allowedClientIds,
+      link_allowed_client_id: allowedClientId,
+      hasClientAccess,
+    });
+
     // Access logic:
     // 1. If user has access to the client (via client_id or allowed_client_ids) → ALLOW
     // 2. If user is in allowed_user_ids → ALLOW
@@ -74,6 +84,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     }
     
     // User has no access
+    console.log('[CALENDAR GUEST AUTH] DENIED - no client access and not in allowed_user_ids');
     return NextResponse.json({ error: 'Este usuario no está autorizado para este calendario' }, { status: 403 });
   } catch (err) {
     console.error('POST /api/calendar-links/[token]/guest error:', err);
