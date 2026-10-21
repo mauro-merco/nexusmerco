@@ -57,17 +57,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     const allowedClientIds = user.allowed_client_ids as string[] | null | undefined;
     const hasClientAccess = user.client_id === allowedClientId || (allowedClientIds || []).includes(allowedClientId);
 
-    if (!link && !hasClientAccess) {
-      return NextResponse.json({ error: 'Este email no está autorizado para este calendario' }, { status: 403 });
-    }
-    // If guest_enabled is true and allowed_user_ids is empty, allow all users from the allowed_client
-    const allowedUserIds = link?.allowed_user_ids || [];
-    const hasUserListRestriction = allowedUserIds.length > 0;
+    // Access logic:
+    // 1. If user has access to the client (via client_id or allowed_client_ids) → ALLOW
+    // 2. If user is in allowed_user_ids → ALLOW
+    // 3. Otherwise → DENY
     
-    if (link && !hasClientAccess && hasUserListRestriction && !allowedUserIds.includes(user.id)) {
-      return NextResponse.json({ error: 'Este usuario no está habilitado para este calendario' }, { status: 403 });
+    if (hasClientAccess) {
+      // User belongs to this client or has it in allowed_client_ids → full access
+      return NextResponse.json({ ok: true, name: user.full_name || user.email, email: user.email });
     }
-    return NextResponse.json({ ok: true, name: user.full_name || user.email, email: user.email });
+    
+    // User does NOT belong to the client, check if explicitly allowed via allowed_user_ids
+    const allowedUserIds = link?.allowed_user_ids || [];
+    if (allowedUserIds.includes(user.id)) {
+      return NextResponse.json({ ok: true, name: user.full_name || user.email, email: user.email });
+    }
+    
+    // User has no access
+    return NextResponse.json({ error: 'Este usuario no está autorizado para este calendario' }, { status: 403 });
   } catch (err) {
     console.error('POST /api/calendar-links/[token]/guest error:', err);
     return NextResponse.json({ error: 'Error al validar invitado' }, { status: 500 });
