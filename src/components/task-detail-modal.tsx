@@ -206,7 +206,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Full-window task view */}
-      <DialogContent className="flex! h-dvh w-screen max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
+      <DialogContent className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-dvh w-screen max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
         {/* ===== Header ===== */}
         <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3 pr-14">
           <div className="min-w-[220px] flex-1">
@@ -286,7 +286,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Detalle</span>
                 <button type="button" onClick={() => setDetailOpen(false)} title="Ocultar detalle" className="tm-press rounded-lg p-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground"><PanelLeftClose className="h-4 w-4" /></button>
               </div>
-              <Scroller className="flex-1" innerClassName="tm-stagger space-y-3">
+              <Scroller className="flex-1" innerClassName="tm-stagger space-y-3 pb-32">
                 <Module icon={Flag} title="Prioridad" tone="text-orange-600" toneBg="bg-orange-500/15">
                   {editing
                     ? <Menu value={priority} options={PRIORITY_OPTIONS} onChange={k => setPriority(k as TaskPriority)} />
@@ -386,7 +386,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
           </aside>
 
           {/* PRINCIPAL */}
-          <Scroller innerClassName={cn('flex min-h-full flex-col gap-4', !editing && 'tm-stagger')}>
+          <Scroller innerClassName={cn('flex min-h-full flex-col gap-4 pb-40', !editing && 'tm-stagger')}>
             {saveError && <div className="tm-pop rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
 
             {status === 'problemas' && !problemPrompt && (

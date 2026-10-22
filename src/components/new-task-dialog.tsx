@@ -108,7 +108,7 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex! h-[min(94dvh,900px)] w-[min(96vw,1280px)] max-w-none! flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none">
+      <DialogContent className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-[min(94dvh,900px)] w-[min(96vw,1280px)] max-w-none! flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none">
         {/* Header */}
         <div className="shrink-0 bg-muted/20 px-5 py-3 pr-14">
           <DialogTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Nueva tarea</DialogTitle>
@@ -124,7 +124,7 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
         {/* Body */}
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:overflow-hidden">
           {/* Detalle */}
-          <Scroller innerClassName="tm-stagger space-y-3">
+          <Scroller innerClassName="tm-stagger space-y-3 pb-32">
             <Module icon={Flag} title="Prioridad" tone="text-orange-600" toneBg="bg-orange-500/15">
               <Menu value={priority} options={PRIORITY_OPTIONS} onChange={k => setPriority(k as TaskPriority)} />
             </Module>
@@ -177,7 +177,7 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
           </Scroller>
 
           {/* Principal */}
-          <Scroller innerClassName="flex min-h-full flex-col gap-4">
+          <Scroller innerClassName="flex min-h-full flex-col gap-4 pb-40">
             <Collapse open={status === 'problemas'}>
               <div className="space-y-1.5 rounded-2xl bg-red-500/5 p-4 ring-1 ring-red-500/30">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400"><AlertTriangle className="h-3.5 w-3.5" /> ¿Cuál es el problema?</div>

@@ -86,6 +86,8 @@ export function Popover({ trigger, children, width, className }: {
   width?: number; className?: string;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const fixedOnce = useRef(false);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; minWidth: number } | null>(null);
 
@@ -103,6 +105,19 @@ export function Popover({ trigger, children, width, className }: {
       : { top: r.bottom + 6, left, minWidth: r.width });
   }, [open, width]);
 
+  // Si algún ancestro (p. ej. el diálogo) desplaza el origen de `fixed`, corregimos la diferencia real.
+  useLayoutEffect(() => {
+    if (!open || !pos || !panel.current) { if (!open) fixedOnce.current = false; return; }
+    if (fixedOnce.current) return;
+    fixedOnce.current = true;
+    const r = panel.current.getBoundingClientRect();
+    const dx = r.left - pos.left;
+    const dy = pos.top !== undefined ? r.top - pos.top : r.bottom - (window.innerHeight - (pos.bottom as number));
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      setPos(p => p && ({ ...p, left: p.left - dx, ...(p.top !== undefined ? { top: p.top - dy } : { bottom: (p.bottom as number) + dy }) }));
+    }
+  }, [open, pos]);
+
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
@@ -117,7 +132,7 @@ export function Popover({ trigger, children, width, className }: {
       {open && pos && (
         <>
           <div className="fixed inset-0 z-[100]" onClick={close} />
-          <div style={{ ...pos, width }} className={cn('tm-pop fixed z-[101] max-h-[min(420px,70vh)] overflow-auto rounded-2xl bg-popover p-1.5 shadow-xl tm-noscroll', className)}>
+          <div ref={panel} style={{ ...pos, width }} className={cn('tm-pop fixed z-[101] max-h-[min(420px,70vh)] overflow-auto rounded-2xl bg-popover p-1.5 shadow-xl tm-noscroll', className)}>
             {typeof children === 'function' ? children(close) : children}
           </div>
         </>
@@ -169,6 +184,21 @@ export function Menu({ value, options, onChange, disabled, loading, className, p
 /* ---------- Collapse / Switch / Stepper ---------- */
 
 export function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
+  // Mientras anima recorta; ya abierto deja desbordar (los dropdowns internos no se cortan).
+  const [settled, setSettled] = useState(open);
+  useEffect(() => {
+    if (!open) { setSettled(false); return; }
+    const t = setTimeout(() => setSettled(true), 320);
+    return () => clearTimeout(t);
+  }, [open]);
+  return (
+    <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+      <div className={cn('min-h-0', !(open && settled) && 'overflow-hidden')}>{children}</div>
+    </div>
+  );
+}
+
+export function CollapseOld({ open, children }: { open: boolean; children: ReactNode }) {
   return (
     <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
       <div className="min-h-0 overflow-hidden">{children}</div>
