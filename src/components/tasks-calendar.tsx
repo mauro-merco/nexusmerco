@@ -1,231 +1,163 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, parseISO, isWithinInterval, differenceInDays, addMonths, subMonths } from 'date-fns';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, parseISO,
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Zap, ChevronRight as Chevron, CalendarX2 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { departmentInfo } from '@/lib/department-config';
+import { taskStatusConfig } from '@/lib/task-config';
 import { TaskDetailModal } from '@/components/task-detail-modal';
+import { useIsMobile } from '@/components/calendar-agenda';
+import '@/components/task-motion.css';
 
-interface TasksCalendarProps {
-  clientId: string;
-  clientName: string;
-  initialMonth?: string | null;
+interface TasksCalendarProps { clientId: string; clientName: string; initialMonth?: string | null; }
+
+type Ranged = { task: Task; start: string; end: string };
+const ymd = (d: Date) => format(d, 'yyyy-MM-dd');
+
+function rangeOf(t: Task): Ranged | null {
+  const a = (t.start_date || t.due_date || '').slice(0, 10);
+  const b = (t.due_date || t.start_date || '').slice(0, 10);
+  if (!a || !b) return null;
+  return a <= b ? { task: t, start: a, end: b } : { task: t, start: b, end: a };
 }
 
-export function TasksCalendar({ clientId, clientName, initialMonth }: TasksCalendarProps) {
+function StatusPill({ task }: { task: Task }) {
+  const s = taskStatusConfig(task.status); const Icon = s.icon;
+  return <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', s.bgColorClass, s.colorClass)}><Icon className="h-3 w-3" />{s.label}</span>;
+}
+
+export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
+  const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(() => {
-    if (initialMonth) {
-      try {
-        return startOfMonth(parseISO(initialMonth + '-01'));
-      } catch {
-        return startOfMonth(new Date());
-      }
-    }
+    if (initialMonth) { try { return startOfMonth(parseISO(initialMonth + '-01')); } catch { /* */ } }
     return startOfMonth(new Date());
   });
-
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [users, setUsers] = useState<{ id: string; full_name: string; email: string; avatar_url: string }[]>([]);
 
   useEffect(() => {
-    fetchTasks();
-    fetchUsers();
-  }, [clientId, currentMonth]);
-
-  async function fetchTasks() {
+    let off = false;
     setLoading(true);
-    try {
-      const res = await fetch(`/api/tasks?client_id=${clientId}`);
-      if (res.ok) {
-        const json = await res.json();
-        setTasks(json.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching tasks:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function fetchUsers() {
-    try {
-      const res = await fetch('/api/users');
-      if (res.ok) {
-        const json = await res.json();
-        setUsers(json.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-    }
-  }
+    fetch(`/api/tasks?client_id=${clientId}`).then(r => r.json()).then(j => { if (!off) setTasks(j.data || []); }).catch(() => {}).finally(() => { if (!off) setLoading(false); });
+    fetch('/api/users').then(r => r.json()).then(j => { if (!off) setUsers(j.data || []); }).catch(() => {});
+    return () => { off = true; };
+  }, [clientId]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const gridDays = eachDayOfInterval({ start: startOfWeek(monthStart, { weekStartsOn: 1 }), end: endOfWeek(monthEnd, { weekStartsOn: 1 }) });
+  const weeks = useMemo(() => Array.from({ length: gridDays.length / 7 }, (_, i) => gridDays.slice(i * 7, i * 7 + 7)), [gridDays.length, currentMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const tasksInMonth = tasks.filter(task => {
-    if (!task.start_date || !task.due_date) return false;
-    const start = parseISO(task.start_date);
-    const end = parseISO(task.due_date);
-    return isWithinInterval(monthStart, { start, end }) || isWithinInterval(monthEnd, { start, end }) ||
-      (start <= monthStart && end >= monthEnd);
-  });
+  const ranged = useMemo(() => tasks.map(rangeOf).filter(Boolean) as Ranged[], [tasks]);
+  const inMonth = useMemo(() => ranged.filter(r => r.start <= ymd(monthEnd) && r.end >= ymd(monthStart)).sort((a, b) => a.end.localeCompare(b.end)), [ranged, currentMonth]); // eslint-disable-line react-hooks/exhaustive-deps
+  const todayStr = ymd(new Date());
 
-  function handleTaskUpdated(updated: Task) {
-    setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
-    setSelectedTask(updated);
-  }
+  const onUpdated = (u: Task) => { setTasks(p => p.map(t => t.id === u.id ? u : t)); setSelectedTask(u); };
+  const onDeleted = () => { if (!selectedTask) return; setTasks(p => p.filter(t => t.id !== selectedTask.id)); setSelectedTask(null); };
 
-  function handleTaskDeleted() {
-    if (!selectedTask) return;
-    setTasks(prev => prev.filter(t => t.id !== selectedTask.id));
-    setSelectedTask(null);
-  }
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <CalendarIcon className="h-5 w-5 text-cyan-500" />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="ghost" size="icon" className="tm-press h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+        <button type="button" onClick={() => setCurrentMonth(startOfMonth(new Date()))} className="min-w-[160px] text-center text-lg font-bold capitalize transition-colors hover:text-primary">
           {format(currentMonth, 'MMMM yyyy', { locale: es })}
-        </h2>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>
-            Hoy
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        </button>
+        <Button variant="ghost" size="icon" className="tm-press h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
+        <span className="ml-auto rounded-full bg-muted/40 px-3 py-1 text-xs font-semibold text-muted-foreground">{inMonth.length} tarea{inMonth.length !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* Calendar grid */}
-      <div className="space-y-2">
-        {/* Days header */}
-        <div className="grid grid-cols-7 gap-1 text-xs font-semibold text-muted-foreground px-2">
-          {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
-            <div key={day} className="text-center">{day}</div>
-          ))}
-        </div>
-
-        {/* Days grid with task bars */}
-        <div className="relative border border-border rounded-xl p-2">
-          <div className="grid grid-cols-7 gap-1">
-            {daysInMonth.map(day => (
-              <div
-                key={day.toISOString()}
-                className={cn(
-                  'aspect-square rounded-lg p-1 text-xs flex flex-col items-center justify-start',
-                  !isSameMonth(day, currentMonth) && 'opacity-40',
-                )}
-              >
-                <span className="font-medium">{format(day, 'd')}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Task bars overlay */}
-          <div className="absolute inset-0 p-2 pointer-events-none">
-            {tasksInMonth.map(task => {
-              const start = parseISO(task.start_date!);
-              const end = parseISO(task.due_date!);
-              const deptConfig = departmentInfo(task.department);
-
-              // Calculate position
-              const dayIndex = differenceInDays(start < monthStart ? monthStart : start, monthStart);
-              const duration = differenceInDays(end > monthEnd ? monthEnd : end, start < monthStart ? monthStart : start) + 1;
-
-              const dayWidth = 100 / 7;
-              const row = Math.floor(dayIndex / 7);
-              const col = dayIndex % 7;
-
+      {isMobile ? (
+        inMonth.length === 0 ? (
+          <div className="tm-fade flex flex-col items-center gap-2 rounded-3xl bg-muted/25 py-14 text-muted-foreground"><CalendarX2 className="h-8 w-8 opacity-40" /><p className="text-sm">No hay tareas este mes.</p></div>
+        ) : (
+          <ul className="tm-stagger space-y-2">
+            {inMonth.map(({ task, start, end }) => {
+              const dept = departmentInfo(task.department); const DIcon = dept?.icon;
+              const overdue = end < todayStr && task.status !== 'cerrada';
               return (
-                <div
-                  key={task.id}
-                  onClick={() => setSelectedTask(task)}
-                  className="absolute pointer-events-auto cursor-pointer transition-all hover:z-10 hover:scale-105"
-                  style={{
-                    top: `${row * 14.28 + 20}%`,
-                    left: `${col * dayWidth}%`,
-                    width: `${Math.min(duration * dayWidth, (7 - col) * dayWidth)}%`,
-                    height: '12%',
-                  }}
-                >
-                  <div
-                    className={cn(
-                      'h-full rounded-lg px-2 py-1 text-[10px] font-medium flex items-center gap-1 shadow-sm border',
-                      deptConfig?.bgColorClass || 'bg-muted',
-                      deptConfig?.textColorClass || 'text-foreground',
-                      task.is_urgent && 'ring-2 ring-red-500 animate-pulse',
-                    )}
-                  >
-                    {task.is_urgent && <span className="text-red-500">⚡</span>}
-                    <span className="truncate">{task.title}</span>
+                <li key={task.id}>
+                  <div role="button" tabIndex={0} onClick={() => setSelectedTask(task)} onKeyDown={e => { if (e.key === 'Enter') setSelectedTask(task); }}
+                    className="tm-lift tm-press group flex cursor-pointer items-start gap-3 rounded-2xl bg-card p-3.5 shadow-[0_1px_2px_rgba(20,20,43,.06)]">
+                    <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', dept?.bgColorClass || 'bg-muted', dept?.textColorClass)}>{DIcon ? <DIcon className="h-[18px] w-[18px]" /> : null}</span>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <p className="flex items-center gap-1.5 text-[15px] font-semibold leading-snug">{task.is_urgent && <Zap className="h-3.5 w-3.5 shrink-0 text-red-500" />}<span className="line-clamp-2">{task.title}</span></p>
+                      <p className={cn('text-xs', overdue ? 'font-semibold text-red-500' : 'text-muted-foreground')}>
+                        {format(parseISO(start), 'd MMM', { locale: es })}{start !== end && ` → ${format(parseISO(end), 'd MMM', { locale: es })}`}{overdue && ' · vencida'}{dept ? ` · ${dept.shortLabel}` : ''}
+                      </p>
+                      <StatusPill task={task} />
+                    </div>
+                    <Chevron className="mt-3 h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
-                </div>
+                </li>
               );
             })}
+          </ul>
+        )
+      ) : (
+        <div className="tm-fade space-y-1.5">
+          <div className="grid grid-cols-7 gap-1.5">
+            {dayNames.map(n => <div key={n} className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">{n}</div>)}
           </div>
-        </div>
-      </div>
-
-      {/* Task list below */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">Tareas del mes ({tasksInMonth.length})</h3>
-        <div className="space-y-1">
-          {tasksInMonth.map(task => {
-            const deptConfig = departmentInfo(task.department);
-            const Icon = deptConfig?.icon;
+          {weeks.map((week, wi) => {
+            const wStart = ymd(week[0]); const wEnd = ymd(week[6]);
+            const segs = ranged
+              .filter(r => r.start <= wEnd && r.end >= wStart)
+              .map(r => ({ ...r, s: Math.max(0, week.findIndex(d => ymd(d) >= r.start)), e: (() => { let idx = 6; for (let i = 6; i >= 0; i--) { if (ymd(week[i]) <= r.end) { idx = i; break; } } return idx; })() }))
+              .map(r => ({ ...r, s: r.start <= wStart ? 0 : week.findIndex(d => ymd(d) === r.start), e: r.end >= wEnd ? 6 : week.findIndex(d => ymd(d) === r.end) }))
+              .sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
+            const lanes: number[] = [];
+            const placed = segs.map(sg => {
+              let lane = lanes.findIndex(endCol => endCol < sg.s);
+              if (lane === -1) { lane = lanes.length; lanes.push(sg.e); } else lanes[lane] = sg.e;
+              return { ...sg, lane };
+            });
             return (
-              <div
-                key={task.id}
-                onClick={() => setSelectedTask(task)}
-                className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/40 cursor-pointer transition-colors"
-              >
-                {Icon && <Icon className="h-4 w-4" style={{ color: deptConfig.color }} />}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{task.title}</span>
-                    {task.is_urgent && <Badge variant="destructive" className="text-[10px]">URGENTE</Badge>}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {deptConfig?.label} · {format(parseISO(task.start_date!), 'd MMM', { locale: es })} → {format(parseISO(task.due_date!), 'd MMM', { locale: es })}
-                  </div>
+              <div key={wi} className="relative">
+                <div className="absolute inset-0 grid grid-cols-7 gap-1.5">
+                  {week.map(d => <div key={ymd(d)} className={cn('rounded-2xl transition-colors', ymd(d) === todayStr ? 'bg-primary/10' : 'bg-muted/25', !isSameMonth(d, currentMonth) && 'opacity-50')} />)}
+                </div>
+                <div className="relative grid grid-cols-7 gap-x-1.5 gap-y-1 p-2" style={{ minHeight: 96 }}>
+                  {week.map((d, i) => (
+                    <div key={ymd(d)} style={{ gridColumn: i + 1, gridRow: 1 }} className="flex items-center">
+                      <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', ymd(d) === todayStr ? 'bg-primary text-primary-foreground' : isSameMonth(d, currentMonth) ? 'text-foreground/80' : 'text-muted-foreground/50')}>{format(d, 'd')}</span>
+                    </div>
+                  ))}
+                  {placed.map(({ task, start, end, s, e, lane }) => {
+                    const dept = departmentInfo(task.department);
+                    return (
+                      <button key={task.id} type="button" onClick={() => setSelectedTask(task)} title={task.title}
+                        style={{ gridColumn: `${s + 1} / ${e + 2}`, gridRow: lane + 2 }}
+                        className={cn('tm-press tm-rise flex h-6 min-w-0 items-center gap-1 px-2 text-left text-[11px] font-semibold transition-[filter,transform] hover:brightness-95',
+                          dept?.bgColorClass || 'bg-muted', dept?.textColorClass || 'text-foreground',
+                          start < wStart ? 'rounded-l-none' : 'rounded-l-lg', end > wEnd ? 'rounded-r-none' : 'rounded-r-lg',
+                          task.is_urgent && 'ring-1 ring-red-500/70')}>
+                        {task.is_urgent && <Zap className="h-3 w-3 shrink-0 text-red-500" />}
+                        <span className="truncate">{task.title}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </div>
-      </div>
+      )}
 
       {selectedTask && (
-        <TaskDetailModal
-          task={selectedTask}
-          open={!!selectedTask}
-          onOpenChange={(open) => !open && setSelectedTask(null)}
-          onTaskUpdated={handleTaskUpdated}
-          onTaskDeleted={handleTaskDeleted}
-          users={users}
-        />
+        <TaskDetailModal task={selectedTask} open={!!selectedTask} onOpenChange={o => !o && setSelectedTask(null)}
+          onTaskUpdated={onUpdated} onTaskDeleted={onDeleted} users={users} />
       )}
     </div>
   );

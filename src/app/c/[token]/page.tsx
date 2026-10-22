@@ -11,6 +11,7 @@ import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarComments } from '@/components/calendar-comments';
 import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
 import { CalendarRecentComments } from '@/components/calendar-recent-comments';
+import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
 import { CalendarSearch } from '@/components/calendar-search';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
@@ -228,7 +229,7 @@ function PublicIdeaDot({ idea, onClick }: { idea: SocialIdea; onClick: () => voi
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={calendarPillTitle(idea, idea.eje_contenido || idea.title)}
       className={cn(
-        'flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
+        'tm-lift tm-press flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
         idea.status === 'espera_cliente' ? 'border border-red-500/60 bg-red-500/20 text-red-700 dark:text-red-200 shadow-sm shadow-red-500/20' : isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
@@ -412,6 +413,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [error, setError] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState('');
   const [viewMode, setViewMode] = useState<'month' | 'list'>('month');
+  const isMobile = useIsMobile();
+  const effectiveView: 'month' | 'list' = isMobile ? 'list' : viewMode;
   const [search, setSearch] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [initialIdeaId, setInitialIdeaId] = useState<string | null>(null);
@@ -650,7 +653,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1">
+            <div className="hidden md:flex items-center gap-1 bg-muted/40 rounded-xl p-1">
               <button
                 type="button"
                 onClick={() => setViewMode('month')}
@@ -721,14 +724,14 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
             <Card className="border-0 ring-0 shadow-none rounded-3xl bg-card">
               <CardContent className="p-3 md:p-4">
-                {viewMonth && viewMode === 'month' && (
+                {viewMonth && effectiveView === 'month' && (
                   <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                     <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={handleAddNewIdea} />
                     <DragOverlay>{activeIdea ? <PublicIdeaDot idea={activeIdea} onClick={() => {}} /> : null}</DragOverlay>
                   </DndContext>
                 )}
-                {viewMonth && viewMode === 'list' && (
-                  <AgendaList ideas={data.ideas} onIdeaClick={setSelectedIdea} />
+                {viewMonth && effectiveView === 'list' && (
+                  <CalendarAgenda ideas={data.ideas.filter(i => i.publish_date.startsWith(viewMonth))} onIdeaClick={setSelectedIdea} emptyLabel="No hay contenido planificado este mes." />
                 )}
               </CardContent>
             </Card>

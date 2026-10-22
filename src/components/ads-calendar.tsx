@@ -25,6 +25,8 @@ import { CalendarRecentComments } from '@/components/calendar-recent-comments';
 import { CalendarSearch } from '@/components/calendar-search';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
+import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
+import { EcommerceDateDialog } from '@/components/ecommerce-date-dialog';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import type { SocialIdea, IdeaStatus, EcommerceDate, PostType } from '@/lib/types';
@@ -39,104 +41,6 @@ import {
 const STATUS_ORDER = IDEA_STATUS_ORDER;
 type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
 type ViewMode = 'month' | 'agenda';
-
-const ECOMMERCE_COLORS = [
-  { label: 'Rojo', value: '#ef4444' }, { label: 'Naranja', value: '#f97316' }, { label: 'Amarillo', value: '#eab308' },
-  { label: 'Verde', value: '#22c55e' }, { label: 'Cian', value: '#06b6d4' }, { label: 'Azul', value: '#3b82f6' },
-  { label: 'Violeta', value: '#8b5cf6' }, { label: 'Rosa', value: '#ec4899' }, { label: 'Índigo', value: '#6366f1' },
-];
-
-function EcommerceDateDialog({ open, onOpenChange, onCreate }: {
-  open: boolean; onOpenChange: (v: boolean) => void;
-  onCreate: (data: { name: string; color: string; start_date: string; end_date: string }) => Promise<unknown>;
-}) {
-  const [name, setName] = useState('');
-  const [color, setColor] = useState('#6366f1');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const reset = () => { setName(''); setColor('#6366f1'); setStartDate(''); setEndDate(''); setError(''); };
-
-  const handleCreate = async () => {
-    if (!name.trim() || !startDate || !endDate) { setError('Completá todos los campos'); return; }
-    if (startDate > endDate) { setError('La fecha de inicio debe ser anterior o igual a la fecha de fin'); return; }
-    setSaving(true);
-    setError('');
-    try {
-      await onCreate({ name: name.trim(), color, start_date: startDate, end_date: endDate });
-      reset();
-      onOpenChange(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => { reset(); onOpenChange(false); }}>
-      <div className="bg-background rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 mx-4" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-bold">Nueva Fecha Ecommerce</h2>
-          </div>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-lg" onClick={() => { reset(); onOpenChange(false); }}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Nombre</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Black Friday, Cyber Monday..." className="rounded-lg" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs">Color</Label>
-            <div className="flex gap-2 flex-wrap">
-              {ECOMMERCE_COLORS.map(c => (
-                <button
-                  key={c.value}
-                  type="button"
-                  title={c.label}
-                  onClick={() => setColor(c.value)}
-                  className={cn('h-7 w-7 rounded-full transition-transform hover:scale-110', color === c.value && 'ring-2 ring-offset-2 ring-foreground scale-110')}
-                  style={{ backgroundColor: c.value }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Desde</Label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="rounded-lg" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Hasta</Label>
-              <Input type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} className="rounded-lg" />
-            </div>
-          </div>
-        </div>
-
-        {error && <p className="text-xs text-destructive">{error}</p>}
-
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="rounded-lg" onClick={() => { reset(); onOpenChange(false); }}>Cancelar</Button>
-          <Button size="sm" variant="default" className="rounded-lg gap-1.5" onClick={handleCreate} disabled={saving}>
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            Crear fecha
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function StatusDropdown({ idea, onStatusChange }: { idea: SocialIdea; onStatusChange: (id: string, status: IdeaStatus) => void }) {
   const stConfig = STATUS_CONFIG[idea.status];
@@ -180,7 +84,7 @@ function DraggableDot({ idea, onClick }: { idea: SocialIdea; onClick: () => void
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={calendarPillTitle(idea)}
       className={cn(
-        'flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
+        'tm-lift tm-press flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
         idea.status === 'espera_cliente' ? 'border border-red-500/60 bg-red-500/20 text-red-700 dark:text-red-200 shadow-sm shadow-red-500/20' : isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
@@ -287,6 +191,8 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
   const [viewYear, setViewYear] = useState(initialMonth ? Number(initialMonth.split('-')[0]) : today.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialMonth ? Number(initialMonth.split('-')[1]) - 1 : today.getMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const isMobile = useIsMobile();
+  const effectiveView: ViewMode = isMobile ? 'agenda' : viewMode;
   const [search, setSearch] = useState('');
   const isSearching = search.trim().length >= 2;
   const [activeTypes, setActiveTypes] = useState<Set<PostType>>(new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]));
@@ -461,7 +367,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
             </div>
 
-            <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1">
+            <div className="hidden md:flex items-center gap-1 bg-muted/40 rounded-xl p-1">
               <button type="button" onClick={() => setViewMode('month')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', viewMode === 'month' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
                 <LayoutGrid className="h-3.5 w-3.5" /> Mes
               </button>
@@ -508,7 +414,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
                   </>
                 )}
               </div>
-              <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="default" className="gap-2 rounded-xl">
+              <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="default" className="tm-press gap-2 rounded-xl">
                 <Plus className="h-4 w-4" /> Nueva Pieza
               </Button>
             </div>
@@ -539,7 +445,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
           <CalendarMonthFolder clientId={clientId} calendarType="ads" month={monthStr} />
           <CalendarGeneralFolders clientId={clientId} />
 
-          {isSearching ? null : viewMode === 'month' ? (
+          {isSearching ? null : effectiveView === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
               <div className="grid grid-cols-7 gap-1.5">
                 {dayNames.map(n => <div key={n} className="text-center text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide py-1">{n}</div>)}
@@ -562,22 +468,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
               <DragOverlay>{activeIdea ? <DragOverlayPill idea={activeIdea} /> : null}</DragOverlay>
             </DndContext>
           ) : (
-            <div className="space-y-5">
-              {agendaGroups.length === 0 ? (
-                <div className="rounded-2xl bg-muted/25 py-16 flex flex-col items-center gap-2 text-muted-foreground">
-                  <ListIcon className="h-8 w-8 opacity-40" />
-                  <p className="text-sm">No hay piezas planificadas este mes.</p>
-                  <Button size="sm" variant="secondary" className="rounded-lg gap-1.5 mt-1" onClick={() => { setSelectedDate(null); setShowNewIdea(true); }}><Plus className="h-3.5 w-3.5" /> Agregar la primera</Button>
-                </div>
-              ) : agendaGroups.map(group => (
-                <div key={group.label} className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 px-1">Semana del {group.label}</p>
-                  <div className="space-y-1.5">
-                    {group.items.map(idea => <AgendaRow key={idea.id} idea={idea} onClick={() => setSelectedIdea(idea)} onStatusChange={handleStatusChange} />)}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CalendarAgenda ideas={filteredIdeas.filter(i => i.publish_date.startsWith(monthStr))} onIdeaClick={setSelectedIdea} onStatusChange={handleStatusChange} onAdd={() => { setSelectedDate(null); setShowNewIdea(true); }} emptyLabel="No hay piezas planificadas este mes." />
           )}
         </div>
 

@@ -25,6 +25,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
+import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import type { SocialIdea, IdeaStatus, PostType } from '@/lib/types';
@@ -84,7 +85,7 @@ function DraggableDot({ idea, onClick }: { idea: SocialIdea; onClick: () => void
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={calendarPillTitle(idea)}
       className={cn(
-        'flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
+        'tm-lift tm-press flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
         idea.status === 'espera_cliente' ? 'border border-red-500/60 bg-red-500/20 text-red-700 dark:text-red-200 shadow-sm shadow-red-500/20' : isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
@@ -189,6 +190,8 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
   const [viewYear, setViewYear] = useState(initialMonth ? Number(initialMonth.split('-')[0]) : today.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialMonth ? Number(initialMonth.split('-')[1]) - 1 : today.getMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const isMobile = useIsMobile();
+  const effectiveView: ViewMode = isMobile ? 'agenda' : viewMode;
   const [search, setSearch] = useState('');
   const isSearching = search.trim().length >= 2;
   const [activeTypes, setActiveTypes] = useState<Set<PostType>>(new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]));
@@ -364,7 +367,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
             </div>
 
-            <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1">
+            <div className="hidden md:flex items-center gap-1 bg-muted/40 rounded-xl p-1">
               <button type="button" onClick={() => setViewMode('month')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', viewMode === 'month' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
                 <LayoutGrid className="h-3.5 w-3.5" /> Mes
               </button>
@@ -408,7 +411,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
                   </>
                 )}
               </div>
-              <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="default" className="gap-2 rounded-xl">
+              <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="default" className="tm-press gap-2 rounded-xl">
                 <Plus className="h-4 w-4" /> Nueva Idea
               </Button>
             </div>
@@ -425,7 +428,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
           <CalendarMonthFolder clientId={clientId} calendarType="social" month={monthStr} />
           <CalendarGeneralFolders clientId={clientId} />
 
-          {isSearching ? null : viewMode === 'month' ? (
+          {isSearching ? null : effectiveView === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
               <div className="grid grid-cols-7 gap-1.5">
                 {dayNames.map(n => <div key={n} className="text-center text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide py-1">{n}</div>)}
@@ -447,22 +450,7 @@ export function SocialCalendar({ clientId, clientName, initialMonth, initialIdea
               <DragOverlay>{activeIdea ? <DragOverlayPill idea={activeIdea} /> : null}</DragOverlay>
             </DndContext>
           ) : (
-            <div className="space-y-5">
-              {agendaGroups.length === 0 ? (
-                <div className="rounded-2xl bg-muted/25 py-16 flex flex-col items-center gap-2 text-muted-foreground">
-                  <ListIcon className="h-8 w-8 opacity-40" />
-                  <p className="text-sm">No hay ideas planificadas este mes.</p>
-                  <Button size="sm" variant="secondary" className="rounded-lg gap-1.5 mt-1" onClick={() => { setSelectedDate(null); setShowNewIdea(true); }}><Plus className="h-3.5 w-3.5" /> Agregar la primera</Button>
-                </div>
-              ) : agendaGroups.map(group => (
-                <div key={group.label} className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 px-1">Semana del {group.label}</p>
-                  <div className="space-y-1.5">
-                    {group.items.map(idea => <AgendaRow key={idea.id} idea={idea} onClick={() => setSelectedIdea(idea)} onStatusChange={handleStatusChange} />)}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CalendarAgenda ideas={filteredIdeas.filter(i => i.publish_date.startsWith(monthStr))} onIdeaClick={setSelectedIdea} onStatusChange={handleStatusChange} onAdd={() => { setSelectedDate(null); setShowNewIdea(true); }} emptyLabel="No hay ideas planificadas este mes." />
           )}
         </div>
 

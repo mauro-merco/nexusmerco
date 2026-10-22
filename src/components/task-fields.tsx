@@ -193,8 +193,8 @@ export function DateTimeField({ value, onChange, withTime = false, placeholder =
 
 /* ---------- Editor de descripción (Markdown con vista previa) ---------- */
 
-export function DescriptionEditor({ value, onChange, className, placeholder }: {
-  value: string; onChange: (v: string) => void; className?: string; placeholder?: string;
+export function DescriptionEditor({ value, onChange, className, placeholder, title }: {
+  value: string; onChange: (v: string) => void; className?: string; placeholder?: string; title?: ReactNode;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [preview, setPreview] = useState(false);
@@ -227,7 +227,7 @@ export function DescriptionEditor({ value, onChange, className, placeholder }: {
     <section className={cn('tm-rise flex flex-col rounded-2xl bg-muted/25 p-4', className)}>
       <header className="mb-3 flex flex-wrap items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15"><FileText className="h-3.5 w-3.5 text-blue-600" /></span>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Descripción</h3>
+        {title ?? <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Descripción</h3>}
         <div className="ml-auto flex items-center gap-2">
           {!preview && (
             <div className="tm-fade flex items-center gap-0.5 rounded-xl bg-background/70 p-0.5">
