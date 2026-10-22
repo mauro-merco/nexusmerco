@@ -240,7 +240,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             </DialogDescription>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="w-[230px]">
               <Menu value={status} options={STATUS_OPTIONS} onChange={k => handleQuickStatus(k as TaskStatus)} loading={changingStatus} disabled={changingStatus} />
             </div>
@@ -277,7 +277,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               <Button size="sm" variant="secondary" className="tm-press gap-1.5 rounded-lg" disabled={editingDescription} onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
+                <Button variant="ghost" size="sm" className="tm-press rounded-lg" disabled={saving} onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
                 <Button size="sm" className="tm-press rounded-lg" onClick={handleSave} disabled={saving}>
                   {saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios
                 </Button>
@@ -465,12 +465,6 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   <div className="space-y-2">
                     <DescriptionEditor value={descriptionDraft} onChange={setDescriptionDraft} />
                     {descriptionError && <p role="alert" className="text-xs text-destructive">{descriptionError}</p>}
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="ghost" size="sm" className="tm-press rounded-lg" disabled={savingDescription} onClick={() => { setEditingDescription(false); setDescriptionError(null); }}>Cancelar</Button>
-                      <Button type="button" size="sm" className="tm-press rounded-lg" disabled={savingDescription} onClick={saveDescription}>
-                        {savingDescription && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar descripción
-                      </Button>
-                    </div>
                   </div>
                 ) : <Module icon={FileText} title="Descripción" tone="text-blue-600" toneBg="bg-blue-500/15"
                   right={<Button type="button" variant="ghost" size="sm" className="tm-press h-7 rounded-lg text-xs" onClick={() => { setDescriptionDraft(task.description); setDescriptionError(null); setEditingDescription(true); }}><Edit3 className="mr-1 h-3 w-3" /> Editar</Button>}>
@@ -559,7 +553,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         </div>
 
         {/* ===== Footer ===== */}
-        <div className="flex shrink-0 items-center justify-between bg-muted/20 px-5 py-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 bg-muted/20 px-5 py-3">
           {confirmDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">¿Seguro?</span>
@@ -569,7 +563,20 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
           ) : (
             <Button variant="ghost" size="sm" className="rounded-lg text-red-500 hover:text-red-600" onClick={handleDelete}><Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar</Button>
           )}
-          <DialogClose render={<Button variant="outline" className="rounded-lg" />}>Cerrar</DialogClose>
+          {editing || editingDescription ? (
+            <div className="ml-auto flex items-center gap-2">
+              <Button type="button" variant="ghost" size="sm" className="tm-press rounded-lg" disabled={saving || savingDescription}
+                onClick={() => {
+                  if (editing) { setEditing(false); setSaveError(null); resetFields(); }
+                  else { setEditingDescription(false); setDescriptionError(null); }
+                }}>Cancelar</Button>
+              <Button type="button" size="sm" className="tm-press rounded-lg" disabled={saving || savingDescription}
+                onClick={editing ? handleSave : saveDescription}>
+                {(saving || savingDescription) && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                {editing ? 'Guardar cambios' : 'Guardar descripción'}
+              </Button>
+            </div>
+          ) : <DialogClose render={<Button variant="outline" className="rounded-lg" />}>Cerrar</DialogClose>}
         </div>
       </DialogContent>
     </Dialog>

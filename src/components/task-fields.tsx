@@ -288,7 +288,7 @@ export function DescriptionEditor({ value, onChange, className, placeholder, tit
         className={cn('tm-noscroll min-h-[340px] w-full flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl bg-background/70 p-4 text-[15px] leading-relaxed outline-none transition-shadow focus:ring-2 focus:ring-primary/30 [&_h2]:text-lg [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]', preview && 'hidden')}>
         {initialContent}
       </div>
-      <p className="mt-2 text-right text-[10px] text-muted-foreground">{value.length} caracteres · Formato visual</p>
+      <p className="mt-2 text-right text-[10px] text-muted-foreground">{value.length} caracteres · Formato visual · Ctrl+Z / Cmd+Z para deshacer</p>
     </section>
   );
 }
