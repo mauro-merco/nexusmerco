@@ -44,12 +44,12 @@ export const isoIn = (days: number) => { const x = new Date(); x.setDate(x.getDa
 
 /* ---------- Module ---------- */
 
-export function Module({ icon: Icon, title, tone = 'text-muted-foreground', toneBg = 'bg-muted/60', right, children, className }: {
-  icon: LucideIcon; title: string; tone?: string; toneBg?: string; right?: ReactNode; children: ReactNode; className?: string;
+export function Module({ icon: Icon, title, tone = 'text-muted-foreground', toneBg = 'bg-muted/60', right, children, className, stickyHeader = false }: {
+  icon: LucideIcon; title: string; tone?: string; toneBg?: string; right?: ReactNode; children: ReactNode; className?: string; stickyHeader?: boolean;
 }) {
   return (
     <section className={cn('tm-rise rounded-2xl bg-muted/25 p-4', className)}>
-      <header className="mb-3 flex items-center gap-2">
+      <header className={cn('mb-3 flex items-center gap-2', stickyHeader && 'sticky top-0 z-20 rounded-xl bg-background p-2 shadow-sm')}>
         <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', toneBg)}><Icon className={cn('h-3.5 w-3.5', tone)} /></span>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">{title}</h3>
         {right && <div className="ml-auto">{right}</div>}
