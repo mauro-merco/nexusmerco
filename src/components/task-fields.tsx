@@ -257,7 +257,7 @@ export function DescriptionEditor({ value, onChange, className, placeholder, tit
 
   return (
     <section className={cn('tm-rise flex flex-col rounded-2xl bg-muted/25 p-4', className)}>
-      <header className="mb-3 flex flex-wrap items-center gap-2">
+      <header className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-background p-2 shadow-sm">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15"><FileText className="h-3.5 w-3.5 text-blue-600" /></span>
         {title ?? <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Descripción</h3>}
         {actions}
