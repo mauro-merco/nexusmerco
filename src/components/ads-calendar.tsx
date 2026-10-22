@@ -27,6 +27,8 @@ import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
 import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
 import { EcommerceDateDialog } from '@/components/ecommerce-date-dialog';
+import { CalendarFolders, CalendarTypeFilter, DayOverflow, CalendarTabs } from '@/components/calendar-parts';
+import { Scroller } from '@/components/task-ui';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import type { SocialIdea, IdeaStatus, EcommerceDate, PostType } from '@/lib/types';
@@ -110,7 +112,7 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
       onClick={() => onAddClick(date)}
       style={active.length > 0 ? { backgroundColor: `${active[0].color}1f` } : undefined}
       className={cn(
-        'min-h-[122px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
+        'tm-fade min-h-[132px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
         !isCurrentMonth && 'opacity-40',
         isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : 'bg-muted/25 hover:bg-muted/45',
       )}
@@ -138,7 +140,7 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
       </div>
       <div className="space-y-1 flex-1">
         {shown.map(idea => <DraggableDot key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} />)}
-        {overflow > 0 && <p className="text-[10px] text-muted-foreground pl-1.5">+{overflow} más</p>}
+        {overflow > 0 && <DayOverflow ideas={ideas.slice(2)} onIdeaClick={onIdeaClick} />}
       </div>
     </div>
   );
@@ -442,8 +444,12 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
             onSelect={setSelectedIdea}
           />
 
-          <CalendarMonthFolder clientId={clientId} calendarType="ads" month={monthStr} />
-          <CalendarGeneralFolders clientId={clientId} />
+          <CalendarFolders>
+            <CalendarMonthFolder clientId={clientId} calendarType="ads" month={monthStr} />
+            <CalendarGeneralFolders clientId={clientId} />
+          </CalendarFolders>
+
+          <CalendarTypeFilter ideas={ideas} active={activeTypes} onToggle={toggleType} />
 
           {isSearching ? null : effectiveView === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -474,22 +480,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <div className="rounded-2xl bg-muted/25 p-4 space-y-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Filtrar por tipo</p>
-            {Object.entries(POST_TYPE_CONFIG).map(([key, cfg]) => {
-              const Icon = cfg.icon;
-              const on = activeTypes.has(key as PostType);
-              const count = ideas.filter(i => i.post_type === key).length;
-              return (
-                <button key={key} type="button" onClick={() => toggleType(key as PostType)} className={cn('w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-medium transition-colors', on ? cn(cfg.bgColorClass, cfg.colorClass) : 'text-muted-foreground/50 hover:bg-muted/40')}>
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="flex-1 text-left">{cfg.label}</span>
-                  <span className="text-[10px] opacity-70">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-
+          
           <div className="rounded-2xl bg-muted/25 p-4 space-y-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Este mes</p>
             <div className="flex items-baseline gap-1.5">
@@ -511,6 +502,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
             </div>
           </div>
 
+          <Scroller className="h-auto max-h-[620px] rounded-2xl" innerClassName="h-auto max-h-[620px]">
           <CalendarRecentComments
             clientId={clientId}
             calendarType="ads"
@@ -521,11 +513,13 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
               if (idea) setSelectedIdea(idea);
             }}
           />
+          </Scroller>
         </div>
       </div>
 
-      <CalendarComments
-        className="mt-5"
+      <CalendarTabs className="mt-5" first={
+        <CalendarComments
+        className="mt-0"
         clientId={clientId}
         calendarType="ads"
         month={monthStr}
@@ -534,9 +528,9 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
         isAdmin={user?.role === 'admin'}
         title="Comentarios del mes"
       />
-
-      <CalendarIdeaComments
-        className="mt-5"
+      } second={
+        <CalendarIdeaComments
+        className="mt-0"
         clientId={clientId}
         calendarType="ads"
         month={monthStr}
@@ -549,6 +543,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
         }}
         title="Comentarios de las ideas"
       />
+      } />
 
       <SocialNewIdeaDialog open={showNewIdea} onOpenChange={setShowNewIdea} initialDate={selectedDate} onCreateIdea={createIdea} users={internalUsers} calendarType="ads" />
       <EcommerceDateDialog open={showNewEcomDate} onOpenChange={setShowNewEcomDate} onCreate={createDate} />

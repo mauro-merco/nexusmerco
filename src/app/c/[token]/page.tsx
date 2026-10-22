@@ -11,6 +11,7 @@ import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarComments } from '@/components/calendar-comments';
 import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
 import { CalendarRecentComments } from '@/components/calendar-recent-comments';
+import { CalendarFolders, DayOverflow } from '@/components/calendar-parts';
 import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
 import { CalendarSearch } from '@/components/calendar-search';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
@@ -254,7 +255,7 @@ function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick
       onClick={() => onAddClick(dateStr)}
       style={active.length > 0 ? { backgroundColor: `${active[0].color}1f` } : undefined}
       className={cn(
-        'min-h-[122px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
+        'tm-fade min-h-[132px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
         isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : 'bg-muted/25 hover:bg-muted/45',
       )}
     >
@@ -281,7 +282,7 @@ function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick
       </div>
       <div className="space-y-1 flex-1">
         {shown.map(idea => <PublicIdeaDot key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} />)}
-        {overflow > 0 && <p className="text-[10px] text-muted-foreground pl-1.5">+{overflow} más</p>}
+        {overflow > 0 && <DayOverflow ideas={ideas.slice(2)} onIdeaClick={onIdeaClick} />}
       </div>
     </div>
   );
@@ -717,8 +718,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           onSelect={setSelectedIdea}
         />
 
-        {viewMonth && <CalendarMonthFolder clientId={data.client.id} calendarType={data.calendar_type} month={viewMonth} />}
-        <CalendarGeneralFolders clientId={data.client.id} />
+        {viewMonth && <CalendarFolders><CalendarMonthFolder clientId={data.client.id} calendarType={data.calendar_type} month={viewMonth} /><CalendarGeneralFolders clientId={data.client.id} /></CalendarFolders>}
+
 
         {search.trim().length >= 2 ? null : (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
