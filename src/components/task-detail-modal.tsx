@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,9 +12,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MentionedText, MentionTextarea } from '@/components/mention';
 import { MarkdownBody } from '@/lib/markdown';
 import type { Task, TaskStatus, TaskPriority, TaskComment, TaskDepartment } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES, taskTypeInfo } from '@/lib/task-config';
+import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES, taskTypeInfo, TASK_TYPE_CATEGORIES } from '@/lib/task-config';
 import { TaskRolesPicker, rolesToList, rolesFromAssignees, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
-import { TaskTypePicker } from '@/components/task-type-picker';
+import { Scroller, Popover, Menu, Collapse, Switch, Stepper, type MenuOption } from '@/components/task-ui';
 import { DepartmentPicker } from '@/components/department-picker';
 import { departmentInfo } from '@/lib/department-config';
 import { MaterialLinks } from '@/components/material-links';
@@ -22,7 +22,7 @@ import { CommentReadEye } from '@/components/comment-read';
 import { useCommentReads, collectCommentIds, type CommentReader } from '@/lib/hooks/use-comment-reads';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip, Edit3, Calendar, Send, MessageSquare, Reply, Check, X, Layers,
-  Share2, Copy, Globe, Lock, AlertTriangle, ChevronDown, FileText, Users2, Flag, Boxes, Tag, FolderOpen, Clock,
+  Share2, Copy, Globe, Lock, AlertTriangle, ChevronDown, PanelLeftClose, PanelLeftOpen, Bold, Italic, List, ListOrdered, Heading2, Link2, FileText, Users2, Flag, Boxes, Tag, FolderOpen, Clock,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -37,49 +37,12 @@ interface TaskDetailModalProps {
 
 /* ---------- small building blocks ---------- */
 
-type MenuOption = { key: string; label: string; icon?: LucideIcon; colorClass?: string; bgClass?: string; dot?: string };
-
-function Menu({ value, options, onChange, disabled, loading, className, align = 'left' }: {
-  value: string; options: MenuOption[]; onChange: (k: string) => void;
-  disabled?: boolean; loading?: boolean; className?: string; align?: 'left' | 'right';
-}) {
-  const [open, setOpen] = useState(false);
-  const cur = options.find(o => o.key === value) || options[0];
-  const CurIcon = cur.icon;
-  return (
-    <div className="relative">
-      <button type="button" disabled={disabled} onClick={() => setOpen(v => !v)}
-        className={cn('flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors', cur.bgClass || 'bg-muted/50', cur.colorClass, className)}>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : CurIcon ? <CurIcon className="h-4 w-4 shrink-0" /> : cur.dot ? <span className={cn('h-2 w-2 rounded-full', cur.dot)} /> : null}
-        <span className="flex-1 truncate text-left">{cur.label}</span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className={cn('absolute top-full z-50 mt-1.5 max-h-[320px] min-w-full w-max overflow-auto rounded-2xl bg-popover p-1.5 shadow-xl [scrollbar-width:thin]', align === 'right' ? 'right-0' : 'left-0')}>
-            {options.map(o => {
-              const I = o.icon;
-              return (
-                <button key={o.key} type="button" onClick={() => { setOpen(false); onChange(o.key); }}
-                  className={cn('flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium hover:bg-muted/60', o.colorClass, o.key === value && 'bg-muted/50')}>
-                  {I ? <I className="h-4 w-4 shrink-0" /> : o.dot ? <span className={cn('h-2 w-2 rounded-full', o.dot)} /> : null}
-                  <span className="flex-1 whitespace-nowrap">{o.label}</span>
-                  {o.key === value && <Check className="h-3.5 w-3.5" />}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 const STATUS_OPTIONS: MenuOption[] = TASK_STATUSES.map(k => {
   const s = TASK_STATUS_CONFIG[k];
   return { key: k, label: s.label, icon: s.icon, colorClass: s.colorClass, bgClass: s.bgColorClass };
 });
+const TYPE_OPTIONS: MenuOption[] = [{ key: '', label: 'Sin tipo' }, ...TASK_TYPE_CATEGORIES.flatMap(c => c.types.map(t => ({ key: t.id, label: t.label, icon: c.icon, colorClass: c.colorClass, group: c.label })))];
+const isoIn = (d: number) => { const x = new Date(); x.setDate(x.getDate() + d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 const PRIORITY_OPTIONS: MenuOption[] = TASK_PRIORITIES.map(k => {
   const p = TASK_PRIORITY_CONFIG[k];
   return { key: k, label: p.label, dot: p.dotColor, colorClass: p.colorClass };
@@ -89,7 +52,7 @@ function Module({ icon: Icon, title, tone = 'text-muted-foreground', toneBg = 'b
   icon: LucideIcon; title: string; tone?: string; toneBg?: string; right?: ReactNode; children: ReactNode; className?: string;
 }) {
   return (
-    <section className={cn('rounded-2xl bg-muted/25 p-4', className)}>
+    <section className={cn('tm-rise rounded-2xl bg-muted/25 p-4', className)}>
       <header className="mb-3 flex items-center gap-2">
         <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', toneBg)}><Icon className={cn('h-3.5 w-3.5', tone)} /></span>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">{title}</h3>
@@ -134,6 +97,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const reads = useCommentReads('task_comment', commentIds, user ? { id: user.id, name: user.full_name || '' } : null);
 
   const [editing, setEditing] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(true);
+  const [teamOpen, setTeamOpen] = useState(false);
+  const descRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [status, setStatus] = useState<TaskStatus>(task.status);
@@ -246,6 +212,15 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     try { const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' }); if (res.ok) { onTaskDeleted(); onOpenChange(false); } } finally { setConfirmDelete(false); }
   }, [task.id, confirmDelete, onTaskDeleted, onOpenChange]);
 
+  const edit = (fn: (v: string, s: number, e: number) => [string, number, number]) => {
+    const el = descRef.current; if (!el) return;
+    const [next, a, b] = fn(description, el.selectionStart, el.selectionEnd);
+    setDescription(next);
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a, b); });
+  };
+  const wrap = (before: string, after = before, ph = 'texto') => edit((v, s, e) => { const sel = v.slice(s, e) || ph; return [v.slice(0, s) + before + sel + after + v.slice(e), s + before.length, s + before.length + sel.length]; });
+  const linePrefix = (p: string) => edit((v, s, e) => { const ls = v.lastIndexOf('\n', s - 1) + 1; return [v.slice(0, ls) + p + v.slice(ls), s + p.length, e + p.length]; });
+
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/t/${task.share_token}` : '';
   const handleTogglePublic = useCallback(async () => {
     setTogglingPublic(true);
@@ -284,14 +259,14 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
           <div className="flex shrink-0 items-center gap-2">
             <div className="w-[230px]">
-              <Menu value={status} options={STATUS_OPTIONS} onChange={k => handleQuickStatus(k as TaskStatus)} loading={changingStatus} disabled={changingStatus} align="right" />
+              <Menu value={status} options={STATUS_OPTIONS} onChange={k => handleQuickStatus(k as TaskStatus)} loading={changingStatus} disabled={changingStatus} />
             </div>
             <div className="relative">
-              <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setShareOpen(v => !v)}><Share2 className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => setShareOpen(v => !v)}><Share2 className="h-4 w-4" /></Button>
               {shareOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
-                  <div className="absolute right-0 top-full z-50 mt-2 w-80 space-y-3 rounded-2xl bg-popover p-3 shadow-xl">
+                  <div className="tm-pop absolute right-0 top-full z-50 mt-2 w-80 space-y-3 rounded-2xl bg-popover p-3 shadow-xl">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-sm font-semibold"><Share2 className="h-3.5 w-3.5" /> Compartir tarea</span>
                       <button onClick={() => setShareOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
@@ -316,11 +291,11 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               )}
             </div>
             {!editing ? (
-              <Button size="sm" variant="secondary" className="gap-1.5 rounded-lg" onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
+              <Button size="sm" variant="secondary" className="tm-press gap-1.5 rounded-lg" onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
-                <Button size="sm" className="rounded-lg" onClick={handleSave} disabled={saving}>
+                <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
+                <Button size="sm" className="tm-press rounded-lg" onClick={handleSave} disabled={saving}>
                   {saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios
                 </Button>
               </>
@@ -328,24 +303,153 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
           </div>
         </div>
 
-        {/* ===== Body: main | properties | comments ===== */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_300px_minmax(320px,400px)] lg:overflow-hidden">
-          {/* MAIN */}
-          <div className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1 [scrollbar-width:thin]">
-            {saveError && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
+        {/* ===== Body: detalle (colapsable) | principal | comentarios ===== */}
+        <div style={{ ['--cols' as string]: `${detailOpen ? '300px' : '48px'} minmax(0,1fr) minmax(320px,380px)` }}
+          className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 transition-[grid-template-columns] duration-300 ease-out lg:overflow-hidden lg:[grid-template-columns:var(--cols)]">
+
+          {/* DETALLE (izquierda, colapsable) */}
+          <aside className="flex min-h-0 flex-col overflow-hidden">
+            {!detailOpen && (
+              <button type="button" onClick={() => setDetailOpen(true)} title="Mostrar detalle"
+                className="tm-press tm-fade hidden h-full w-full flex-col items-center gap-3 rounded-2xl bg-muted/25 py-3 text-muted-foreground hover:bg-muted/40 hover:text-foreground lg:flex">
+                <PanelLeftOpen className="h-4 w-4" />
+                <span className={cn('h-2 w-2 rounded-full', TASK_PRIORITY_CONFIG[priority].dotColor)} />
+                <span className="text-[11px] font-semibold uppercase tracking-widest [writing-mode:vertical-rl]">Detalle</span>
+              </button>
+            )}
+            <div className={cn('flex min-h-0 flex-1 flex-col', !detailOpen && 'lg:hidden')}>
+              <div className="mb-2 hidden shrink-0 items-center justify-between px-1 lg:flex">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Detalle</span>
+                <button type="button" onClick={() => setDetailOpen(false)} title="Ocultar detalle" className="tm-press rounded-lg p-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground"><PanelLeftClose className="h-4 w-4" /></button>
+              </div>
+              <Scroller className="flex-1" innerClassName="tm-stagger space-y-3">
+                <Module icon={Flag} title="Prioridad" tone="text-orange-600" toneBg="bg-orange-500/15">
+                  {editing
+                    ? <Menu value={priority} options={PRIORITY_OPTIONS} onChange={k => setPriority(k as TaskPriority)} />
+                    : <span className={cn('flex items-center gap-2 text-sm font-semibold', TASK_PRIORITY_CONFIG[task.priority].colorClass)}>
+                        <span className={cn('h-2 w-2 rounded-full', TASK_PRIORITY_CONFIG[task.priority].dotColor)} /> {TASK_PRIORITY_CONFIG[task.priority].label}
+                      </span>}
+                </Module>
+
+                <Module icon={Tag} title="Clasificación" tone="text-pink-600" toneBg="bg-pink-500/15">
+                  {editing ? (
+                    <div className="space-y-3">
+                      <div className="space-y-1"><Label className="text-xs">Tipo de tarea</Label>
+                        <Menu value={taskType} options={TYPE_OPTIONS} onChange={setTaskType} placeholder="Elegí un tipo" /></div>
+                      <div className="space-y-1"><Label className="text-xs">Departamento</Label>
+                        <Popover width={380}
+                          trigger={({ open, toggle }) => (
+                            <button type="button" onClick={toggle} className="tm-press flex w-full items-center gap-2 rounded-xl bg-background/70 px-3 py-2 text-sm font-semibold hover:brightness-95">
+                              <span className="flex-1 truncate text-left">{dept?.label || <span className="font-normal text-muted-foreground">Elegí un departamento</span>}</span>
+                              <ChevronDown className={cn('h-3.5 w-3.5 opacity-60 transition-transform duration-200', open && 'rotate-180')} />
+                            </button>
+                          )}>
+                          {close => <div className="p-2"><DepartmentPicker value={department} onChange={(d) => { setDepartment(d); close(); }} /></div>}
+                        </Popover></div>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/30">
+                      <Row label="Tipo">{typeInfo ? <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold', typeInfo.category.bgColorClass, typeInfo.category.colorClass)}><typeInfo.category.icon className="h-3 w-3" />{typeInfo.label}</span> : <span className="text-muted-foreground">—</span>}</Row>
+                      <Row label="Departamento">{task.department ? departmentInfo(task.department)?.label : <span className="text-muted-foreground">—</span>}</Row>
+                    </div>
+                  )}
+                </Module>
+
+                <Module icon={Clock} title="Plazos" tone="text-blue-600" toneBg="bg-blue-500/15">
+                  {editing ? (
+                    <div className="space-y-3">
+                      <div className="space-y-1"><Label className="text-xs">Inicio</Label>
+                        <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} className={fieldCls} /></div>
+                      <div className="space-y-1"><Label className="text-xs">Vencimiento</Label>
+                        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={fieldCls} />
+                        <div className="flex gap-1.5 pt-1">
+                          {[['Hoy', 0], ['Mañana', 1], ['+1 sem', 7]].map(([l, d]) => (
+                            <button key={l as string} type="button" onClick={() => setDueDate(isoIn(d as number))}
+                              className="tm-press rounded-lg bg-background/70 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-background hover:text-foreground">{l}</button>
+                          ))}
+                        </div></div>
+                      <Collapse open={!!department}>
+                        <div className="pt-1"><Switch checked={isUrgent} onChange={setIsUrgent} tone="bg-amber-500"
+                          label={<span className="text-amber-600 dark:text-amber-400">Urgente <span className="font-normal text-muted-foreground">· SLA {isUrgent ? dept?.urgentSlaHours : dept?.slaHours}hs</span></span>} /></div>
+                      </Collapse>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/30">
+                      <Row label="Inicio">{task.start_date ? new Date(task.start_date).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : <span className="text-muted-foreground">—</span>}</Row>
+                      <Row label="Vencimiento">{task.due_date ? dueChip(task.due_date, true) : <span className="text-muted-foreground">—</span>}</Row>
+                      {task.is_urgent && <Row label="Urgencia"><span className="text-amber-600">Urgente</span></Row>}
+                    </div>
+                  )}
+                </Module>
+
+                <Module icon={Boxes} title={`Piezas${!editing && taskPieceTotal(task) > 0 ? ` · ${taskPieceTotal(task)}` : ''}`} tone="text-violet-600" toneBg="bg-violet-500/15">
+                  {editing ? (
+                    <div className="space-y-2">
+                      {PIECE_TYPES.map(pt => {
+                        const Icon = pt.icon; const [val, set] = pieceValues[pt.field];
+                        return (
+                          <div key={pt.field} className="flex items-center gap-2">
+                            <span className={cn('flex flex-1 items-center gap-1.5 text-xs font-medium', pt.colorClass)}><Icon className="h-3.5 w-3.5" /> {pt.label}</span>
+                            <div className="w-[118px]"><Stepper value={val} onChange={set} /></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : taskPieceTotal(task) > 0 ? (
+                    <div className="divide-y divide-border/30">
+                      {PIECE_TYPES.map(pt => { const n = task[pt.field]; if (!n) return null; const Icon = pt.icon;
+                        return <Row key={pt.field} label={pt.label}><span className={cn('inline-flex items-center gap-1', pt.colorClass)}><Icon className="h-3 w-3" />{n}</span></Row>; })}
+                    </div>
+                  ) : <p className="text-xs text-muted-foreground">Sin piezas definidas</p>}
+                </Module>
+
+                {editing ? (
+                  <Module icon={AlertTriangle} title="Material del cliente" tone="text-red-600" toneBg="bg-red-500/15">
+                    <Switch checked={needsMaterial} onChange={setNeedsMaterial} tone="bg-red-500" label={<span className="text-red-600 dark:text-red-400">Necesito material</span>} />
+                    <Collapse open={needsMaterial}>
+                      <textarea value={materialNote} onChange={e => setMaterialNote(e.target.value)} rows={3}
+                        placeholder="Qué material se necesita..." className={cn(fieldCls, 'tm-noscroll mt-3 min-h-[72px] resize-none')} />
+                    </Collapse>
+                  </Module>
+                ) : (
+                  <Module icon={Users2} title="Equipo" tone="text-violet-600" toneBg="bg-violet-500/15">
+                    {task.assignees && task.assignees.length > 0 ? (
+                      <div className="space-y-2">
+                        {TASK_ROLES.map(rk => {
+                          const members = task.assignees.filter(a => a.task_role === rk);
+                          if (!members.length) return null;
+                          const cfg = TASK_ROLE_CONFIG[rk]; const Icon = cfg.icon;
+                          return (
+                            <div key={rk} className="rounded-xl bg-background/60 px-3 py-2">
+                              <p className={cn('flex items-center gap-1.5 text-[11px] font-semibold', cfg.colorClass)}><Icon className="h-3 w-3" /> {cfg.label}</p>
+                              <p className="mt-0.5 text-xs text-foreground/80">{Array.from(new Set(members.map(m => m.full_name))).join(', ')}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : <p className="text-xs text-muted-foreground">Sin asignar</p>}
+                  </Module>
+                )}
+              </Scroller>
+            </div>
+          </aside>
+
+          {/* PRINCIPAL */}
+          <Scroller innerClassName={cn('flex min-h-full flex-col gap-4', !editing && 'tm-stagger')}>
+            {saveError && <div className="tm-pop rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{saveError}</div>}
 
             {status === 'problemas' && !problemPrompt && (
-              <div className="flex items-start gap-2 rounded-2xl bg-red-500/10 p-4">
+              <div className="tm-pop flex items-start gap-2 rounded-2xl bg-red-500/10 p-4">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-black uppercase text-red-600 dark:text-red-400">Problema</p>
                   {problemNote ? <MarkdownBody text={problemNote} className="mt-1 text-sm text-foreground/85" /> : <p className="mt-1 text-sm italic text-muted-foreground">Sin descripción</p>}
                 </div>
-                <Button variant="ghost" size="sm" className="h-7 shrink-0 text-xs" onClick={() => setProblemPrompt({ note: problemNote })}><Edit3 className="mr-1 h-3 w-3" /> Editar</Button>
+                <Button variant="ghost" size="sm" className="tm-press h-7 shrink-0 text-xs" onClick={() => setProblemPrompt({ note: problemNote })}><Edit3 className="mr-1 h-3 w-3" /> Editar</Button>
               </div>
             )}
             {problemPrompt && (
-              <div className="space-y-2 rounded-2xl bg-red-500/5 p-4 ring-1 ring-red-500/30">
+              <div className="tm-pop space-y-2 rounded-2xl bg-red-500/5 p-4 ring-1 ring-red-500/30">
                 <Label htmlFor="task-problem-note" className="text-red-600 dark:text-red-400">¿Cuál es el problema?</Label>
                 <textarea id="task-problem-note" autoFocus value={problemPrompt.note}
                   onChange={e => setProblemPrompt({ note: e.target.value })}
@@ -353,10 +457,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   placeholder="Describí qué está pasando y qué bloquea la tarea..."
                   className="min-h-[70px] w-full resize-none rounded-xl bg-background/70 px-3 py-2 text-sm outline-none" />
                 <div className="flex items-center gap-1.5">
-                  <Button size="sm" className="h-8 rounded-lg" onClick={saveProblem} disabled={savingProblem || !problemPrompt.note.trim()}>
+                  <Button size="sm" className="tm-press h-8 rounded-lg" onClick={saveProblem} disabled={savingProblem || !problemPrompt.note.trim()}>
                     {savingProblem && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-8 rounded-lg" onClick={() => setProblemPrompt(null)} disabled={savingProblem}>Cancelar</Button>
+                  <Button variant="ghost" size="sm" className="tm-press h-8 rounded-lg" onClick={() => setProblemPrompt(null)} disabled={savingProblem}>Cancelar</Button>
                   <span className="ml-auto text-[10px] text-muted-foreground">Ctrl + Enter</span>
                 </div>
               </div>
@@ -364,33 +468,41 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
             {editing ? (
               <>
-                <Module icon={Tag} title="Tipo y departamento" tone="text-pink-600" toneBg="bg-pink-500/15">
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label>Tipo de tarea {taskType && <span className="font-normal text-muted-foreground">· {taskTypeInfo(taskType)?.label}</span>}</Label>
-                      <TaskTypePicker value={taskType} onChange={setTaskType} />
+                <section className="tm-rise flex min-h-[460px] flex-1 flex-col rounded-2xl bg-muted/25 p-4">
+                  <header className="mb-3 flex flex-wrap items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15"><FileText className="h-3.5 w-3.5 text-blue-600" /></span>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Descripción</h3>
+                    <div className="ml-auto flex items-center gap-0.5 rounded-xl bg-background/70 p-0.5">
+                      {([
+                        [Heading2, 'Título', () => linePrefix('## ')],
+                        [Bold, 'Negrita', () => wrap('**')],
+                        [Italic, 'Cursiva', () => wrap('*')],
+                        [List, 'Lista', () => linePrefix('- ')],
+                        [ListOrdered, 'Lista numerada', () => linePrefix('1. ')],
+                        [Link2, 'Link', () => wrap('[', '](https://)', 'texto')],
+                      ] as [LucideIcon, string, () => void][]).map(([I, t, fn]) => (
+                        <button key={t} type="button" title={t} onClick={fn} className="tm-press rounded-lg p-1.5 text-muted-foreground hover:bg-muted/70 hover:text-foreground"><I className="h-3.5 w-3.5" /></button>
+                      ))}
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Departamento responsable</Label>
-                      <DepartmentPicker value={department} onChange={setDepartment} />
-                    </div>
-                  </div>
-                </Module>
-                <Module icon={FileText} title="Descripción" tone="text-blue-600" toneBg="bg-blue-500/15">
-                  <textarea className={cn(fieldCls, 'min-h-[180px] resize-y')} value={description} onChange={e => setDescription(e.target.value)} placeholder="Descripción..." />
-                </Module>
-                <Module icon={Users2} title={`Equipo y roles${totalPeople(roles) > 0 ? ` · ${totalPeople(roles)}` : ''}`} tone="text-violet-600" toneBg="bg-violet-500/15">
-                  <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
-                </Module>
-                <Module icon={AlertTriangle} title="Material del cliente" tone="text-red-600" toneBg="bg-red-500/15">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-red-600 dark:text-red-400">
-                    <input type="checkbox" checked={needsMaterial} onChange={e => setNeedsMaterial(e.target.checked)} /> Necesito material del cliente
-                  </label>
-                  {needsMaterial && (
-                    <textarea value={materialNote} onChange={e => setMaterialNote(e.target.value)} rows={2}
-                      placeholder="Qué material se necesita para esta tarea..." className={cn(fieldCls, 'mt-2 min-h-[60px] resize-none')} />
-                  )}
-                </Module>
+                  </header>
+                  <textarea ref={descRef} value={description} onChange={e => setDescription(e.target.value)}
+                    placeholder="Describí la tarea: objetivo, medidas, referencias, entregables..."
+                    className="tm-noscroll min-h-[340px] w-full flex-1 resize-none rounded-xl bg-background/70 p-4 text-[15px] leading-relaxed outline-none transition-shadow focus:ring-2 focus:ring-primary/30" />
+                  <p className="mt-2 text-right text-[10px] text-muted-foreground">{description.length} caracteres · admite Markdown</p>
+                </section>
+
+                <section className="tm-rise rounded-2xl bg-muted/25">
+                  <button type="button" onClick={() => setTeamOpen(v => !v)} className="tm-press flex w-full items-center gap-2 p-4 text-left">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15"><Users2 className="h-3.5 w-3.5 text-violet-600" /></span>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Equipo y roles</h3>
+                    <span className="text-xs text-muted-foreground">{totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''}</span>
+                    {(!roles.lead.length || !roles.executor.length || !roles.reviewer.length) && (
+                      <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-500">Falta asignar</span>
+                    )}
+                    <ChevronDown className={cn('ml-auto h-4 w-4 text-muted-foreground transition-transform duration-300', teamOpen && 'rotate-180')} />
+                  </button>
+                  <Collapse open={teamOpen}><div className="px-4 pb-4"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div></Collapse>
+                </section>
               </>
             ) : (
               <>
@@ -417,117 +529,33 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                 <Input placeholder="Pegá un link..." value={newAttachUrl} onChange={e => setNewAttachUrl(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddAttachment(); } }}
                   className="h-9 rounded-xl border-0 bg-background/70 text-sm" />
-                <Button size="sm" onClick={handleAddAttachment} disabled={addingAttach || !newAttachUrl.trim()} className="h-9 shrink-0 rounded-xl">
+                <Button size="sm" onClick={handleAddAttachment} disabled={addingAttach || !newAttachUrl.trim()} className="tm-press h-9 shrink-0 rounded-xl">
                   {addingAttach ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
                 </Button>
               </div>
               {attachments.length > 0 && (
                 <div className="mt-3 space-y-1.5">
                   {attachments.map(att => (
-                    <div key={att.id} className="flex items-center justify-between gap-2 rounded-xl bg-background/60 p-2 hover:bg-background">
+                    <div key={att.id} className="tm-rise flex items-center justify-between gap-2 rounded-xl bg-background/60 p-2 transition-colors hover:bg-background">
                       <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-2">
                         <LinkIcon className="h-3.5 w-3.5 shrink-0 text-green-500" />
                         <span className="truncate text-xs font-medium">{att.url}</span>
                       </a>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 shrink-0 rounded-lg p-0 text-red-400 hover:text-red-600" onClick={() => removeAttachment(att.id)}><Trash2 className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="sm" className="tm-press h-6 w-6 shrink-0 rounded-lg p-0 text-red-400 hover:text-red-600" onClick={() => removeAttachment(att.id)}><Trash2 className="h-3 w-3" /></Button>
                     </div>
                   ))}
                 </div>
               )}
             </Module>
-          </div>
+          </Scroller>
 
-          {/* PROPERTIES */}
-          <aside className="space-y-4 lg:min-h-0 lg:overflow-y-auto [scrollbar-width:thin]">
-            <Module icon={Flag} title="Prioridad" tone="text-orange-600" toneBg="bg-orange-500/15">
-              {editing
-                ? <Menu value={priority} options={PRIORITY_OPTIONS} onChange={k => setPriority(k as TaskPriority)} />
-                : <span className={cn('flex items-center gap-2 text-sm font-semibold', TASK_PRIORITY_CONFIG[task.priority].colorClass)}>
-                    <span className={cn('h-2 w-2 rounded-full', TASK_PRIORITY_CONFIG[task.priority].dotColor)} /> {TASK_PRIORITY_CONFIG[task.priority].label}
-                  </span>}
-            </Module>
-
-            <Module icon={Clock} title="Plazos" tone="text-blue-600" toneBg="bg-blue-500/15">
-              {editing ? (
-                <div className="space-y-3">
-                  <div className="space-y-1"><Label className="text-xs">Inicio</Label>
-                    <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} className={fieldCls} /></div>
-                  <div className="space-y-1"><Label className="text-xs">Vencimiento</Label>
-                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={fieldCls} /></div>
-                  {department && (
-                    <label className="flex items-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                      <input type="checkbox" checked={isUrgent} onChange={e => setIsUrgent(e.target.checked)} />
-                      Urgente (SLA {isUrgent ? dept?.urgentSlaHours : dept?.slaHours}hs)
-                    </label>
-                  )}
-                </div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  <Row label="Inicio">{task.start_date ? new Date(task.start_date).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : <span className="text-muted-foreground">—</span>}</Row>
-                  <Row label="Vencimiento">{task.due_date ? dueChip(task.due_date, true) : <span className="text-muted-foreground">—</span>}</Row>
-                  {task.is_urgent && <Row label="Urgencia"><span className="text-amber-600">Urgente</span></Row>}
-                </div>
-              )}
-            </Module>
-
-            {!editing && (
-              <Module icon={Tag} title="Clasificación" tone="text-pink-600" toneBg="bg-pink-500/15">
-                <div className="divide-y divide-border/30">
-                  <Row label="Tipo">{typeInfo ? <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold', typeInfo.category.bgColorClass, typeInfo.category.colorClass)}><typeInfo.category.icon className="h-3 w-3" />{typeInfo.label}</span> : <span className="text-muted-foreground">—</span>}</Row>
-                  <Row label="Departamento">{task.department ? departmentInfo(task.department)?.label : <span className="text-muted-foreground">—</span>}</Row>
-                </div>
-              </Module>
-            )}
-
-            <Module icon={Boxes} title={`Piezas${!editing && taskPieceTotal(task) > 0 ? ` · ${taskPieceTotal(task)}` : ''}`} tone="text-violet-600" toneBg="bg-violet-500/15">
-              {editing ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {PIECE_TYPES.map(pt => {
-                    const Icon = pt.icon; const [val, set] = pieceValues[pt.field];
-                    return (
-                      <div key={pt.field} className="space-y-1">
-                        <span className={cn('flex items-center gap-1 truncate text-[10px] font-medium', pt.colorClass)}><Icon className="h-3 w-3 shrink-0" /> {pt.label.split(' ')[0]}</span>
-                        <input type="number" min="0" placeholder="0" value={val} onChange={e => set(e.target.value)} className={fieldCls} />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : taskPieceTotal(task) > 0 ? (
-                <div className="divide-y divide-border/30">
-                  {PIECE_TYPES.map(pt => { const n = task[pt.field]; if (!n) return null; const Icon = pt.icon;
-                    return <Row key={pt.field} label={pt.label}><span className={cn('inline-flex items-center gap-1', pt.colorClass)}><Icon className="h-3 w-3" />{n}</span></Row>; })}
-                </div>
-              ) : <p className="text-xs text-muted-foreground">Sin piezas definidas</p>}
-            </Module>
-
-            {!editing && (
-              <Module icon={Users2} title="Equipo" tone="text-violet-600" toneBg="bg-violet-500/15">
-                {task.assignees && task.assignees.length > 0 ? (
-                  <div className="space-y-2">
-                    {TASK_ROLES.map(rk => {
-                      const members = task.assignees.filter(a => a.task_role === rk);
-                      if (!members.length) return null;
-                      const cfg = TASK_ROLE_CONFIG[rk]; const Icon = cfg.icon;
-                      return (
-                        <div key={rk} className="rounded-xl bg-background/60 px-3 py-2">
-                          <p className={cn('flex items-center gap-1.5 text-[11px] font-semibold', cfg.colorClass)}><Icon className="h-3 w-3" /> {cfg.label}</p>
-                          <p className="mt-0.5 text-xs text-foreground/80">{Array.from(new Set(members.map(m => m.full_name))).join(', ')}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : <p className="text-xs text-muted-foreground">Sin asignar</p>}
-              </Module>
-            )}
-          </aside>
-
-          {/* COMMENTS */}
+          {/* COMENTARIOS */}
           <div className="flex h-[60vh] min-h-0 flex-col overflow-hidden rounded-2xl bg-muted/25 p-4 lg:h-auto">
             <p className="mb-3 flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground/80">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/15"><MessageSquare className="h-3.5 w-3.5 text-sky-600" /></span>
               Comentarios ({comments.length})
             </p>
-            <div className="mb-3 min-h-0 flex-1 space-y-4 overflow-y-auto [scrollbar-width:thin]">
+            <Scroller className="mb-3 flex-1" innerClassName="space-y-4">
               {comments.length === 0 && <p className="py-6 text-center text-sm italic text-muted-foreground/50">Sin comentarios</p>}
               {comments.map(c => (
                 <TaskCommentItem key={c.id} comment={c} currentUserId={user?.id} onReply={setReplyTo} onDelete={deleteComment}
@@ -541,7 +569,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   cancelCommentEdit={() => { setEditingCommentId(null); setEditCommentContent(''); }}
                   savingCommentEdit={savingCommentEdit} readers={reads.readers} onToggleRead={reads.toggle} readPendingId={reads.pending} />
               ))}
-            </div>
+            </Scroller>
             <div className="shrink-0 space-y-2 pt-3">
               {replyTo && (() => {
                 const find = (list: TaskComment[]): TaskComment | undefined => {
@@ -550,7 +578,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                 };
                 const target = find(comments);
                 return target ? (
-                  <div className="flex items-center gap-2 rounded-lg bg-background/60 px-3 py-1.5 text-xs text-muted-foreground">
+                  <div className="tm-pop flex items-center gap-2 rounded-lg bg-background/60 px-3 py-1.5 text-xs text-muted-foreground">
                     <Reply className="h-3 w-3" /><span>Respondiendo a <strong>{target.user?.full_name || 'Usuario'}</strong></span>
                     <button onClick={() => setReplyTo(null)} className="ml-auto hover:text-foreground"><X className="h-3 w-3" /></button>
                   </div>
@@ -561,7 +589,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   placeholder={replyTo ? 'Escribí tu respuesta...' : 'Escribí un comentario... (usá @ para mencionar)'}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
                   rows={1} disabled={sendingComment} />
-                <Button size="sm" onClick={handleAddComment} disabled={sendingComment || !newComment.trim()} className="h-9 w-9 shrink-0 rounded-lg p-0">
+                <Button size="sm" onClick={handleAddComment} disabled={sendingComment || !newComment.trim()} className="tm-press h-9 w-9 shrink-0 rounded-lg p-0">
                   {sendingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
@@ -574,7 +602,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
           {confirmDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">¿Seguro?</span>
-              <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setConfirmDelete(false)}>No</Button>
+              <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => setConfirmDelete(false)}>No</Button>
               <Button variant="destructive" size="sm" className="gap-1 rounded-lg" onClick={handleDelete}><Trash2 className="h-3.5 w-3.5" /> Sí, eliminar</Button>
             </div>
           ) : (
@@ -602,7 +630,7 @@ function TaskCommentItem({
   const isOwn = currentUserId === comment.user_id;
   const isEditing = editingCommentId === comment.id;
   return (
-    <div className="group">
+    <div className="tm-rise group">
       <div className="flex items-start gap-3">
         <Avatar className={cn('mt-0.5 shrink-0', isReply ? 'h-7 w-7' : 'h-9 w-9')}>
           <AvatarImage src={comment.user?.avatar_url} />

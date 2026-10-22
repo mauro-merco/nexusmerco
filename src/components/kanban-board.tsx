@@ -10,6 +10,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, taskPieceTotal, taskTypeInfo } from '@/lib/task-config';
+import { Scroller } from '@/components/task-ui';
 import { MessageSquare, Paperclip, Calendar, Layers } from 'lucide-react';
 
 function initials(name: string) {
@@ -45,7 +46,7 @@ function TaskCard({ task, onClick, showClient }: { task: Task; onClick: () => vo
       style={transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined}
       onClick={onClick}
       className={cn(
-        'group cursor-pointer touch-none select-none rounded-xl bg-card p-3 shadow-[0_1px_2px_rgba(20,20,43,.06)] transition-shadow hover:shadow-md',
+        'tm-rise tm-lift tm-press group cursor-pointer touch-none select-none rounded-xl bg-card p-3 shadow-[0_1px_2px_rgba(20,20,43,.06)]',
         isDragging && 'opacity-40',
       )}
     >
@@ -97,10 +98,10 @@ function KanbanColumn({ status, tasks, onTaskClick, showClient }: { status: Task
     <div
       ref={setNodeRef}
       className={cn(
-        'flex shrink-0 flex-col rounded-2xl transition-all',
+        'flex shrink-0 flex-col rounded-2xl transition-[width,box-shadow] duration-300 ease-out',
         cfg.bgColorClass,
         empty ? 'w-[190px]' : 'w-[272px]',
-        isOver && 'ring-2 ring-primary/40',
+        isOver && 'shadow-[inset_0_0_0_2px_rgb(99_102_241/.45)]',
       )}
     >
       <div className={cn('sticky top-0 z-10 flex items-center gap-2 rounded-t-2xl px-3 py-2.5 backdrop-blur', cfg.bgColorClass)}>
@@ -149,14 +150,14 @@ export function KanbanBoard({ tasks, onTaskClick, onTaskMove, showClient }: Kanb
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onStart} onDragEnd={onEnd}>
       {/* Single scroll container for the whole board: one horizontal + one vertical bar, thin */}
-      <div className="max-h-[calc(100dvh-270px)] min-h-[420px] overflow-auto rounded-2xl [scrollbar-width:thin]">
-        <div className="flex w-max items-start gap-3 pr-2 pb-2">
+      <Scroller axis="x" className="h-auto" innerClassName="h-auto rounded-2xl">
+        <div className="flex w-max items-start gap-3 pb-2 pr-2">
           {columns.map(c => <KanbanColumn key={c.status} status={c.status} tasks={c.tasks} onTaskClick={onTaskClick} showClient={showClient} />)}
         </div>
-      </div>
+      </Scroller>
       <DragOverlay>
         {activeTask ? (
-          <div className="max-w-[260px] rounded-xl bg-card p-3 shadow-xl">
+          <div className="max-w-[260px] rotate-2 rounded-xl bg-card p-3 shadow-2xl">
             <p className="text-sm font-semibold">{activeTask.title}</p>
           </div>
         ) : null}

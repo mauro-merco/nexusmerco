@@ -9,6 +9,7 @@ import { KanbanBoard } from '@/components/kanban-board';
 import { NewTaskDialog } from '@/components/new-task-dialog';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ProblemNotePrompt } from '@/components/problem-note-prompt';
+import '@/components/task-motion.css';
 import { TaskRow } from '@/components/client-tasks-tab';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus, TaskPriority } from '@/lib/types';
@@ -32,7 +33,7 @@ function FilterMenu({ icon: Icon, label, count, children }: { icon: typeof Flag;
   return (
     <div className="relative">
       <button type="button" onClick={() => setOpen(v => !v)}
-        className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors', count ? 'bg-primary/10 text-primary' : 'bg-muted/40 text-muted-foreground hover:bg-muted/60')}>
+        className={cn('tm-press flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium', count ? 'bg-primary/10 text-primary' : 'bg-muted/40 text-muted-foreground hover:bg-muted/60')}>
         <Icon className="h-4 w-4" /> {label}
         {count > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">{count}</span>}
         <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -40,7 +41,7 @@ function FilterMenu({ icon: Icon, label, count, children }: { icon: typeof Flag;
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-1.5 max-h-[340px] w-60 overflow-auto rounded-2xl bg-popover p-1.5 shadow-xl [scrollbar-width:thin]">{children}</div>
+          <div className="tm-pop absolute left-0 top-full z-50 mt-1.5 max-h-[340px] w-60 overflow-auto rounded-2xl bg-popover p-1.5 shadow-xl [scrollbar-width:thin]">{children}</div>
         </>
       )}
     </div>
@@ -188,7 +189,7 @@ export default function OperationsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {stats.map(s => (
-            <div key={s.label} className="flex items-center gap-2.5 rounded-2xl bg-card px-3 py-2">
+            <div key={s.label} className="tm-rise tm-lift flex items-center gap-2.5 rounded-2xl bg-card px-3 py-2">
               <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', s.bgClass)}><s.icon className={cn('h-4 w-4', s.iconClass)} /></span>
               <div className="leading-none">
                 <p className="text-lg font-bold">{s.value}</p>
@@ -197,7 +198,7 @@ export default function OperationsPage() {
             </div>
           ))}
         </div>
-        <Button onClick={() => setShowNewTask(true)} className="gap-2 rounded-xl"><Plus className="h-4 w-4" /> Nueva tarea</Button>
+        <Button onClick={() => setShowNewTask(true)} className="tm-press gap-2 rounded-xl"><Plus className="h-4 w-4" /> Nueva tarea</Button>
       </div>
 
       {/* Toolbar */}
@@ -205,7 +206,7 @@ export default function OperationsPage() {
         <div className="flex rounded-xl bg-muted/40 p-1">
           {([['kanban', LayoutGrid, 'Kanban'], ['list', ListIcon, 'Lista']] as const).map(([k, I, l]) => (
             <button key={k} type="button" onClick={() => setView(k)}
-              className={cn('flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors', view === k ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+              className={cn('tm-press flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium', view === k ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
               <I className="h-4 w-4" /> {l}
             </button>
           ))}
@@ -223,7 +224,7 @@ export default function OperationsPage() {
           })}
         </FilterMenu>
         <button type="button" onClick={() => setOnlyOverdue(v => !v)}
-          className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors', onlyOverdue ? 'bg-red-500/10 text-red-600' : 'bg-muted/40 text-muted-foreground hover:bg-muted/60')}>
+          className={cn('tm-press flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium', onlyOverdue ? 'bg-red-500/10 text-red-600' : 'bg-muted/40 text-muted-foreground hover:bg-muted/60')}>
           <AlertTriangle className="h-4 w-4" /> Solo vencidas
         </button>
         {hasFilters && (
@@ -237,7 +238,7 @@ export default function OperationsPage() {
       ) : view === 'kanban' ? (
         <KanbanBoard tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskMove={handleTaskMove} showClient />
       ) : (
-        <div className="space-y-6">
+        <div className="tm-fade space-y-6">
           {sectionMeta.map(sec => {
             const items = listGroups[sec.key];
             if (items.length === 0) return null;
@@ -246,7 +247,7 @@ export default function OperationsPage() {
                 <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   <sec.icon className={cn('h-3.5 w-3.5', sec.iconClass)} /> {sec.label} ({items.length})
                 </p>
-                <div className="space-y-2">{items.map(t => <TaskRow key={t.id} task={t} onClick={() => handleTaskClick(t)} showClient />)}</div>
+                <div className="tm-stagger space-y-2">{items.map(t => <TaskRow key={t.id} task={t} onClick={() => handleTaskClick(t)} showClient />)}</div>
               </div>
             );
           })}
