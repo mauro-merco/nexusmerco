@@ -71,6 +71,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const reads = useCommentReads('task_comment', commentIds, user ? { id: user.id, name: user.full_name || '' } : null);
 
   const [editing, setEditing] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState(task.description);
+  const [savingDescription, setSavingDescription] = useState(false);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(true);
   const [teamOpen, setTeamOpen] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -122,8 +126,23 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
   useEffect(() => {
     resetFields();
+    setEditingDescription(false); setDescriptionError(null);
     setProblemPrompt(null); setEditing(false); setConfirmDelete(false); setSaveError(null); setShareOpen(false); setCopied(false);
   }, [task, resetFields]);
+
+  const saveDescription = async () => {
+    setSavingDescription(true); setDescriptionError(null);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: descriptionDraft }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Error al guardar');
+      onTaskUpdated(json.data); setEditingDescription(false);
+    } catch (err) { setDescriptionError(err instanceof Error ? err.message : 'Error al guardar'); }
+    finally { setSavingDescription(false); }
+  };
 
   const handleSave = useCallback(async () => {
     setSaving(true); setSaveError(null);
@@ -255,7 +274,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               )}
             </div>
             {!editing ? (
-              <Button size="sm" variant="secondary" className="tm-press gap-1.5 rounded-lg" onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
+              <Button size="sm" variant="secondary" className="tm-press gap-1.5 rounded-lg" disabled={editingDescription} onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
             ) : (
               <>
                 <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
@@ -442,11 +461,23 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     {task.client_material_note && <MarkdownBody text={task.client_material_note} className="mt-2 text-sm text-foreground/85" />}
                   </div>
                 )}
-                <Module icon={FileText} title="Descripción" tone="text-blue-600" toneBg="bg-blue-500/15">
+                {editingDescription ? (
+                  <div className="space-y-2">
+                    <DescriptionEditor value={descriptionDraft} onChange={setDescriptionDraft} />
+                    {descriptionError && <p role="alert" className="text-xs text-destructive">{descriptionError}</p>}
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="ghost" size="sm" className="tm-press rounded-lg" disabled={savingDescription} onClick={() => { setEditingDescription(false); setDescriptionError(null); }}>Cancelar</Button>
+                      <Button type="button" size="sm" className="tm-press rounded-lg" disabled={savingDescription} onClick={saveDescription}>
+                        {savingDescription && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar descripción
+                      </Button>
+                    </div>
+                  </div>
+                ) : <Module icon={FileText} title="Descripción" tone="text-blue-600" toneBg="bg-blue-500/15"
+                  right={<Button type="button" variant="ghost" size="sm" className="tm-press h-7 rounded-lg text-xs" onClick={() => { setDescriptionDraft(task.description); setDescriptionError(null); setEditingDescription(true); }}><Edit3 className="mr-1 h-3 w-3" /> Editar</Button>}>
                   {task.description
                     ? <MarkdownBody text={task.description} className="text-sm leading-relaxed text-foreground/85" />
                     : <p className="text-sm italic text-muted-foreground">Sin descripción</p>}
-                </Module>
+                </Module>}
               </>
             )}
 
