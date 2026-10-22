@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { MarkdownBody } from '@/lib/markdown';
 import { Popover, Menu, type MenuOption } from '@/components/task-ui';
@@ -221,14 +221,25 @@ export function descriptionMarkdown(node: Node): string {
 
 /* ---------- Editor de descripción visual ---------- */
 
-export function DescriptionEditor({ value, onChange, className, placeholder, title, actions }: {
-  value: string; onChange: (v: string) => void; className?: string; placeholder?: string; title?: ReactNode; actions?: ReactNode;
+export function DescriptionEditor({ value, onChange, className, placeholder, title, actions, editable = true }: {
+  value: string; onChange: (v: string) => void; className?: string; placeholder?: string; title?: ReactNode; actions?: ReactNode; editable?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const sourceRef = useRef<HTMLDivElement>(null);
   const selection = useRef<Range | null>(null);
   // The browser owns the editable DOM; React must not replace it on each input.
   const [initialContent] = useState(() => <MarkdownBody text={value} editable />);
   const [preview, setPreview] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!editable && el && sourceRef.current && Array.from(el.childNodes).map(descriptionMarkdown).join('').trim() !== value.trim()) {
+      // Reset cancelled/external edits, but leave saved DOM and native undo intact.
+      const top = el.scrollTop;
+      el.innerHTML = sourceRef.current.innerHTML;
+      el.scrollTop = top;
+      selection.current = null;
+    }
+  }, [editable, value]);
   const rememberSelection = () => {
     const current = window.getSelection();
     if (current?.rangeCount && ref.current?.contains(current.anchorNode) && ref.current.contains(current.focusNode)) selection.current = current.getRangeAt(0).cloneRange();
@@ -260,8 +271,8 @@ export function DescriptionEditor({ value, onChange, className, placeholder, tit
       <header className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-background p-2 shadow-sm">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15"><FileText className="h-3.5 w-3.5 text-blue-600" /></span>
         {title ?? <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Descripción</h3>}
-        {actions}
-        <div className="ml-auto flex items-center gap-2">
+        {actions && <div className="min-w-[150px]">{actions}</div>}
+        <div className={cn('ml-auto flex items-center gap-2', !editable && 'invisible')} inert={!editable}>
           {!preview && (
             <div className="tm-fade flex items-center gap-0.5 rounded-xl bg-background/70 p-0.5">
               {tools.map(([I, t, command, argument]) => (
@@ -284,18 +295,24 @@ export function DescriptionEditor({ value, onChange, className, placeholder, tit
           </div>
         </div>
       </header>
-      {preview ? (
+      {preview && editable ? (
         <div className="tm-fade tm-noscroll min-h-[340px] flex-1 overflow-y-auto rounded-xl bg-background/70 p-4">
           {value.trim() ? <MarkdownBody text={value} className="text-[15px] leading-relaxed text-foreground/90" /> : <p className="text-sm italic text-muted-foreground">Nada para mostrar todavía</p>}
         </div>
       ) : null}
-      <div ref={ref} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" aria-label="Descripción"
+      <div hidden ref={sourceRef}><MarkdownBody text={value} editable /></div>
+      <div ref={ref} contentEditable={editable} suppressContentEditableWarning role="textbox" aria-readonly={!editable} aria-multiline="true" aria-label="Descripción"
         data-placeholder={placeholder || 'Describí la tarea: objetivo, medidas, referencias, entregables...'}
         onInput={() => { rememberSelection(); sync(); }} onSelect={rememberSelection} onMouseUp={rememberSelection} onKeyUp={rememberSelection} onBlur={rememberSelection}
-        onClick={e => { if ((e.target as HTMLElement).closest('a')) e.preventDefault(); }}
+        onClick={e => {
+          const link = (e.target as HTMLElement).closest('a');
+          if (!link) return;
+          if (editable) e.preventDefault();
+          else { link.target = '_blank'; link.rel = 'noopener noreferrer'; }
+        }}
         onDrop={e => e.preventDefault()}
         onPaste={e => { e.preventDefault(); rememberSelection(); apply('insertText', e.clipboardData.getData('text/plain')); }}
-        className={cn('tm-noscroll min-h-[340px] w-full flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl bg-background/70 p-4 text-[15px] leading-relaxed outline-none transition-shadow focus:ring-2 focus:ring-primary/30 [&_h2]:text-lg [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]', preview && 'hidden')}>
+        className={cn('tm-noscroll min-h-[340px] w-full flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl bg-background/70 p-4 text-[15px] leading-relaxed outline-none transition-shadow focus:ring-2 focus:ring-primary/30 [&_h2]:text-lg [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]', preview && editable && 'hidden')}>
         {initialContent}
       </div>
       <p className="mt-2 text-right text-[10px] text-muted-foreground">{value.length} caracteres · Formato visual · Ctrl+Z / Cmd+Z para deshacer</p>

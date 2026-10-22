@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,30 +75,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [descriptionDraft, setDescriptionDraft] = useState(task.description);
   const [savingDescription, setSavingDescription] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
-  const descriptionRef = useRef<HTMLDivElement>(null);
-  const descriptionScroll = useRef<{ element: HTMLElement; top: number; left: number }[] | null>(null);
-  const captureDescriptionScroll = () => {
-    const positions = [];
-    // Read and edit have different DOM trees; retain the surviving scroll ancestors.
-    for (let element = descriptionRef.current?.parentElement; element; element = element.parentElement) {
-      if (/(auto|scroll)/.test(getComputedStyle(element).overflowY)) {
-        positions.push({ element, top: element.scrollTop, left: element.scrollLeft });
-      }
-    }
-    descriptionScroll.current = positions;
-  };
   const cancelDescription = () => {
-    captureDescriptionScroll();
     setEditingDescription(false); setDescriptionError(null);
   };
-  useLayoutEffect(() => {
-    if (!descriptionScroll.current) return;
-    for (const { element, top, left } of descriptionScroll.current) {
-      element.scrollTop = top;
-      element.scrollLeft = left;
-    }
-    descriptionScroll.current = null;
-  }, [editingDescription]);
   const [detailOpen, setDetailOpen] = useState(true);
   const [teamOpen, setTeamOpen] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -163,7 +142,6 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Error al guardar');
-      captureDescriptionScroll();
       onTaskUpdated(json.data); setEditingDescription(false);
     } catch (err) { setDescriptionError(err instanceof Error ? err.message : 'Error al guardar'); }
     finally { setSavingDescription(false); }
@@ -486,24 +464,15 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     {task.client_material_note && <MarkdownBody text={task.client_material_note} className="mt-2 text-sm text-foreground/85" />}
                   </div>
                 )}
-                <div ref={descriptionRef} className="contents">
-                {editingDescription ? (
                   <div className="space-y-2">
-                    <DescriptionEditor value={descriptionDraft} onChange={setDescriptionDraft} actions={<div className="flex items-center gap-1">
+                    <DescriptionEditor key={task.id} editable={editingDescription} value={editingDescription ? descriptionDraft : task.description} onChange={setDescriptionDraft} actions={editingDescription ? <div className="flex items-center gap-1">
                       <Button type="button" size="sm" className="tm-press h-7 rounded-lg text-xs" disabled={savingDescription} onClick={saveDescription}>
                         {savingDescription && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Guardar
                       </Button>
                       <Button type="button" variant="ghost" size="sm" className="tm-press h-7 rounded-lg text-xs" disabled={savingDescription} onClick={cancelDescription}>Cancelar</Button>
-                    </div>} />
+                    </div> : <Button type="button" variant="ghost" size="sm" className="tm-press h-7 rounded-lg text-xs" onClick={() => { setDescriptionDraft(task.description); setDescriptionError(null); setEditingDescription(true); }}><Edit3 className="mr-1 h-3 w-3" /> Editar</Button>} />
                     {descriptionError && <p role="alert" className="text-xs text-destructive">{descriptionError}</p>}
                   </div>
-                ) : <Module stickyHeader icon={FileText} title="Descripción" tone="text-blue-600" toneBg="bg-blue-500/15"
-                  right={<Button type="button" variant="ghost" size="sm" className="tm-press h-7 rounded-lg text-xs" onClick={() => { captureDescriptionScroll(); setDescriptionDraft(task.description); setDescriptionError(null); setEditingDescription(true); }}><Edit3 className="mr-1 h-3 w-3" /> Editar</Button>}>
-                  {task.description
-                    ? <MarkdownBody text={task.description} className="text-sm leading-relaxed text-foreground/85" />
-                    : <p className="text-sm italic text-muted-foreground">Sin descripción</p>}
-                </Module>}
-                </div>
               </>
             )}
 
