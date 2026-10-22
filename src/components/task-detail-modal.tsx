@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,8 @@ import { MarkdownBody } from '@/lib/markdown';
 import type { Task, TaskStatus, TaskPriority, TaskComment, TaskDepartment } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskPieceTotal, TASK_ROLE_CONFIG, TASK_ROLES, taskTypeInfo, TASK_TYPE_CATEGORIES } from '@/lib/task-config';
 import { TaskRolesPicker, rolesToList, rolesFromAssignees, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
-import { Scroller, Popover, Menu, Collapse, Switch, Stepper, type MenuOption } from '@/components/task-ui';
-import { DepartmentPicker } from '@/components/department-picker';
+import { Scroller, Menu, Collapse, Switch, Stepper } from '@/components/task-ui';
+import { Module, DepartmentMenu, DateTimeField, DescriptionEditor, STATUS_OPTIONS, PRIORITY_OPTIONS, TYPE_OPTIONS, isoIn } from '@/components/task-fields';
 import { departmentInfo } from '@/lib/department-config';
 import { MaterialLinks } from '@/components/material-links';
 import { CommentReadEye } from '@/components/comment-read';
@@ -36,32 +36,6 @@ interface TaskDetailModalProps {
 }
 
 /* ---------- small building blocks ---------- */
-
-const STATUS_OPTIONS: MenuOption[] = TASK_STATUSES.map(k => {
-  const s = TASK_STATUS_CONFIG[k];
-  return { key: k, label: s.label, icon: s.icon, colorClass: s.colorClass, bgClass: s.bgColorClass };
-});
-const TYPE_OPTIONS: MenuOption[] = [{ key: '', label: 'Sin tipo' }, ...TASK_TYPE_CATEGORIES.flatMap(c => c.types.map(t => ({ key: t.id, label: t.label, icon: c.icon, colorClass: c.colorClass, group: c.label })))];
-const isoIn = (d: number) => { const x = new Date(); x.setDate(x.getDate() + d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
-const PRIORITY_OPTIONS: MenuOption[] = TASK_PRIORITIES.map(k => {
-  const p = TASK_PRIORITY_CONFIG[k];
-  return { key: k, label: p.label, dot: p.dotColor, colorClass: p.colorClass };
-});
-
-function Module({ icon: Icon, title, tone = 'text-muted-foreground', toneBg = 'bg-muted/60', right, children, className }: {
-  icon: LucideIcon; title: string; tone?: string; toneBg?: string; right?: ReactNode; children: ReactNode; className?: string;
-}) {
-  return (
-    <section className={cn('tm-rise rounded-2xl bg-muted/25 p-4', className)}>
-      <header className="mb-3 flex items-center gap-2">
-        <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', toneBg)}><Icon className={cn('h-3.5 w-3.5', tone)} /></span>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">{title}</h3>
-        {right && <div className="ml-auto">{right}</div>}
-      </header>
-      {children}
-    </section>
-  );
-}
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -99,7 +73,6 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [editing, setEditing] = useState(false);
   const [detailOpen, setDetailOpen] = useState(true);
   const [teamOpen, setTeamOpen] = useState(false);
-  const descRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [status, setStatus] = useState<TaskStatus>(task.status);
@@ -211,15 +184,6 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     if (!confirmDelete) { setConfirmDelete(true); return; }
     try { const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' }); if (res.ok) { onTaskDeleted(); onOpenChange(false); } } finally { setConfirmDelete(false); }
   }, [task.id, confirmDelete, onTaskDeleted, onOpenChange]);
-
-  const edit = (fn: (v: string, s: number, e: number) => [string, number, number]) => {
-    const el = descRef.current; if (!el) return;
-    const [next, a, b] = fn(description, el.selectionStart, el.selectionEnd);
-    setDescription(next);
-    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a, b); });
-  };
-  const wrap = (before: string, after = before, ph = 'texto') => edit((v, s, e) => { const sel = v.slice(s, e) || ph; return [v.slice(0, s) + before + sel + after + v.slice(e), s + before.length, s + before.length + sel.length]; });
-  const linePrefix = (p: string) => edit((v, s, e) => { const ls = v.lastIndexOf('\n', s - 1) + 1; return [v.slice(0, ls) + p + v.slice(ls), s + p.length, e + p.length]; });
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/t/${task.share_token}` : '';
   const handleTogglePublic = useCallback(async () => {
@@ -337,15 +301,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                       <div className="space-y-1"><Label className="text-xs">Tipo de tarea</Label>
                         <Menu value={taskType} options={TYPE_OPTIONS} onChange={setTaskType} placeholder="Elegí un tipo" /></div>
                       <div className="space-y-1"><Label className="text-xs">Departamento</Label>
-                        <Popover width={380}
-                          trigger={({ open, toggle }) => (
-                            <button type="button" onClick={toggle} className="tm-press flex w-full items-center gap-2 rounded-xl bg-background/70 px-3 py-2 text-sm font-semibold hover:brightness-95">
-                              <span className="flex-1 truncate text-left">{dept?.label || <span className="font-normal text-muted-foreground">Elegí un departamento</span>}</span>
-                              <ChevronDown className={cn('h-3.5 w-3.5 opacity-60 transition-transform duration-200', open && 'rotate-180')} />
-                            </button>
-                          )}>
-                          {close => <div className="p-2"><DepartmentPicker value={department} onChange={(d) => { setDepartment(d); close(); }} /></div>}
-                        </Popover></div>
+                        <DepartmentMenu value={department} onChange={setDepartment} /></div>
                     </div>
                   ) : (
                     <div className="divide-y divide-border/30">
@@ -359,15 +315,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   {editing ? (
                     <div className="space-y-3">
                       <div className="space-y-1"><Label className="text-xs">Inicio</Label>
-                        <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} className={fieldCls} /></div>
+                        <DateTimeField withTime value={startDate} onChange={setStartDate} placeholder="Elegí inicio" /></div>
                       <div className="space-y-1"><Label className="text-xs">Vencimiento</Label>
-                        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={fieldCls} />
-                        <div className="flex gap-1.5 pt-1">
-                          {[['Hoy', 0], ['Mañana', 1], ['+1 sem', 7]].map(([l, d]) => (
-                            <button key={l as string} type="button" onClick={() => setDueDate(isoIn(d as number))}
-                              className="tm-press rounded-lg bg-background/70 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-background hover:text-foreground">{l}</button>
-                          ))}
-                        </div></div>
+                        <DateTimeField value={dueDate} onChange={setDueDate} placeholder="Elegí vencimiento" />
+                        </div>
                       <Collapse open={!!department}>
                         <div className="pt-1"><Switch checked={isUrgent} onChange={setIsUrgent} tone="bg-amber-500"
                           label={<span className="text-amber-600 dark:text-amber-400">Urgente <span className="font-normal text-muted-foreground">· SLA {isUrgent ? dept?.urgentSlaHours : dept?.slaHours}hs</span></span>} /></div>
@@ -468,28 +419,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
             {editing ? (
               <>
-                <section className="tm-rise flex min-h-[460px] flex-1 flex-col rounded-2xl bg-muted/25 p-4">
-                  <header className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15"><FileText className="h-3.5 w-3.5 text-blue-600" /></span>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Descripción</h3>
-                    <div className="ml-auto flex items-center gap-0.5 rounded-xl bg-background/70 p-0.5">
-                      {([
-                        [Heading2, 'Título', () => linePrefix('## ')],
-                        [Bold, 'Negrita', () => wrap('**')],
-                        [Italic, 'Cursiva', () => wrap('*')],
-                        [List, 'Lista', () => linePrefix('- ')],
-                        [ListOrdered, 'Lista numerada', () => linePrefix('1. ')],
-                        [Link2, 'Link', () => wrap('[', '](https://)', 'texto')],
-                      ] as [LucideIcon, string, () => void][]).map(([I, t, fn]) => (
-                        <button key={t} type="button" title={t} onClick={fn} className="tm-press rounded-lg p-1.5 text-muted-foreground hover:bg-muted/70 hover:text-foreground"><I className="h-3.5 w-3.5" /></button>
-                      ))}
-                    </div>
-                  </header>
-                  <textarea ref={descRef} value={description} onChange={e => setDescription(e.target.value)}
-                    placeholder="Describí la tarea: objetivo, medidas, referencias, entregables..."
-                    className="tm-noscroll min-h-[340px] w-full flex-1 resize-none rounded-xl bg-background/70 p-4 text-[15px] leading-relaxed outline-none transition-shadow focus:ring-2 focus:ring-primary/30" />
-                  <p className="mt-2 text-right text-[10px] text-muted-foreground">{description.length} caracteres · admite Markdown</p>
-                </section>
+                <DescriptionEditor className="min-h-[460px] flex-1" value={description} onChange={setDescription} />
 
                 <section className="tm-rise rounded-2xl bg-muted/25">
                   <button type="button" onClick={() => setTeamOpen(v => !v)} className="tm-press flex w-full items-center gap-2 p-4 text-left">

@@ -128,7 +128,7 @@ export function Popover({ trigger, children, width, className }: {
 
 /* ---------- Menu (dropdown de opciones, con grupos opcionales) ---------- */
 
-export type MenuOption = { key: string; label: string; icon?: LucideIcon; colorClass?: string; bgClass?: string; dot?: string; group?: string };
+export type MenuOption = { key: string; label: string; icon?: LucideIcon; colorClass?: string; bgClass?: string; dot?: string; group?: string; hint?: string };
 
 export function Menu({ value, options, onChange, disabled, loading, className, placeholder }: {
   value: string; options: MenuOption[]; onChange: (k: string) => void;
@@ -156,6 +156,7 @@ export function Menu({ value, options, onChange, disabled, loading, className, p
               className={cn('tm-press flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium hover:bg-muted/60', o.colorClass, o.key === value && 'bg-muted/50')}>
               {I ? <I className="h-4 w-4 shrink-0" /> : o.dot ? <span className={cn('h-2 w-2 shrink-0 rounded-full', o.dot)} /> : null}
               <span className="flex-1 whitespace-nowrap">{o.label}</span>
+              {o.hint && <span className="text-[10px] font-normal text-muted-foreground">{o.hint}</span>}
               {o.key === value && <Check className="h-3.5 w-3.5" />}
             </button>
           </div>

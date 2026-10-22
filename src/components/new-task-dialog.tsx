@@ -1,20 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Dialog, DialogContent, DialogTitle, DialogDescription,
-  DialogFooter, DialogClose,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { TaskStatus, TaskPriority, TaskRole, TaskDepartment } from '@/lib/types';
-import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, PIECE_TYPES, taskTypeLabel } from '@/lib/task-config';
+import { TASK_PRIORITY_CONFIG, PIECE_TYPES } from '@/lib/task-config';
 import { TaskRolesPicker, emptyRoles, rolesToList, totalPeople, type TaskRolesState } from '@/components/task-roles-picker';
-import { TaskTypePicker } from '@/components/task-type-picker';
-import { DepartmentPicker } from '@/components/department-picker';
-import { departmentInfo, calculateDueDate } from '@/lib/department-config';
-import { Loader2, Calendar, Users2, ListChecks, LayoutList, AlertTriangle, Zap } from 'lucide-react';
+import { departmentInfo } from '@/lib/department-config';
+import { Scroller, Menu, Collapse, Switch, Stepper, type MenuOption } from '@/components/task-ui';
+import { Module, DepartmentMenu, DateTimeField, DescriptionEditor, STATUS_OPTIONS, PRIORITY_OPTIONS, TYPE_OPTIONS, isoIn, parseDT, fmtDT } from '@/components/task-fields';
+import { Loader2, Flag, Tag, Clock, Boxes, Users2, AlertTriangle, ChevronDown, Zap } from 'lucide-react';
 
 interface UserRecord { id: string; full_name: string; email: string; avatar_url: string; }
 
@@ -24,25 +22,11 @@ interface NewTaskDialogProps {
   clients: { id: string; name: string }[];
   users: UserRecord[];
   onCreateTask: (data: {
-    client_id: string;
-    title: string;
-    description?: string;
-    status?: TaskStatus;
-    assignees?: { id: string; role: TaskRole }[];
-    author_id?: string;
-    priority?: TaskPriority;
-    due_date?: string;
-    task_type?: string;
-    department?: TaskDepartment;
-    start_date?: string;
-    is_urgent?: boolean;
-    blocked_by_task_id?: string;
-    problem_note?: string;
-    needs_client_material?: boolean;
-    client_material_note?: string;
-    pieces_stories?: number | null;
-    pieces_feed?: number | null;
-    pieces_reels?: number | null;
+    client_id: string; title: string; description?: string; status?: TaskStatus;
+    assignees?: { id: string; role: TaskRole }[]; author_id?: string; priority?: TaskPriority;
+    due_date?: string; task_type?: string; department?: TaskDepartment; start_date?: string; is_urgent?: boolean;
+    blocked_by_task_id?: string; problem_note?: string; needs_client_material?: boolean; client_material_note?: string;
+    pieces_stories?: number | null; pieces_feed?: number | null; pieces_reels?: number | null;
   }) => Promise<unknown>;
 }
 
@@ -64,6 +48,7 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
   const [problemNote, setProblemNote] = useState('');
   const [needsMaterial, setNeedsMaterial] = useState(false);
   const [materialNote, setMaterialNote] = useState('');
+  const [teamOpen, setTeamOpen] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,19 +58,17 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
       setPriority('medium'); setDueDate(''); setTaskType(''); setSelClient('');
       setPiecesStories(''); setPiecesFeed(''); setPiecesReels(''); setError(null);
       setProblemNote(''); setNeedsMaterial(false); setMaterialNote('');
-      setDepartment(null); setStartDate(''); setIsUrgent(false);
+      setDepartment(null); setStartDate(''); setIsUrgent(false); setTeamOpen(true);
     }
   }, [open]);
 
-  // Auto-calculate due_date when department/start_date/urgency changes
+  // Vencimiento automático según SLA del departamento (solo fecha)
   useEffect(() => {
-    if (department && startDate) {
-      const deptConfig = departmentInfo(department);
-      if (deptConfig) {
-        const slaHours = isUrgent ? deptConfig.urgentSlaHours : deptConfig.slaHours;
-        const calculated = calculateDueDate(startDate, slaHours);
-        setDueDate(calculated.substring(0, 16)); // "YYYY-MM-DDTHH:MM"
-      }
+    const cfg = departmentInfo(department);
+    const start = parseDT(startDate);
+    if (cfg && start) {
+      const hours = isUrgent ? cfg.urgentSlaHours : cfg.slaHours;
+      setDueDate(fmtDT(new Date(start.getTime() + hours * 3600000), false));
     }
   }, [department, startDate, isUrgent]);
 
@@ -95,234 +78,139 @@ export function NewTaskDialog({ open, onOpenChange, clients, users, onCreateTask
     if (!department) { setError('Seleccioná el departamento responsable'); return; }
     if (status === 'problemas' && !problemNote.trim()) { setError('Escribí cuál es el problema'); return; }
     if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) {
-      setError('Asigná al menos una persona como responsable, ejecutor y control');
-      return;
+      setError('Asigná al menos una persona como responsable, ejecutor y control'); setTeamOpen(true); return;
     }
-    setSaving(true);
-    setError(null);
+    setSaving(true); setError(null);
     try {
       await onCreateTask({
-        client_id: selClient,
-        title: title.trim(),
-        description: description.trim(),
-        status,
-        assignees: rolesToList(roles),
-        priority,
-        department,
-        start_date: startDate || new Date().toISOString(),
-        is_urgent: isUrgent,
-        due_date: dueDate || undefined,
-        task_type: taskType || undefined,
+        client_id: selClient, title: title.trim(), description: description.trim(), status,
+        assignees: rolesToList(roles), priority, department,
+        start_date: startDate || new Date().toISOString(), is_urgent: isUrgent,
+        due_date: dueDate || undefined, task_type: taskType || undefined,
         problem_note: status === 'problemas' ? problemNote.trim() : undefined,
-        needs_client_material: needsMaterial,
-        client_material_note: needsMaterial ? materialNote.trim() : undefined,
+        needs_client_material: needsMaterial, client_material_note: needsMaterial ? materialNote.trim() : undefined,
         pieces_stories: piecesStories.trim() === '' ? null : Number(piecesStories),
         pieces_feed: piecesFeed.trim() === '' ? null : Number(piecesFeed),
         pieces_reels: piecesReels.trim() === '' ? null : Number(piecesReels),
       });
       onOpenChange(false);
     } catch (e) {
-      const err = e as any;
-      if (err?.message && err?.urgentTask) {
-        setError(err.message + '\n\nTarea urgente actual: ' + err.urgentTask.title);
-      } else {
-        setError(e instanceof Error ? e.message : 'Error');
-      }
-    } finally {
-      setSaving(false);
-    }
+      const err = e as { message?: string; urgentTask?: { title: string } };
+      setError(err?.message && err?.urgentTask ? `${err.message}\n\nTarea urgente actual: ${err.urgentTask.title}` : e instanceof Error ? e.message : 'Error');
+    } finally { setSaving(false); }
   };
+
+  const dept = departmentInfo(department);
+  const clientOptions: MenuOption[] = [{ key: '', label: 'Seleccioná el cliente' }, ...clients.map(c => ({ key: c.id, label: c.name }))];
+  const pieceValues = { pieces_stories: [piecesStories, setPiecesStories], pieces_feed: [piecesFeed, setPiecesFeed], pieces_reels: [piecesReels, setPiecesReels] } as const;
+  const rolesMissing = !roles.lead.length || !roles.executor.length || !roles.reviewer.length;
+  const fieldCls = 'w-full rounded-xl bg-background/70 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex! max-h-[90dvh] flex-col overflow-hidden sm:max-w-lg md:w-[min(92vw,760px)] md:max-w-none rounded-2xl p-0">
-        <div className="px-6 pt-6 pb-4">
-          <DialogTitle>Nueva Tarea</DialogTitle>
-          <DialogDescription>Creá una nueva tarea para el tablero Kanban</DialogDescription>
+      <DialogContent className="flex! h-[min(94dvh,900px)] w-[min(96vw,1280px)] max-w-none! flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none">
+        {/* Header */}
+        <div className="shrink-0 bg-muted/20 px-5 py-3 pr-14">
+          <DialogTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Nueva tarea</DialogTitle>
+          <DialogDescription className="sr-only">Creá una nueva tarea para el tablero Kanban</DialogDescription>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Input autoFocus placeholder="Título de la tarea..." value={title} onChange={e => setTitle(e.target.value)}
+              className="h-11 min-w-[240px] flex-1 rounded-xl border-0 bg-background/70 text-lg font-bold" />
+            <div className="w-[220px]"><Menu value={selClient} options={clientOptions} onChange={setSelClient} /></div>
+            <div className="w-[230px]"><Menu value={status} options={STATUS_OPTIONS} onChange={k => setStatus(k as TaskStatus)} /></div>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-6">
+        {/* Body */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:overflow-hidden">
+          {/* Detalle */}
+          <Scroller innerClassName="tm-stagger space-y-3">
+            <Module icon={Flag} title="Prioridad" tone="text-orange-600" toneBg="bg-orange-500/15">
+              <Menu value={priority} options={PRIORITY_OPTIONS} onChange={k => setPriority(k as TaskPriority)} />
+            </Module>
 
-          {/* Cliente + título */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <select
-              value={selClient}
-              onChange={e => setSelClient(e.target.value)}
-              className="w-full rounded-xl bg-muted/35 px-3 py-2.5 text-sm outline-none"
-            >
-              <option value="">Seleccioná el cliente...</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <Input placeholder="Título de la tarea..." value={title} onChange={e => setTitle(e.target.value)} className="rounded-xl bg-muted/35 border-0 h-[42px]" />
-          </div>
-
-          <textarea
-            className="w-full rounded-xl bg-muted/30 px-3.5 py-3 text-sm placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[80px] resize-none"
-            placeholder="Descripción de la tarea..."
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-          />
-
-          {/* Tipo de tarea */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <LayoutList className="h-3.5 w-3.5" /> Tipo de tarea
-              {taskType && <span className="text-muted-foreground/70 font-normal">· {taskTypeLabel(taskType)}</span>}
-            </div>
-            <TaskTypePicker value={taskType} onChange={setTaskType} />
-          </div>
-
-          {/* Departamento */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <Users2 className="h-3.5 w-3.5" /> Departamento responsable
-            </div>
-            <DepartmentPicker value={department} onChange={setDepartment} />
-          </div>
-
-          {/* Fechas + Urgencia */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                <Calendar className="h-3.5 w-3.5" /> Inicio
+            <Module icon={Tag} title="Clasificación" tone="text-pink-600" toneBg="bg-pink-500/15">
+              <div className="space-y-3">
+                <div className="space-y-1"><Label className="text-xs">Tipo de tarea</Label>
+                  <Menu value={taskType} options={TYPE_OPTIONS} onChange={setTaskType} placeholder="Elegí un tipo" /></div>
+                <div className="space-y-1"><Label className="text-xs">Departamento <span className="text-red-500">*</span></Label>
+                  <DepartmentMenu value={department} onChange={setDepartment} /></div>
               </div>
-              <input
-                type="datetime-local"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                <Calendar className="h-3.5 w-3.5" /> Vencimiento {department && <span className="text-muted-foreground/70 font-normal">(SLA: {isUrgent ? departmentInfo(department)?.urgentSlaHours : departmentInfo(department)?.slaHours}hs)</span>}
+            </Module>
+
+            <Module icon={Clock} title="Plazos" tone="text-blue-600" toneBg="bg-blue-500/15">
+              <div className="space-y-3">
+                <div className="space-y-1"><Label className="text-xs">Inicio</Label>
+                  <DateTimeField withTime value={startDate} onChange={setStartDate} placeholder="Ahora" /></div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Vencimiento {dept && <span className="font-normal text-muted-foreground">· SLA {isUrgent ? dept.urgentSlaHours : dept.slaHours}hs</span>}</Label>
+                  <DateTimeField value={dueDate} onChange={setDueDate} placeholder="Elegí vencimiento" />
+                </div>
+                <Collapse open={!!department}>
+                  <div className="pt-1"><Switch checked={isUrgent} onChange={setIsUrgent} tone="bg-amber-500"
+                    label={<span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400"><Zap className="h-3.5 w-3.5" /> Suma urgencia <span className="font-normal text-muted-foreground">· 24hs</span></span>} /></div>
+                </Collapse>
               </div>
-              <input
-                type="datetime-local"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-          </div>
+            </Module>
 
-          {department && (
-            <div className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
-              <input
-                type="checkbox"
-                id="urgent-check"
-                checked={isUrgent}
-                onChange={(e) => setIsUrgent(e.target.checked)}
-                className="w-4 h-4 rounded"
-              />
-              <label htmlFor="urgent-check" className="flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400 cursor-pointer">
-                <Zap className="h-4 w-4" />
-                TAREA DE SUMA URGENCIA (24hs)
-              </label>
-            </div>
-          )}
-
-          {/* Estado / Prioridad */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><ListChecks className="h-3.5 w-3.5" /> Estado</div>
-              <div className="flex gap-1.5 flex-wrap">
-                {TASK_STATUSES.map(key => {
-                  const s = TASK_STATUS_CONFIG[key];
-                  const Icon = s.icon;
-                  return (
-                    <button key={key} type="button" onClick={() => setStatus(key)}
-                      className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
-                        status === key ? [s.bgColorClass, s.colorClass, 'font-semibold'] : 'bg-muted/40 text-muted-foreground hover:bg-muted/60')}>
-                      <Icon className="h-3.5 w-3.5" /> {s.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-muted-foreground">Prioridad</div>
-              <div className="flex gap-1.5 flex-wrap">
-                {TASK_PRIORITIES.map(key => {
-                  const p = TASK_PRIORITY_CONFIG[key];
-                  return (
-                    <button key={key} type="button" onClick={() => setPriority(key)}
-                      className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
-                        priority === key ? cn('bg-current/10 font-semibold', p.colorClass) : 'bg-muted/40 text-muted-foreground hover:bg-muted/60')}>
-                      <span className={cn('w-2 h-2 rounded-full', p.dotColor)} /> {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {status === 'problemas' && (
-            <div className="space-y-1.5 rounded-xl border border-red-500/40 bg-red-500/5 p-3">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400"><AlertTriangle className="h-3.5 w-3.5" /> ¿Cuál es el problema?</div>
-              <textarea value={problemNote} onChange={e => setProblemNote(e.target.value)} rows={2}
-                placeholder="Describí qué está pasando y qué bloquea la tarea..."
-                className="min-h-[60px] w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
-            </div>
-          )}
-
-          <div className="space-y-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
-            <label className="flex items-center gap-2 text-sm font-semibold text-red-600 dark:text-red-400">
-              <input type="checkbox" checked={needsMaterial} onChange={e => setNeedsMaterial(e.target.checked)} />
-              NECESITO MATERIAL DEL CLIENTE
-            </label>
-            {needsMaterial && (
-              <textarea value={materialNote} onChange={e => setMaterialNote(e.target.value)} rows={2}
-                placeholder="Qué material se necesita para esta tarea..."
-                className="min-h-[60px] w-full resize-none rounded-xl bg-muted/35 px-3 py-2 text-sm outline-none" />
-            )}
-          </div>
-
-          {/* Fecha + piezas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><Calendar className="h-3.5 w-3.5" /> Fecha límite</div>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                className="w-full rounded-xl bg-muted/35 px-3 py-2.5 text-sm outline-none" />
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-muted-foreground">Piezas a diseñar</div>
-              <div className="grid grid-cols-3 gap-2">
+            <Module icon={Boxes} title="Piezas a diseñar" tone="text-violet-600" toneBg="bg-violet-500/15">
+              <div className="space-y-2">
                 {PIECE_TYPES.map(pt => {
-                  const Icon = pt.icon;
-                  const value = pt.field === 'pieces_stories' ? piecesStories : pt.field === 'pieces_feed' ? piecesFeed : piecesReels;
-                  const setValue = pt.field === 'pieces_stories' ? setPiecesStories : pt.field === 'pieces_feed' ? setPiecesFeed : setPiecesReels;
+                  const Icon = pt.icon; const [val, set] = pieceValues[pt.field];
                   return (
-                    <div key={pt.field} className="space-y-1">
-                      <span className={cn('flex items-center gap-1 text-[10px] font-medium', pt.colorClass)}><Icon className="h-3 w-3" /> {pt.label}</span>
-                      <input type="number" min="0" placeholder="0" value={value} onChange={e => setValue(e.target.value)}
-                        className="w-full rounded-lg bg-muted/35 px-2.5 py-1.5 text-sm outline-none" />
+                    <div key={pt.field} className="flex items-center gap-2">
+                      <span className={cn('flex flex-1 items-center gap-1.5 text-xs font-medium', pt.colorClass)}><Icon className="h-3.5 w-3.5" /> {pt.label}</span>
+                      <div className="w-[118px]"><Stepper value={val} onChange={set} /></div>
                     </div>
                   );
                 })}
               </div>
-            </div>
-          </div>
+            </Module>
 
-          {/* Equipo */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <Users2 className="h-3.5 w-3.5" /> Equipo y roles
-              {totalPeople(roles) > 0 && <span className="text-muted-foreground/70 font-normal">({totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''})</span>}
-            </div>
-            <TaskRolesPicker roles={roles} onChange={setRoles} users={users} />
-          </div>
+            <Module icon={AlertTriangle} title="Material del cliente" tone="text-red-600" toneBg="bg-red-500/15">
+              <Switch checked={needsMaterial} onChange={setNeedsMaterial} tone="bg-red-500" label={<span className="text-red-600 dark:text-red-400">Necesito material</span>} />
+              <Collapse open={needsMaterial}>
+                <textarea value={materialNote} onChange={e => setMaterialNote(e.target.value)} rows={3} placeholder="Qué material se necesita..."
+                  className={cn(fieldCls, 'tm-noscroll mt-3 min-h-[72px] resize-none')} />
+              </Collapse>
+            </Module>
+          </Scroller>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {/* Principal */}
+          <Scroller innerClassName="flex min-h-full flex-col gap-4">
+            <Collapse open={status === 'problemas'}>
+              <div className="space-y-1.5 rounded-2xl bg-red-500/5 p-4 ring-1 ring-red-500/30">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400"><AlertTriangle className="h-3.5 w-3.5" /> ¿Cuál es el problema?</div>
+                <textarea value={problemNote} onChange={e => setProblemNote(e.target.value)} rows={2}
+                  placeholder="Describí qué está pasando y qué bloquea la tarea..." className={cn(fieldCls, 'min-h-[60px] resize-none')} />
+              </div>
+            </Collapse>
+
+            <DescriptionEditor className="min-h-[440px] flex-1" value={description} onChange={setDescription} />
+
+            <section className="tm-rise rounded-2xl bg-muted/25">
+              <button type="button" onClick={() => setTeamOpen(v => !v)} className="tm-press flex w-full items-center gap-2 p-4 text-left">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15"><Users2 className="h-3.5 w-3.5 text-violet-600" /></span>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Equipo y roles</h3>
+                <span className="text-xs text-muted-foreground">{totalPeople(roles)} persona{totalPeople(roles) !== 1 ? 's' : ''}</span>
+                {rolesMissing && <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-500">Falta asignar</span>}
+                <ChevronDown className={cn('ml-auto h-4 w-4 text-muted-foreground transition-transform duration-300', teamOpen && 'rotate-180')} />
+              </button>
+              <Collapse open={teamOpen}><div className="px-4 pb-4"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div></Collapse>
+            </section>
+          </Scroller>
         </div>
 
-        <DialogFooter className="shrink-0 px-6 py-4 border-t border-border/40">
-          <DialogClose render={<Button variant="outline" className="rounded-lg" />}>Cancelar</DialogClose>
-          <Button onClick={handleSave} variant="default" disabled={saving} className="rounded-lg">
-            {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-            Crear Tarea
-          </Button>
-        </DialogFooter>
+        {/* Footer */}
+        <div className="flex shrink-0 items-center gap-3 bg-muted/20 px-5 py-3">
+          {error && <p className="tm-pop flex-1 whitespace-pre-line text-xs text-destructive">{error}</p>}
+          <div className="ml-auto flex items-center gap-2">
+            <DialogClose render={<Button variant="outline" className="tm-press rounded-lg" />}>Cancelar</DialogClose>
+            <Button onClick={handleSave} disabled={saving} className="tm-press rounded-lg">
+              {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Crear tarea
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
