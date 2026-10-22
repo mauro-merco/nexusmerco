@@ -14,7 +14,7 @@ const MENTION_TOKEN = /@[\p{L}\p{N}'.-]+/gu;
 
 // Single-underscore italics are intentionally not supported (snake_case words).
 const INLINE_TOKEN =
-  /(\*\*(?:[^*\n]|\*(?!\*))+\*\*|__[^_\n]+__|~~[^~\n]+~~|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)|\*[^*\n]+\*|https?:\/\/[^\s`<>]+|www\.[^\s`<>]+)/gi;
+  /(\\[\\*_[\]`~#>+.!()-]|\*\*\*[^*\n]+\*\*\*|\*\*(?:\*[^*\n]+\*|[^*\n])+\*\*|__[^_\n]+__|~~[^~\n]+~~|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)|\*(?:\*\*[^*\n]+\*\*|[^*\n])+\*|https?:\/\/[^\s`<>]+|www\.[^\s`<>]+)/gi;
 
 type Atom = { kind: 'mention' | 'text'; value: string };
 
@@ -43,27 +43,26 @@ const defaultRenderText: RenderText = (text, key) => <Fragment key={key}>{text}<
 
 function renderInlineChunk(chunk: string, keyBase: string, renderMention: RenderMention, renderText: RenderText): ReactNode[] {
   const out: ReactNode[] = [];
-  tokenizeAtoms(chunk).forEach((atom, atomIdx) => {
-    if (atom.kind === 'mention') {
-      out.push(renderMention(atom.value, `${keyBase}-m${atomIdx}`));
-      return;
-    }
-    const text = atom.value;
+    const text = chunk;
     let cursor = 0;
     let tokenIdx = 0;
     let textIdx = 0;
     for (const match of text.matchAll(INLINE_TOKEN)) {
       const start = match.index ?? 0;
-      if (start > cursor) out.push(renderText(text.slice(cursor, start), `${keyBase}-x${atomIdx}-${textIdx++}`));
+      if (start > cursor) out.push(renderText(text.slice(cursor, start), `${keyBase}-x${textIdx++}`));
       const token = match[0];
-      const key = `${keyBase}-t${atomIdx}-${tokenIdx++}`;
+      const key = `${keyBase}-t${tokenIdx++}`;
 
-      if (/^(https?:\/\/|www\.)/i.test(token)) {
+      if (token.startsWith('\\')) {
+        out.push(renderText(token.slice(1), key));
+      } else if (token.startsWith('***')) {
+        out.push(<strong key={key} className="font-bold text-foreground"><em>{renderInlineChunk(token.slice(3, -3), key, renderMention, renderText)}</em></strong>);
+      } else if (/^(https?:\/\/|www\.)/i.test(token)) {
         const trailing = token.match(/[.,;:!?)\]]+$/)?.[0] ?? '';
         const raw = trailing ? token.slice(0, token.length - trailing.length) : token;
         const href = /^www\./i.test(raw) ? `https://${raw}` : raw;
         out.push(<a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 break-all hover:opacity-80">{raw}</a>);
-        if (trailing) out.push(renderText(trailing, `${keyBase}-tr${atomIdx}-${tokenIdx++}`));
+        if (trailing) out.push(renderText(trailing, `${keyBase}-tr${tokenIdx++}`));
       } else if (token.startsWith('**') || token.startsWith('__')) {
         out.push(<strong key={key} className="font-bold text-foreground">{renderInlineChunk(token.slice(2, -2), key, renderMention, renderText)}</strong>);
       } else if (token.startsWith('~~')) {
@@ -75,15 +74,14 @@ function renderInlineChunk(chunk: string, keyBase: string, renderMention: Render
         const label = token.slice(1, split);
         const href = token.slice(split + 2, -1);
         out.push(isSafeHref(href)
-          ? <a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 hover:opacity-80">{label}</a>
+          ? <a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 hover:opacity-80">{renderInlineChunk(label, key, renderMention, renderText)}</a>
           : label);
       } else {
-        out.push(<em key={key}>{token.slice(1, -1)}</em>);
+        out.push(<em key={key}>{renderInlineChunk(token.slice(1, -1), key, renderMention, renderText)}</em>);
       }
       cursor = start + token.length;
     }
-    if (cursor < text.length) out.push(renderText(text.slice(cursor), `${keyBase}-x${atomIdx}-${textIdx++}`));
-  });
+    if (cursor < text.length) out.push(renderText(text.slice(cursor), `${keyBase}-x${textIdx++}`));
   return out;
 }
 
@@ -96,18 +94,22 @@ export interface MarkdownBodyProps {
   renderMention?: RenderMention;
   renderText?: RenderText;
   className?: string;
+  editable?: boolean;
 }
 
 const HEADING = /^\s{0,3}(#{1,3})\s+(.*)$/;
 const HEADING_CLS = ['text-xl font-bold', 'text-lg font-bold', 'text-base font-semibold'];
 
-export function MarkdownBody({ text, renderMention = defaultRenderMention, renderText = defaultRenderText, className }: MarkdownBodyProps) {
+export function MarkdownBody({ text, renderMention = defaultRenderMention, renderText = defaultRenderText, className, editable = false }: MarkdownBodyProps) {
+  const plainText = renderText;
+  renderText = (value, key) => <Fragment key={key}>{tokenizeAtoms(value).map((atom, i) => atom.kind === 'mention' ? renderMention(atom.value, `${key}-${i}`) : plainText(atom.value, `${key}-${i}`))}</Fragment>;
   const inline = (t: string, k: string) => renderInline(t, k, renderMention, renderText);
   // Fast path: no block constructs -> flat inline nodes; newlines preserved.
   const hasBlockConstructs =
     /^\s*(?:[-*]\s|\d+[.)]\s|>\s?|```|#{1,3}\s)/m.test(text) || /\n[ \t]*\n/.test(text);
 
   if (!hasBlockConstructs) {
+    if (editable) return <p className="whitespace-pre-wrap">{inline(text, 'flat')}</p>;
     return <span className={cn('whitespace-pre-wrap', className)}>{inline(text, 'flat')}</span>;
   }
 
@@ -119,7 +121,8 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, rende
     if (paragraph.length === 0) return;
     const content = paragraph.join('\n');
     paragraph = [];
-    out.push(<span key={`p${out.length}`} className="block whitespace-pre-wrap">{inline(content, `p${out.length}`)}</span>);
+    const Paragraph = editable ? 'p' : 'span';
+    out.push(<Paragraph key={`p${out.length}`} className="block whitespace-pre-wrap">{inline(content, `p${out.length}`)}</Paragraph>);
   };
 
   for (let i = 0; i < lines.length; ) {
@@ -140,7 +143,8 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, rende
     const h = line.match(HEADING);
     if (h) {
       flushParagraph();
-      out.push(<span key={`h${out.length}`} className={cn('mt-1 block', HEADING_CLS[h[1].length - 1])}>{inline(h[2], `h${out.length}`)}</span>);
+      const Heading = editable ? h[1].length === 1 ? 'h1' : h[1].length === 2 ? 'h2' : 'h3' : 'span';
+      out.push(<Heading key={`h${out.length}`} className={cn('mt-1 block', HEADING_CLS[h[1].length - 1])}>{inline(h[2], `h${out.length}`)}</Heading>);
       i++;
       continue;
     }
@@ -149,7 +153,8 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, rende
       flushParagraph();
       const body: string[] = [];
       while (i < lines.length && /^\s*>\s?/.test(lines[i])) { body.push(lines[i].replace(/^\s*>\s?/, '')); i++; }
-      out.push(<span key={`q${out.length}`} className="block whitespace-pre-wrap border-l-2 border-border pl-2.5 text-muted-foreground">{inline(body.join('\n'), `q${out.length}`)}</span>);
+      const Quote = editable ? 'blockquote' : 'span';
+      out.push(<Quote key={`q${out.length}`} className="block whitespace-pre-wrap border-l-2 border-border pl-2.5 text-muted-foreground">{inline(body.join('\n'), `q${out.length}`)}</Quote>);
       continue;
     }
 
@@ -184,5 +189,6 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, rende
   flushParagraph();
 
   // Blocks are separated by a real gap so blank lines in the source are visible.
+  if (editable) return <>{out}</>;
   return <span className={cn('flex flex-col gap-2.5', className)}>{out}</span>;
 }

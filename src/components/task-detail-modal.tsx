@@ -463,7 +463,12 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                 )}
                 {editingDescription ? (
                   <div className="space-y-2">
-                    <DescriptionEditor value={descriptionDraft} onChange={setDescriptionDraft} />
+                    <DescriptionEditor value={descriptionDraft} onChange={setDescriptionDraft} actions={<div className="flex items-center gap-1">
+                      <Button type="button" size="sm" className="tm-press h-7 rounded-lg text-xs" disabled={savingDescription} onClick={saveDescription}>
+                        {savingDescription && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Guardar
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" className="tm-press h-7 rounded-lg text-xs" disabled={savingDescription} onClick={() => { setEditingDescription(false); setDescriptionError(null); }}>Cancelar</Button>
+                    </div>} />
                     {descriptionError && <p role="alert" className="text-xs text-destructive">{descriptionError}</p>}
                   </div>
                 ) : <Module icon={FileText} title="Descripción" tone="text-blue-600" toneBg="bg-blue-500/15"
