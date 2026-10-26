@@ -102,21 +102,26 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: date });
   const day = Number(date.split('-')[2]);
+  const [y, m] = date.split('-').map(Number);
   const active = ecommerceDates.filter(ed => date >= ed.start_date && date <= ed.end_date);
   const count = ideas.length;
   const minH = Math.max(110, 90 + count * 22);
+  const monthLabel = new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long' });
 
   return (
     <div ref={setNodeRef} onClick={() => onAddClick(date)}
       style={{ minHeight: minH, ...(active.length > 0 ? { backgroundColor: `${active[0].color}14` } : {}) }}
-      className={cn('tm-fade rounded-2xl p-2 transition-all cursor-pointer flex flex-col group', !isCurrentMonth && 'opacity-40', isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : 'bg-muted/25 hover:bg-muted/40')}>
+      className={cn('tm-fade rounded-2xl p-2 transition-all cursor-pointer flex flex-col group', isCurrentMonth ? '' : 'bg-amber-500/8 opacity-90', isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : isCurrentMonth ? 'bg-muted/25 hover:bg-muted/40' : 'hover:bg-amber-500/12')}>
       {active.length > 0 && (
         <div className="flex flex-col gap-1 mb-1.5">
           {active.map(ed => <div key={ed.id} style={{ backgroundColor: `${ed.color}38`, color: ed.color, boxShadow: `inset 0 0 0 1.5px ${ed.color}` }} className="truncate rounded-lg px-1.5 py-1 text-center text-[11px] font-black uppercase leading-tight tracking-wide">{ed.name}</div>)}
         </div>
       )}
       <div className="flex items-center justify-between mb-1">
-        <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-primary text-primary-foreground' : 'text-muted-foreground/70')}>{day}</span>
+        <div className="flex items-center gap-1.5">
+          <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-primary text-primary-foreground' : isCurrentMonth ? 'text-muted-foreground/70' : 'text-amber-600 dark:text-amber-400')}>{day}</span>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', isCurrentMonth ? 'bg-muted/60 text-muted-foreground' : 'bg-amber-500/20 text-amber-700 dark:text-amber-300')}>de {monthLabel}</span>
+        </div>
         <span role="button" onClick={(e) => { e.stopPropagation(); onAddClick(date); }} className="h-5 w-5 rounded-md flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 hover:bg-primary/15 transition-opacity"><Plus className="h-3.5 w-3.5" /></span>
       </div>
       <div className="space-y-1 flex-1">
@@ -249,9 +254,23 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
 
   const monthCells = useMemo(() => {
     const cells: { date: string; inMonth: boolean }[] = [];
-    for (let i = 0; i < firstDayOfWeek; i++) { const d = new Date(viewYear, viewMonth, -firstDayOfWeek + i + 1); cells.push({ date: d.toISOString().split('T')[0], inMonth: false }); }
+    let leading = firstDayOfWeek;
+    if (leading < 10) leading = 10;
+    for (let i = 0; i < leading; i++) {
+      const d = new Date(viewYear, viewMonth, -leading + i + 1);
+      cells.push({ date: d.toISOString().split('T')[0], inMonth: false });
+    }
     for (let day = 1; day <= daysInMonth; day++) cells.push({ date: `${monthStr}-${String(day).padStart(2, '0')}`, inMonth: true });
-    while (cells.length % 7 !== 0) { const last = new Date(cells[cells.length - 1].date + 'T12:00:00'); last.setDate(last.getDate() + 1); cells.push({ date: last.toISOString().split('T')[0], inMonth: false }); }
+    let trailing = 0;
+    while (true) {
+      const remainder = cells.length % 7;
+      if (remainder === 0 && trailing >= 10) break;
+      const last = new Date(cells[cells.length - 1].date + 'T12:00:00');
+      last.setDate(last.getDate() + 1);
+      cells.push({ date: last.toISOString().split('T')[0], inMonth: false });
+      trailing += 1;
+      if (trailing > 42) break;
+    }
     return cells;
   }, [firstDayOfWeek, daysInMonth, monthStr, viewYear, viewMonth]);
 
