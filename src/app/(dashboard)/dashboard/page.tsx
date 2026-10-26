@@ -22,8 +22,7 @@ import { MetaAdsTab } from '@/components/meta-ads-tab';
 import { AnalyticsTab } from '@/components/analytics-tab';
 import { FunnelSeoTab } from '@/components/funnel-seo-tab';
 import { ShareReportDialog } from '@/components/share-report-dialog';
-import { SocialCalendar } from '@/components/social-calendar';
-import { AdsCalendar } from '@/components/ads-calendar';
+import { UnifiedCalendar } from '@/components/unified-calendar';
 import { ClientTasksTab } from '@/components/client-tasks-tab';
 import { ClientProfileSummary } from '@/components/client-profile-summary';
 import {
@@ -281,7 +280,7 @@ export default function DashboardPage() {
             <BarChart3 className="h-3.5 w-3.5" /> Centro de Análisis
           </Button>
         </div>
-        <SocialCalendar clientId={selectedClientId!} clientName={selectedClient.name} />
+        <UnifiedCalendar clientId={selectedClientId!} clientName={selectedClient.name} />
       </div>
     );
   }
@@ -316,7 +315,7 @@ export default function DashboardPage() {
             <ArrowLeft className="h-3.5 w-3.5" /> Módulos
           </Button>
         </div>
-        <AdsCalendar clientId={selectedClientId!} clientName={selectedClient.name} />
+        <UnifiedCalendar clientId={selectedClientId!} clientName={selectedClient.name} />
       </div>
     );
   }
