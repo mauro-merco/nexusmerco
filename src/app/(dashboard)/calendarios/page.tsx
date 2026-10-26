@@ -9,17 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useT } from '@/lib/use-t';
 import { useClients } from '@/lib/hooks/use-clients';
-import { SocialCalendar } from '@/components/social-calendar';
-import { AdsCalendar } from '@/components/ads-calendar';
+import { UnifiedCalendar } from '@/components/unified-calendar';
 import { TasksCalendar } from '@/components/tasks-calendar';
 import { NoAccess } from '@/components/no-access';
 import { hasModuleAccess, getAllowedClientIds } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
-  Building2, Search, Calendar, ArrowLeft, Loader2, ChevronRight, ShoppingBag, ListTodo,
+  Building2, Search, Calendar, ArrowLeft, Loader2, ChevronRight, ListTodo,
 } from 'lucide-react';
 
-type CalendarTab = 'redes' | 'ads' | 'tareas';
+type CalendarTab = 'unificado' | 'tareas';
 
 const CATEGORY_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 function colorForClient(key: string) {
@@ -34,15 +33,15 @@ export default function CalendariosPage() {
   const _ = useT();
   const { clients, loading } = useClients();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<CalendarTab>('redes');
+  const [activeTab, setActiveTab] = useState<CalendarTab>('unificado');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     const client = searchParams.get('client');
     const type = searchParams.get('type');
     if (client) setSelectedClientId(client);
-    if (type === 'ads' || type === 'redes' || type === 'tareas') setActiveTab(type);
-    if (type === 'social') setActiveTab('redes');
+    if (type === 'tareas') setActiveTab('tareas');
+    else if (type) setActiveTab('unificado');
   }, [searchParams]);
 
   // Check module access
@@ -90,8 +89,6 @@ export default function CalendariosPage() {
       );
     }
 
-    const tab = hasSocial && hasAds ? activeTab : hasSocial ? 'redes' : 'ads';
-
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -111,8 +108,7 @@ export default function CalendariosPage() {
           </div>
         </div>
         <CalendarTabs active={activeTab} onChange={setActiveTab} />
-        {activeTab === 'redes' && hasSocial && <SocialCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
-        {activeTab === 'ads' && hasAds && <AdsCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
+        {(activeTab === 'unificado') && <UnifiedCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
         {activeTab === 'tareas' && <TasksCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} />}
       </div>
     );
@@ -193,14 +189,11 @@ export default function CalendariosPage() {
 
   // Calendar view for admin/operador
   const selectedClient = clients.find(c => c.id === selectedClientId);
-  const hasSocial = selectedClient?.social_calendar_enabled;
-  const hasAds = selectedClient?.ads_calendar_enabled;
-  const tab = hasSocial && hasAds ? activeTab : hasSocial ? 'redes' : 'ads';
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => { setSelectedClientId(null); setActiveTab('redes'); }} className="gap-1.5 text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="sm" onClick={() => { setSelectedClientId(null); setActiveTab('unificado'); }} className="gap-1.5 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Button>
@@ -221,11 +214,8 @@ export default function CalendariosPage() {
         </div>
       </div>
       <CalendarTabs active={activeTab} onChange={setActiveTab} />
-      {selectedClient && activeTab === 'redes' && hasSocial && (
-        <SocialCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} initialIdeaId={urlIdea} />
-      )}
-      {selectedClient && activeTab === 'ads' && hasAds && (
-        <AdsCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} initialIdeaId={urlIdea} />
+      {selectedClient && activeTab === 'unificado' && (
+        <UnifiedCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} initialIdeaId={urlIdea} />
       )}
       {selectedClient && activeTab === 'tareas' && (
         <TasksCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} />
@@ -239,29 +229,16 @@ function CalendarTabs({ active, onChange }: { active: CalendarTab; onChange: (t:
     <div className="flex gap-1 rounded-xl bg-muted/40 p-1 w-fit">
       <button
         type="button"
-        onClick={() => onChange('redes')}
+        onClick={() => onChange('unificado')}
         className={cn(
           'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-          active === 'redes'
+          active === 'unificado'
             ? 'bg-background text-foreground'
             : 'text-muted-foreground hover:text-foreground',
         )}
       >
         <Calendar className="h-4 w-4 text-emerald-500" />
-        Redes
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('ads')}
-        className={cn(
-          'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-          active === 'ads'
-            ? 'bg-background text-foreground'
-            : 'text-muted-foreground hover:text-foreground',
-        )}
-      >
-        <ShoppingBag className="h-4 w-4 text-violet-500" />
-        ADS
+        Calendario
       </button>
       <button
         type="button"

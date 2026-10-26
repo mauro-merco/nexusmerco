@@ -21,8 +21,9 @@ import { Scroller, Menu, Collapse, Switch, type MenuOption } from '@/components/
 import { Module, DateTimeField, DescriptionEditor } from '@/components/task-fields';
 import {
   Loader2, Trash2, Link, Paperclip, Copy, AlertTriangle, Edit3, Calendar, Check, Zap, ChevronDown, MessageSquare,
-  PanelLeftClose, PanelLeftOpen, Shapes, CalendarDays, Hash, FileText, Users2, FolderOpen, ClipboardCopy,
+  PanelLeftClose, PanelLeftOpen, Shapes, CalendarDays, Hash, FileText, Users2, FolderOpen, ClipboardCopy, Minus,
 } from 'lucide-react';
+import { useMinimizedStore } from '@/store/minimized-store';
 
 const POST_TYPE_OPTIONS: MenuOption[] = (Object.keys(POST_TYPE_CONFIG) as PostType[]).map(k => {
   const c = POST_TYPE_CONFIG[k];
@@ -83,6 +84,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
   const [newAttachUrl, setNewAttachUrl] = useState('');
   const [addingAttach, setAddingAttach] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const { minimize } = useMinimizedStore();
 
   const resetFields = useCallback(() => {
     setTitle(idea.title); setDescription(idea.description); setBrief(idea.brief || ''); setCopyText(idea.copy_text || '');
@@ -166,18 +168,38 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         <div className={cn('shrink-0 px-5 py-1.5 text-[11px] font-black uppercase tracking-widest transition-colors duration-300', banner.banner)}>{banner.label}</div>
 
         {/* Header */}
-        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3 pr-14">
-          <div className="min-w-[220px] flex-1">
-            {editing
-              ? <Input value={title} onChange={e => setTitle(e.target.value)} className="h-10 rounded-xl border-0 bg-background/70 text-lg font-bold" />
-              : <DialogTitle className="truncate text-lg font-bold">{idea.eje_contenido || idea.title}</DialogTitle>}
-            <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-              <span className="flex items-center gap-1 capitalize text-muted-foreground"><Calendar className="h-3 w-3" /> {dateStr}</span>
-              <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', pt.bgColorClass, pt.colorClass)}><PtIcon className="h-3 w-3" /> {pt.label}</span>
-            </DialogDescription>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <div className="w-[230px]"><Menu value={status} options={IDEA_STATUS_OPTIONS} onChange={k => handleQuickStatusChange(k as IdeaStatus)} loading={changingStatus} disabled={changingStatus} /></div>
+          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3 pr-14">
+            <div className="min-w-[220px] flex-1">
+              {editing
+                ? <Input value={title} onChange={e => setTitle(e.target.value)} className="h-10 rounded-xl border-0 bg-background/70 text-lg font-bold" />
+                : <DialogTitle className="truncate text-lg font-bold">{idea.eje_contenido || idea.title}</DialogTitle>}
+              <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                <span className="flex items-center gap-1 capitalize text-muted-foreground"><Calendar className="h-3 w-3" /> {dateStr}</span>
+                <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', pt.bgColorClass, pt.colorClass)}><PtIcon className="h-3 w-3" /> {pt.label}</span>
+              </DialogDescription>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="tm-press gap-1.5 rounded-lg"
+              onClick={() => {
+                minimize({
+                  id: idea.id,
+                  type: 'idea',
+                  title: idea.eje_contenido || idea.title,
+                  subtitle: (idea as any).client?.name || undefined,
+                  clientId: (idea as any).client_id || null,
+                  routeContext: isSocial ? 'social' : 'ads',
+                  ideaCalendarType: isSocial ? 'social' : 'ads',
+                  idea,
+                } as any);
+                onOpenChange(false);
+              }}
+            >
+              <Minus className="h-3.5 w-3.5" /> Minimizar
+            </Button>
+              <div className="w-[230px]"><Menu value={status} options={IDEA_STATUS_OPTIONS} onChange={k => handleQuickStatusChange(k as IdeaStatus)} loading={changingStatus} disabled={changingStatus} /></div>
             {isSocial && !editing && (
               <Button variant="ghost" size="sm" className="tm-press gap-1 rounded-lg text-cyan-600 dark:text-cyan-400" onClick={() => setShowMoveDialog(true)} title="Mover a calendario ADS"><Zap className="h-3.5 w-3.5" /> Mover a ADS</Button>
             )}

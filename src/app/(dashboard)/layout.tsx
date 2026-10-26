@@ -12,6 +12,7 @@ import { NotificationToasts } from '@/components/notification-toasts';
 import { RemindersBell } from '@/components/reminders-bell';
 import { ProfileMenu } from '@/components/profile-menu';
 import { SuggestionsFloatingButtons } from '@/components/suggestions-floating-buttons';
+import { MinimizedDock } from '@/components/minimized-dock';
 import { useAuthStore } from '@/store/auth-store';
 import { initAuthSync } from '@/lib/auth-sync';
 import { BookOpenText, Loader2 } from 'lucide-react';
@@ -80,6 +81,7 @@ export default function DashboardLayout({
       <AIWidget />
       <NotificationToasts />
       <SuggestionsFloatingButtons />
+      <MinimizedDock />
     </div>
   );
 }

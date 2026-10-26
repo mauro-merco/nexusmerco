@@ -22,8 +22,9 @@ import { CommentReadEye } from '@/components/comment-read';
 import { useCommentReads, collectCommentIds, type CommentReader } from '@/lib/hooks/use-comment-reads';
 import {
   Loader2, Trash2, Link as LinkIcon, Paperclip, Edit3, Calendar, Send, MessageSquare, Reply, Check, X, Layers,
-  Share2, Copy, Globe, Lock, AlertTriangle, ChevronDown, PanelLeftClose, PanelLeftOpen, Bold, Italic, List, ListOrdered, Heading2, Link2, FileText, Users2, Flag, Boxes, Tag, FolderOpen, Clock,
+  Share2, Copy, Globe, Lock, AlertTriangle, ChevronDown, PanelLeftClose, PanelLeftOpen, Bold, Italic, List, ListOrdered, Heading2, Link2, FileText, Users2, Flag, Boxes, Tag, FolderOpen, Clock, Minus,
 } from 'lucide-react';
+import { useMinimizedStore } from '@/store/minimized-store';
 import type { LucideIcon } from 'lucide-react';
 
 interface TaskDetailModalProps {
@@ -115,6 +116,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const [problemPrompt, setProblemPrompt] = useState<null | { note: string }>(null);
   const [changingStatus, setChangingStatus] = useState(false);
   const [savingProblem, setSavingProblem] = useState(false);
+  const { minimize } = useMinimizedStore();
 
   const resetFields = useCallback(() => {
     setTitle(task.title); setDescription(task.description); setStatus(task.status); setPriority(task.priority);
@@ -243,12 +245,30 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
             </DialogDescription>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="w-[230px]">
-              <Menu value={status} options={STATUS_OPTIONS} onChange={k => handleQuickStatus(k as TaskStatus)} loading={changingStatus} disabled={changingStatus} />
-            </div>
-            <div className="relative">
-              <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => setShareOpen(v => !v)}><Share2 className="h-4 w-4" /></Button>
+            <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="tm-press gap-1.5 rounded-lg"
+              onClick={() => {
+                minimize({
+                  id: task.id,
+                  type: 'task',
+                  title: task.title,
+                  subtitle: task.client?.name || undefined,
+                  clientId: task.client_id,
+                  task,
+                } as any);
+                onOpenChange(false);
+              }}
+            >
+              <Minus className="h-3.5 w-3.5" /> Minimizar
+            </Button>
+              <div className="w-[230px]">
+                <Menu value={status} options={STATUS_OPTIONS} onChange={k => handleQuickStatus(k as TaskStatus)} loading={changingStatus} disabled={changingStatus} />
+              </div>
+              <div className="relative">
+                <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => setShareOpen(v => !v)}><Share2 className="h-4 w-4" /></Button>
               {shareOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
