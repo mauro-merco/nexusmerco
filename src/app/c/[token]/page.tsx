@@ -22,10 +22,11 @@ import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment, User as Nexu
 import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
-import { eachDayOfInterval, endOfMonth, format, startOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { MinimizedDock } from '@/components/minimized-dock';
 
 interface CalendarData {
   client: { id: string; name: string; logo_url: string | null };
@@ -215,7 +216,7 @@ function AuthGate({ token, client, calendarType, onEnter }: {
 
 // ─── Calendar day cell (flat, dot pills) ──────────────────────────────────────
 
-function PublicIdeaDot({ idea, onClick }: { idea: SocialIdea; onClick: () => void }) {
+function PublicIdeaDot({ idea, onClick, isExtended }: { idea: SocialIdea; onClick: () => void; isExtended?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: idea.id, data: { idea } });
   const ptConfig = POST_TYPE_CONFIG[idea.post_type];
   const isPublished = idea.status === 'posteado';
@@ -240,23 +241,24 @@ function PublicIdeaDot({ idea, onClick }: { idea: SocialIdea; onClick: () => voi
   );
 }
 
-function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick, onAddClick }: {
-  dateStr: string; day: number; ideas: SocialIdea[]; isToday: boolean;
+function CalendarDay({ dateStr, day, ideas, isToday, isCurrentMonth, ecommerceDates, onIdeaClick, onAddClick }: {
+  dateStr: string; day: number; ideas: SocialIdea[]; isToday: boolean; isCurrentMonth: boolean;
   ecommerceDates: EcommerceDate[]; onIdeaClick: (idea: SocialIdea) => void; onAddClick: (date: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dateStr });
+  const [y, m] = dateStr.split('-').map(Number);
   const active = ecommerceDates.filter(ed => dateStr >= ed.start_date && dateStr <= ed.end_date);
-  const shown = ideas.slice(0, 2);
-  const overflow = ideas.length - shown.length;
+  const monthLabel = new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long' });
 
   return (
     <div
       ref={setNodeRef}
       onClick={() => onAddClick(dateStr)}
-      style={active.length > 0 ? { backgroundColor: `${active[0].color}1f` } : undefined}
+      style={{ minHeight: Math.max(132, 90 + ideas.length * 22), ...(active.length > 0 ? { backgroundColor: `${active[0].color}1f` } : isCurrentMonth ? {} : { backgroundColor: 'rgba(148,163,184,0.10)' }) }}
       className={cn(
         'tm-fade min-h-[132px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
-        isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : 'bg-muted/25 hover:bg-muted/45',
+        !isCurrentMonth && 'grayscale opacity-70',
+        isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : isCurrentMonth ? 'bg-muted/25 hover:bg-muted/45' : 'bg-muted/12 hover:bg-muted/25',
       )}
     >
       {active.length > 0 && (
@@ -273,16 +275,18 @@ function CalendarDay({ dateStr, day, ideas, isToday, ecommerceDates, onIdeaClick
         </div>
       )}
       <div className="flex items-center justify-between mb-1">
-        <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-primary text-primary-foreground' : 'text-muted-foreground/70')}>
-          {day}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-primary text-primary-foreground' : isCurrentMonth ? 'text-muted-foreground/70' : 'text-muted-foreground/60')}>
+            {day}
+          </span>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', isCurrentMonth ? 'bg-muted/60 text-muted-foreground' : 'bg-muted/40 text-muted-foreground/70')}>de {monthLabel}</span>
+        </div>
         <span role="button" onClick={(e) => { e.stopPropagation(); onAddClick(dateStr); }} className="h-5 w-5 rounded-md flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 hover:bg-primary/15 transition-opacity">
           <Plus className="h-3.5 w-3.5" />
         </span>
       </div>
       <div className="space-y-1 flex-1">
-        {shown.map(idea => <PublicIdeaDot key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} />)}
-        {overflow > 0 && <DayOverflow ideas={ideas.slice(2)} onIdeaClick={onIdeaClick} />}
+        {ideas.map(idea => <PublicIdeaDot key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} isExtended={!isCurrentMonth} />)}
       </div>
     </div>
   );
@@ -294,14 +298,34 @@ function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick, onAddClick
 }) {
   const [y, m] = monthStr.split('-').map(Number);
   const today = new Date();
-  const monthStart = startOfMonth(new Date(y, m - 1, 1));
-  const monthEnd = endOfMonth(new Date(y, m - 1, 1));
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const firstDay = monthStart.getDay();
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const viewDate = new Date(y, m - 1, 1);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const firstDay = (viewDate.getDay() + 6) % 7; // lunes=0
+  const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  const cells: { dateStr: string; inMonth: boolean }[] = [];
+  let leading = firstDay;
+  while (leading < 10) leading += 7;
+  for (let i = 0; i < leading; i++) {
+    const d = new Date(y, m - 1, -leading + i + 1);
+    cells.push({ dateStr: format(d, 'yyyy-MM-dd'), inMonth: false });
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push({ dateStr: `${monthStr}-${String(day).padStart(2, '0')}`, inMonth: true });
+  }
+  let trailing = 0;
+  while (true) {
+    const remainder = cells.length % 7;
+    if (remainder === 0 && trailing >= 10) break;
+    const last = new Date(cells[cells.length - 1].dateStr + 'T12:00:00');
+    last.setDate(last.getDate() + 1);
+    cells.push({ dateStr: format(last, 'yyyy-MM-dd'), inMonth: false });
+    trailing += 1;
+    if (trailing > 42) break;
+  }
 
   const ideasByDate = new Map<string, SocialIdea[]>();
-  for (const idea of ideas.filter(i => i.publish_date.substring(0, 7) === monthStr)) {
+  for (const idea of ideas) {
     const key = idea.publish_date;
     if (!ideasByDate.has(key)) ideasByDate.set(key, []);
     ideasByDate.get(key)!.push(idea);
@@ -313,13 +337,11 @@ function CalendarGrid({ monthStr, ideas, ecommerceDates, onIdeaClick, onAddClick
         {dayNames.map(n => <div key={n} className="text-center text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide py-1">{n}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
-        {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
-        {days.map(day => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          const isToday = today.getFullYear() === y && today.getMonth() === m - 1 && today.getDate() === day.getDate();
+        {cells.map(cell => {
+          const isToday = today.getFullYear() === Number(cell.dateStr.split('-')[0]) && today.getMonth() === Number(cell.dateStr.split('-')[1]) - 1 && today.getDate() === Number(cell.dateStr.split('-')[2]);
           return (
-            <CalendarDay key={dateStr} dateStr={dateStr} day={day.getDate()}
-              ideas={ideasByDate.get(dateStr) || []} isToday={isToday}
+            <CalendarDay key={cell.dateStr} dateStr={cell.dateStr} day={Number(cell.dateStr.split('-')[2])}
+              ideas={ideasByDate.get(cell.dateStr) || []} isToday={isToday} isCurrentMonth={cell.inMonth}
               ecommerceDates={ecommerceDates} onIdeaClick={onIdeaClick} onAddClick={onAddClick} />
           );
         })}
@@ -483,21 +505,44 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     if (!viewer?.authToken && viewer?.type === 'guest' && !viewer.email) return;
     setFetchLoading(true);
     setError(null);
-    const params = new URLSearchParams({ type: calendarType });
-    if (viewMonth) params.set('month', viewMonth);
-    if (viewer?.type === 'guest' && viewer.email) params.set('guest_email', viewer.email);
-    fetch(`/api/calendar-links/${token}?${params.toString()}`, {
-      headers: viewer?.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {},
-    })
-      .then(r => r.json())
-      .then(json => {
-        if (!json.client) throw new Error(json.error || 'Calendario no encontrado');
-        setData(json);
-        if (!viewMonth) {
-          if (json.month) setViewMonth(json.month);
-          else if (json.ideas.length > 0) setViewMonth(json.ideas[0].publish_date.substring(0, 7));
-          else { const now = new Date(); setViewMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`); }
+    if (!viewMonth) {
+      fetch(`/api/calendar-links/${token}?type=${calendarType}&meta=1`)
+        .then(r => r.json())
+        .then(json => {
+          if (!json.client) throw new Error(json.error || 'Calendario no encontrado');
+          setViewMonth(json.month || format(new Date(), 'yyyy-MM'));
+        })
+        .catch(e => setError(e.message))
+        .finally(() => setFetchLoading(false));
+      return;
+    }
+    const [y, m] = viewMonth.split('-').map(Number);
+    const prev = `${y}-${String(m - 1 <= 0 ? 12 : m - 1).padStart(2,'0')}`.replace(/-(\d{2})$/, (s,p)=> m-1===0 ? `${y-1}-${p}` : `${y}-${p}`);
+    const curMonth = viewMonth;
+    const next = `${y}-${String(m + 1 >= 13 ? 1 : m + 1).padStart(2,'0')}`.replace(/-(\d{2})$/, (s,p)=> m+1===13 ? `${y+1}-${p}` : `${y}-${p}`);
+    const months = [prev.replace(/(\d{4})-(\d{2})$/, (_,yy,mm)=> m===1?`${y-1}-${mm}`: m===12?`${y+1}-${mm}`:`${y}-${mm}`), curMonth, (m===12?`${y+1}-01`:`${y}-${String(m+1).padStart(2,'0')}`)];
+    if (m===1) months[0]=`${y-1}-12`;
+    if (m===12) months[0]=`${y}-11`; else if(m>1) months[0]=`${y}-${String(m-1).padStart(2,'0')}`;
+    if (m===12) months[2]=`${y+1}-01`; else months[2]=`${y}-${String(m+1).padStart(2,'0')}`;
+    Promise.all(months.map(mm => {
+      const params = new URLSearchParams({ type: calendarType, month: mm });
+      if (viewer?.type === 'guest' && viewer.email) params.set('guest_email', viewer.email);
+      return fetch(`/api/calendar-links/${token}?${params.toString()}`, {
+        headers: viewer?.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {},
+      }).then(r=>r.json());
+    }))
+      .then(results => {
+        const first = results.find(r=>r.client) || results[0];
+        if (!first?.client) throw new Error(first?.error || 'Calendario no encontrado');
+        const allIdeas: SocialIdea[] = [];
+        const allDates: EcommerceDate[] = [];
+        const seenI = new Set<string>();
+        const seenD = new Set<string>();
+        for (const r of results) {
+          for (const idea of r.ideas||[]) { if(!seenI.has(idea.id)){ seenI.add(idea.id); allIdeas.push(idea);} }
+          for (const ed of r.ecommerce_dates||[]) { if(!seenD.has(ed.id)){ seenD.add(ed.id); allDates.push(ed);} }
         }
+        setData({ ...first, ideas: allIdeas, ecommerce_dates: allDates });
       })
       .catch(e => setError(e.message))
       .finally(() => setFetchLoading(false));

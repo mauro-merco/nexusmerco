@@ -62,8 +62,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
 
     if (month) {
       const [y, m] = month.split('-').map(Number);
-      const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
-      query = query.gte('publish_date', `${month}-01`).lt('publish_date', nextMonth);
+      const start = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 10);
+      const end = new Date(Date.UTC(y, m + 1, 1)).toISOString().slice(0, 10);
+      query = query.gte('publish_date', start).lt('publish_date', end);
     }
 
     const { data: ideas, error: ideasError } = await query;

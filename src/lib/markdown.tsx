@@ -102,7 +102,7 @@ const HEADING_CLS = ['text-xl font-bold', 'text-lg font-bold', 'text-base font-s
 
 export function MarkdownBody({ text, renderMention = defaultRenderMention, renderText = defaultRenderText, className, editable = false }: MarkdownBodyProps) {
   const plainText = renderText;
-  renderText = (value, key) => <Fragment key={key}>{tokenizeAtoms(value).map((atom, i) => atom.kind === 'mention' ? renderMention(atom.value, `${key}-${i}`) : plainText(atom.value, `${key}-${i}`))}</Fragment>;
+  renderText = (value, key) => <Fragment key={key}>{tokenizeAtoms(value).map((atom, i) => <Fragment key={`${key}-${i}`}>{atom.kind === 'mention' ? renderMention(atom.value, `${key}-${i}`) : plainText(atom.value, `${key}-${i}`)}</Fragment>)}</Fragment>;
   const inline = (t: string, k: string) => renderInline(t, k, renderMention, renderText);
   // Fast path: no block constructs -> flat inline nodes; newlines preserved.
   const hasBlockConstructs =

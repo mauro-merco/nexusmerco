@@ -69,7 +69,7 @@ function DraggableDot({ idea, onClick, isExtended }: { idea: SocialIdea; onClick
     <button ref={setNodeRef} style={style} {...listeners} {...attributes} type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} title={calendarPillTitle(idea)}
       className={cn('tm-lift tm-press flex w-full flex-col items-stretch rounded-lg px-2 py-1 text-[11px] font-medium transition-opacity text-left',
         idea.status === 'espera_cliente' ? 'border border-red-500/60 bg-red-500/20 text-red-700 dark:text-red-200 shadow-sm shadow-red-500/20' : isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
-        isExtended && !isPublished && idea.status !== 'espera_cliente' && 'ring-1 ring-orange-400/60 shadow-[0_0_0_1px_rgba(251,146,60,0.25)]',
+        isExtended && 'grayscale opacity-70',
         isDragging && 'opacity-50 shadow-lg')}>
       <CalendarPillBody idea={idea} />
     </button>
@@ -111,8 +111,8 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
 
   return (
     <div ref={setNodeRef} onClick={() => onAddClick(date)}
-      style={{ minHeight: minH, ...(active.length > 0 ? { backgroundColor: `${active[0].color}14` } : isCurrentMonth ? {} : { backgroundColor: 'rgba(251,146,60,0.08)' }) }}
-      className={cn('tm-fade rounded-2xl p-2 transition-all cursor-pointer flex flex-col group', isCurrentMonth ? '' : 'opacity-95', isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : isCurrentMonth ? 'bg-muted/25 hover:bg-muted/40' : 'hover:bg-orange-500/12')}>
+      style={{ minHeight: minH, ...(active.length > 0 ? { backgroundColor: `${active[0].color}14` } : isCurrentMonth ? {} : { backgroundColor: 'rgba(148,163,184,0.10)' }) }}
+      className={cn('tm-fade rounded-2xl p-2 transition-all cursor-pointer flex flex-col group', !isCurrentMonth && 'grayscale opacity-70', isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : isCurrentMonth ? 'bg-muted/25 hover:bg-muted/40' : 'bg-muted/12 hover:bg-muted/25')}>
       {active.length > 0 && (
         <div className="flex flex-col gap-1 mb-1.5">
           {active.map(ed => <div key={ed.id} style={{ backgroundColor: `${ed.color}38`, color: ed.color, boxShadow: `inset 0 0 0 1.5px ${ed.color}` }} className="truncate rounded-lg px-1.5 py-1 text-center text-[11px] font-black uppercase leading-tight tracking-wide">{ed.name}</div>)}
@@ -120,8 +120,8 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
       )}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1.5">
-          <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-primary text-primary-foreground' : isCurrentMonth ? 'text-muted-foreground/70' : 'text-orange-600 dark:text-orange-400')}>{day}</span>
-          <span className={cn('rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', isCurrentMonth ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/20 text-orange-700 dark:text-orange-300')}>de {monthLabel}</span>
+          <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold', isToday ? 'bg-primary text-primary-foreground' : isCurrentMonth ? 'text-muted-foreground/70' : 'text-muted-foreground/60')}>{day}</span>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', isCurrentMonth ? 'bg-muted/60 text-muted-foreground' : 'bg-muted/40 text-muted-foreground/70')}>de {monthLabel}</span>
         </div>
         <span role="button" onClick={(e) => { e.stopPropagation(); onAddClick(date); }} className="h-5 w-5 rounded-md flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 hover:bg-primary/15 transition-opacity"><Plus className="h-3.5 w-3.5" /></span>
       </div>
@@ -169,9 +169,9 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
   const { dates: ecommerceDatesPrev } = useEcommerceDates(clientId, prevMonthStr);
   const { dates: ecommerceDatesNext } = useEcommerceDates(clientId, nextMonthStr);
 
-  const socialIdeas = useMemo(() => [...socialIdeasPrev, ...socialIdeasCur, ...socialIdeasNext], [socialIdeasPrev, socialIdeasCur, socialIdeasNext]);
-  const adsIdeas = useMemo(() => [...adsIdeasPrev, ...adsIdeasCur, ...adsIdeasNext], [adsIdeasPrev, adsIdeasCur, adsIdeasNext]);
-  const ecommerceDates = useMemo(() => [...ecommerceDatesPrev, ...ecommerceDatesCur, ...ecommerceDatesNext], [ecommerceDatesPrev, ecommerceDatesCur, ecommerceDatesNext]);
+  const socialIdeas = useMemo(() => [...new Map([...socialIdeasPrev, ...socialIdeasNext, ...socialIdeasCur].map(idea => [idea.id, idea])).values()], [socialIdeasPrev, socialIdeasCur, socialIdeasNext]);
+  const adsIdeas = useMemo(() => [...new Map([...adsIdeasPrev, ...adsIdeasNext, ...adsIdeasCur].map(idea => [idea.id, idea])).values()], [adsIdeasPrev, adsIdeasCur, adsIdeasNext]);
+  const ecommerceDates = useMemo(() => [...new Map([...ecommerceDatesPrev, ...ecommerceDatesNext, ...ecommerceDatesCur].map(date => [date.id, date])).values()], [ecommerceDatesPrev, ecommerceDatesCur, ecommerceDatesNext]);
   const loadingSocial = loadingSocialCur;
   const loadingAds = loadingAdsCur;
   const internalUsers = useInternalUsers();
@@ -219,7 +219,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   const filteredIdeas = useMemo(() => allIdeas.filter((i: any) => activeTypes.has(i.post_type)), [allIdeas, activeTypes]);
   const ideasByDate = useMemo(() => {
@@ -271,11 +271,12 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
 
   const monthCells = useMemo(() => {
     const cells: { date: string; inMonth: boolean }[] = [];
-    let leading = firstDayOfWeek;
-    if (leading < 10) leading = 10;
+    const firstDay = (firstDayOfWeek + 6) % 7; // lunes = 0
+    let leading = firstDay;
+    while (leading < 10) leading += 7;
     for (let i = 0; i < leading; i++) {
       const d = new Date(viewYear, viewMonth, -leading + i + 1);
-      cells.push({ date: d.toISOString().split('T')[0], inMonth: false });
+      cells.push({ date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, inMonth: false });
     }
     for (let day = 1; day <= daysInMonth; day++) cells.push({ date: `${monthStr}-${String(day).padStart(2, '0')}`, inMonth: true });
     let trailing = 0;
