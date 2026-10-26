@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check, Loader2, Minus, Plus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -129,13 +130,14 @@ export function Popover({ trigger, children, width, className }: {
   return (
     <div ref={wrap} className="relative">
       {trigger({ open, toggle })}
-      {open && pos && (
+      {open && pos && typeof document !== 'undefined' && createPortal(
         <>
-          <div className="fixed inset-0 z-[100]" onClick={close} />
-          <div ref={panel} style={{ ...pos, width }} className={cn('tm-pop fixed z-[101] max-h-[min(420px,70vh)] overflow-auto rounded-2xl bg-popover p-1.5 shadow-xl tm-noscroll', className)}>
+          <div className="fixed inset-0 z-[200]" onClick={close} />
+          <div ref={panel} style={{ ...pos, width, maxHeight: 'min(420px,70vh)' }} className={cn('tm-pop fixed z-[201] overflow-auto rounded-2xl bg-popover p-1.5 shadow-xl tm-noscroll', className)}>
             {typeof children === 'function' ? children(close) : children}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

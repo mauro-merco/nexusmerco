@@ -40,7 +40,7 @@ export function EcommerceDateDialog({ open, onOpenChange, onCreate }: {
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-fit max-h-[92dvh] w-[min(94vw,480px)] max-w-none! flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-none">
+      <DialogContent className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-fit max-h-[92dvh] w-[min(94vw,480px)] max-w-none! flex-col gap-0 overflow-visible rounded-2xl p-0 sm:max-w-none">
         <div className="flex items-center gap-3 bg-muted/20 px-5 py-4 pr-14">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: color + '26', color }}><ShoppingBag className="h-[18px] w-[18px]" /></span>
           <div>
