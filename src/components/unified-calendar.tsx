@@ -363,7 +363,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
 
       <CalendarTabs className="mt-5" first={<CalendarComments className="mt-0" clientId={clientId} calendarType="social" month={monthStr} mentionUsers={internalUsers} currentUserId={user?.id} isAdmin={user?.role === 'admin'} title="Comentarios del mes" />} second={<CalendarIdeaComments className="mt-0" clientId={clientId} calendarType="social" month={monthStr} ideas={allIdeas as SocialIdea[]} currentUserId={user?.id} isAdmin={user?.role === 'admin'} onOpenIdea={(id) => { const idea = allIdeas.find((i: any) => i.id === id) as any; if (idea) { setSelectedIdea(idea); setSelectedIdeaType(idea._cal); } }} title="Comentarios de las ideas" />} />
 
-      <SocialNewIdeaDialog open={showNewIdea} onOpenChange={setShowNewIdea} initialDate={selectedDate} onCreateIdea={async (data: any) => { await createSocialIdea(data); return createAdsIdea(data) as any; }} users={internalUsers} calendarType="social" />
+      <SocialNewIdeaDialog open={showNewIdea} onOpenChange={setShowNewIdea} initialDate={selectedDate} onCreateIdea={createSocialIdea} users={internalUsers} calendarType="social" />
       <EcommerceDateDialog open={showNewEcomDate} onOpenChange={setShowNewEcomDate} onCreate={createEcomDate} />
 
       {selectedIdea && (
@@ -372,7 +372,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
           open={!!selectedIdea}
           onOpenChange={(open) => { if (!open) closeSelectedIdea(); }}
           onIdeaUpdated={(updated) => { if (selectedIdeaType === 'ads') { patchAdsIdea(updated); setSelectedIdea(updated); } else { patchSocialIdea(updated); setSelectedIdea(updated); } }}
-          onIdeaDeleted={() => { if (selectedIdeaType === 'ads') deleteAdsIdea(selectedIdea!.id); else deleteSocialIdea(selectedIdea!.id); setSelectedIdea(null); }}
+          onIdeaDeleted={() => { window.dispatchEvent(new CustomEvent('calendar-idea-changed', { detail: { type: selectedIdeaType, id: selectedIdea!.id } })); setSelectedIdea(null); }}
           users={internalUsers}
           calendarType={selectedIdeaType}
         />

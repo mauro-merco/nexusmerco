@@ -28,6 +28,16 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
 
   useEffect(() => { fetchIdeas(); }, [fetchIdeas]);
 
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const { type, id, idea } = (event as CustomEvent<{ type: string; id: string; idea?: SocialIdea }>).detail;
+      if (type !== 'social') return;
+      setIdeas(prev => idea ? prev.map(item => item.id === id ? idea : item) : prev.filter(item => item.id !== id));
+    };
+    window.addEventListener('calendar-idea-changed', sync);
+    return () => window.removeEventListener('calendar-idea-changed', sync);
+  }, []);
+
   const createIdea = useCallback(async (data: {
     title: string;
     description?: string;
@@ -72,11 +82,13 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error);
     setIdeas(prev => prev.map(i => i.id === id ? json.data : i));
+    window.dispatchEvent(new CustomEvent('calendar-idea-changed', { detail: { type: 'social', id, idea: json.data } }));
     return json.data as SocialIdea;
   }, []);
 
   const patchIdea = useCallback((updated: SocialIdea) => {
     setIdeas(prev => prev.map(i => i.id === updated.id ? updated : i));
+    window.dispatchEvent(new CustomEvent('calendar-idea-changed', { detail: { type: 'social', id: updated.id, idea: updated } }));
   }, []);
 
   const deleteIdea = useCallback(async (id: string) => {
@@ -84,6 +96,7 @@ export function useSocialIdeas(clientId: string | null, month?: string | null) {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error);
     setIdeas(prev => prev.filter(i => i.id !== id));
+    window.dispatchEvent(new CustomEvent('calendar-idea-changed', { detail: { type: 'social', id } }));
   }, []);
 
   return { ideas, loading, error, refetch: fetchIdeas, createIdea, updateIdea, deleteIdea, patchIdea };
