@@ -152,12 +152,12 @@ function AuthGate({ token, client, calendarType, onEnter }: {
         </div>
 
         <div className="flex rounded-xl bg-muted/40 p-1">
-          <button type="button" onClick={() => setTab('login')}
+          <button type="button" onClick={() => { setTab('login'); setLoginError(''); setGuestError(''); }}
             className={cn('flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
               tab === 'login' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
             <LogIn className="h-4 w-4" /> Como Merco
           </button>
-          <button type="button" onClick={() => setTab('guest')}
+          <button type="button" onClick={() => { setTab('guest'); setLoginError(''); setGuestError(''); }}
             className={cn('flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
               tab === 'guest' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
             <User className="h-4 w-4" /> Como invitado
@@ -572,12 +572,14 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   };
 
   const handleLogout = async () => {
-    try { const { getSupabase } = await import('@/lib/supabase'); await getSupabase().auth.signOut(); } catch { /* ignore */ }
+    try { const { getSupabase } = await import('@/lib/supabase'); await getSupabase().auth.signOut({ scope: 'local' }); } catch { /* ignore */ }
     localStorage.removeItem(getStorageKey(token!, calendarType));
     setViewer(null);
     setData(null);
     setError(null);
     setViewMonth('');
+    setSelectedIdea(null);
+    setInitialIdeaId(null);
     setAuthMode('gate');
   };
 
@@ -659,7 +661,18 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   }
 
   if (error || !data) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-destructive p-6 text-center"><p>{error || 'Calendario no encontrado'}</p></div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+        <div className="w-full max-w-md space-y-4">
+          <h1 className="text-xl font-semibold">No pudimos abrir el calendario</h1>
+          <p className="text-sm text-muted-foreground" role="alert">{error || 'Calendario no encontrado'}</p>
+          <p className="text-sm text-muted-foreground">Podés volver a ingresar con una cuenta autorizada para este calendario.</p>
+          <Button onClick={handleLogout} className="gap-2 rounded-xl">
+            <LogIn className="h-4 w-4" /> Volver al login
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const monthLabel = viewMonth ? `${monthNames[parseInt(viewMonth.split('-')[1]) - 1]} ${viewMonth.split('-')[0]}` : '';
@@ -880,7 +893,17 @@ function GateWithClientFetch({ token, calendarType, onEnter }: {
   }, [token, calendarType]);
 
   if (fetchError) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-destructive p-6 text-center"><p>{fetchError}</p></div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+        <div className="w-full max-w-md space-y-4">
+          <h1 className="text-xl font-semibold">No pudimos cargar el acceso al calendario</h1>
+          <p className="text-sm text-muted-foreground" role="alert">{fetchError}</p>
+          <Button onClick={() => window.location.reload()} className="gap-2 rounded-xl">
+            <RefreshCw className="h-4 w-4" /> Reintentar
+          </Button>
+        </div>
+      </div>
+    );
   }
   if (!client) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
