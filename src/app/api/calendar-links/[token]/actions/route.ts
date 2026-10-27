@@ -72,6 +72,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (action_type !== 'create_idea') {
       const { data } = await supabase.from(ideasTable).select('id, status, title, publish_date').eq('id', idea_id).eq('client_id', client.id).maybeSingle();
       if (!data) return NextResponse.json({ error: 'Idea no encontrada' }, { status: 404 });
+      if (link?.month && !data.publish_date?.startsWith(`${link.month}-`)) {
+        return NextResponse.json({ error: 'Idea fuera del mes compartido' }, { status: 403 });
+      }
       targetIdea = data;
     }
 
@@ -161,8 +164,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     }
 
     // Default: regular comment
-    if (!content || !content.trim()) {
+    if (typeof content !== 'string' || !content.trim()) {
       return NextResponse.json({ error: 'Content requerido' }, { status: 400 });
+    }
+    if (typeof content !== 'string' || content.trim().length > 5000) {
+      return NextResponse.json({ error: 'Comentario demasiado largo' }, { status: 400 });
     }
 
     const { error } = await supabase.from(commentsTable).insert({

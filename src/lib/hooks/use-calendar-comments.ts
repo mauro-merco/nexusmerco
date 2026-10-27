@@ -124,7 +124,7 @@ export function useCalendarComments(options: Options) {
 
   const addComment = useCallback(
     async (content: string) => {
-      const res = await fetch('/api/calendar-comments', {
+      const res = await fetch(`/api/calendar-comments?${buildQuery(opts).toString()}`, {
         method: 'POST',
         headers: authHeaders(opts),
         body: JSON.stringify({

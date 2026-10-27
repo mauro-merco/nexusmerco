@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
+import { PublicIdeaComments } from '@/components/public-idea-comments';
+import { getSupabase } from '@/lib/supabase';
 import { CalendarComments } from '@/components/calendar-comments';
 import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
 import { CalendarRecentComments } from '@/components/calendar-recent-comments';
@@ -449,8 +451,21 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   useEffect(() => { params.then(p => setToken(p.token)); }, [params]);
 
   useEffect(() => {
+    const { data: { subscription } } = getSupabase().auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setViewer(current => current ? { ...current, authToken: session.access_token } : current);
+      } else if (event === 'SIGNED_OUT') {
+        setViewer(null);
+        setData(null);
+        setSelectedIdea(null);
+        setAuthMode('gate');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
     if (!token) return;
-    const resolvedToken = token;
     const type = new URLSearchParams(window.location.search).get('type') === 'ads' ? 'ads' : 'social';
     setInitialIdeaId(new URLSearchParams(window.location.search).get('idea'));
     setCalendarType(type);
@@ -466,32 +481,6 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           setViewer({ type: 'user', name, color: GUEST_COLORS[0], authToken: session.access_token });
           setAuthMode('authenticated');
           return;
-        }
-      } catch { /* ignore */ }
-
-      try {
-        const nexusRaw = localStorage.getItem('nexus-auth');
-        if (nexusRaw) {
-          const nexus = JSON.parse(nexusRaw);
-          const zustandToken: string = nexus?.state?.token || '';
-          const zustandUser = nexus?.state?.user;
-          if (zustandToken && zustandUser?.full_name) {
-            setViewer({ type: 'user', name: zustandUser.full_name, color: GUEST_COLORS[0], authToken: zustandToken });
-            setAuthMode('authenticated');
-            return;
-          }
-        }
-      } catch { /* ignore */ }
-
-      try {
-        const stored = localStorage.getItem(getStorageKey(resolvedToken, type));
-        if (stored) {
-          const saved = JSON.parse(stored) as Viewer;
-          if (saved.name?.trim() && saved.email?.trim()) {
-            setViewer(saved);
-            setAuthMode('authenticated');
-            return;
-          }
         }
       } catch { /* ignore */ }
 
@@ -871,6 +860,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           }}
           users={data.users || []}
           calendarType={calendarType}
+          publicComments={<PublicIdeaComments key={selectedIdea.id} idea={selectedIdea} shareToken={token} viewerAuthToken={viewer?.authToken} calendarType={calendarType} onChanged={fetchCalendar} />}
         />
       )}
     </div>

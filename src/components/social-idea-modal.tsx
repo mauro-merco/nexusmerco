@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,16 +49,17 @@ interface SocialIdeaModalProps {
   onIdeaDeleted: () => void;
   users: NexusUser[];
   calendarType?: 'social' | 'ads';
+  publicComments?: ReactNode;
 }
 
 const fieldCls = 'w-full rounded-xl bg-background/70 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30';
 
-export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social' }: SocialIdeaModalProps) {
+export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social', publicComments }: SocialIdeaModalProps) {
   const { user } = useAuthStore();
   const isSocial = calendarType === 'social';
   const endpoint = calendarType === 'ads' ? '/api/ads-ideas' : '/api/social-ideas';
   const { attachments, addAttachment, removeAttachment } = useSocialAttachments(isSocial ? idea.id : null);
-  const { comments, addComment, deleteComment, updateComment } = useSocialComments(isSocial ? idea.id : null);
+  const { comments, addComment, deleteComment, updateComment } = useSocialComments(isSocial && !publicComments ? idea.id : null);
 
   const [editing, setEditing] = useState(false);
   const [detailOpen, setDetailOpen] = useState(true);
@@ -366,10 +367,10 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
             <div className="flex h-[60vh] min-h-0 flex-col overflow-hidden rounded-2xl bg-muted/25 p-4 lg:h-auto">
               <p className="mb-3 flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground/80">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/15"><MessageSquare className="h-3.5 w-3.5 text-sky-600" /></span>
-                Comentarios ({comments.length})
+                {publicComments ? 'Comentarios' : `Comentarios (${comments.length})`}
               </p>
               <div className="min-h-0 flex-1">
-                <SocialComment ideaId={idea.id} comments={comments} onAddComment={addComment} onDeleteComment={deleteComment} onUpdateComment={updateComment} currentUserId={user?.id} />
+                {publicComments || <SocialComment ideaId={idea.id} comments={comments} onAddComment={addComment} onDeleteComment={deleteComment} onUpdateComment={updateComment} currentUserId={user?.id} />}
               </div>
             </div>
           )}

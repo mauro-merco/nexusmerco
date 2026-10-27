@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { decodeJwt } from 'jose';
+import { getRequestUser } from '@/lib/api-security';
 import { createMentionNotifications } from '@/lib/mentions';
 import { logActivity } from '@/lib/activity-events';
 import {
@@ -52,23 +52,13 @@ async function resolveAccess(request: Request, clientId?: string | null, calenda
   }
 
   // Internal: require a real session and derive the author from the token.
-  const authHeader = request.headers.get('authorization') || '';
-  const jwt = authHeader.replace('Bearer ', '');
-  if (!jwt || jwt === 'undefined') return { error: 'No autenticado', status: 401 };
-
-  let sessionUserId = '';
-  try {
-    const payload = decodeJwt(jwt);
-    sessionUserId = String(payload.sub || '');
-  } catch {
-    return { error: 'No autenticado', status: 401 };
-  }
-  if (!sessionUserId) return { error: 'No autenticado', status: 401 };
+  const sessionUser = await getRequestUser(request, supabase);
+  if (!sessionUser) return { error: 'No autenticado', status: 401 };
 
   const { data: me } = await supabase
     .from('users')
     .select('id, role, client_id, allowed_client_ids')
-    .eq('id', sessionUserId)
+    .eq('id', sessionUser.id)
     .maybeSingle();
   if (!me) return { error: 'No autenticado', status: 401 };
   if (!clientId) return { error: 'client_id requerido', status: 400 };
@@ -265,6 +255,12 @@ export async function POST(request: Request) {
     const parentId = body.parent_id || null;
 
     const supabase = getSupabaseAdmin();
+    if (parentId) {
+      const { data: parent } = await supabase.from('calendar_comments')
+        .select('id').eq('id', parentId).eq('client_id', access.clientId)
+        .eq('calendar_type', access.calendarType).eq('month', access.month).maybeSingle();
+      if (!parent) return NextResponse.json({ error: 'Comentario padre no encontrado' }, { status: 400 });
+    }
     const { data, error } = await supabase
       .from('calendar_comments')
       .insert({
