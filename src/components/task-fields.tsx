@@ -1,8 +1,10 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { MarkdownBody } from '@/lib/markdown';
+import { DESCRIPTION_COLORS, descriptionMark, formatDescriptionRange, safeDescriptionHref, type DescriptionColor } from '@/lib/description-format';
 import { Popover, Menu, type MenuOption } from '@/components/task-ui';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, TASK_PRIORITIES, TASK_TYPE_CATEGORIES } from '@/lib/task-config';
 import { DEPARTMENT_CATEGORIES, DEPARTMENT_CONFIG } from '@/lib/department-config';
@@ -197,22 +199,31 @@ export function descriptionMarkdown(node: Node): string {
   if (!(node instanceof HTMLElement)) return '';
   const text = Array.from(node.childNodes).map(descriptionMarkdown).join('');
   const tag = node.tagName;
+  if (node.dataset.descriptionRoot) return text;
+  if (node.dataset.descriptionBlank) return '\n';
+  const kind = node.dataset.descriptionKind;
+  const color = node.dataset.descriptionColor;
+  if ((kind === 'highlight' || kind === 'frame') && color && Object.hasOwn(DESCRIPTION_COLORS, color)) return descriptionMark(kind, color as DescriptionColor, text, node.dataset.descriptionBlock === 'true');
+  const previous = node.previousSibling;
+  const needsBreak = previous && (previous.nodeType === Node.TEXT_NODE || previous instanceof HTMLElement && !/^(P|DIV|H[1-3]|UL|OL|BLOCKQUOTE|PRE)$/.test(previous.tagName) && !previous.classList.contains('block') && !previous.dataset.descriptionBlank);
+  const prefix = needsBreak ? '\n' : '';
   if (tag === 'BR') return '\n';
   const wrap = (value: string, marker: string) => value.split('\n').map(line => line.replace(/^(\s*)(.*?)(\s*)$/, (_, before, body, after) => body ? `${before}${marker}${body}${marker}${after}` : line)).join('\n');
   if (tag === 'S' || tag === 'STRIKE') return `~~${text}~~`;
-  if (tag === 'PRE') return `\n\n\`\`\`\n${node.textContent}\n\`\`\`\n\n`;
+  if (tag === 'PRE') return `${prefix}\`\`\`\n${node.textContent}\n\`\`\`\n`;
   if (tag === 'CODE') return `\`${text}\``;
   if (tag === 'A') {
     const href = node.getAttribute('href') || '';
-    return /^(https?:\/\/|mailto:|\/|#)/i.test(href) ? `[${text}](${href.replace(/\s/g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29')})` : text;
+    return safeDescriptionHref(href) ? `[${text}](${href.replace(/\s/g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29')})` : text;
   }
   if (tag === 'LI') return `${node.parentElement?.tagName === 'OL' ? `${Array.from(node.parentElement.children).indexOf(node) + 1}.` : '-'} ${text.trim()}\n`;
-  if (tag === 'UL' || tag === 'OL') return `\n\n${text}\n`;
+  if (tag === 'UL' || tag === 'OL') return `${prefix}${text}`;
   const heading = /^H([1-3])$/.exec(tag)?.[1];
-  if (heading) return `\n\n${'#'.repeat(Number(heading))} ${text}\n\n`;
-  if (tag === 'BLOCKQUOTE' || node.classList.contains('border-l-2')) return `\n\n${text.split('\n').map(line => `> ${line}`).join('\n')}\n\n`;
-  if (tag === 'P' || (tag === 'SPAN' && node.classList.contains('block'))) return `\n\n${text}\n\n`;
-  if (tag === 'DIV') return `\n${text}`;
+  if (heading) return `${prefix}${'#'.repeat(Number(heading))} ${text}\n`;
+  if (tag === 'BLOCKQUOTE' || node.classList.contains('border-l-2')) return `${prefix}${text.split('\n').map(line => `> ${line}`).join('\n')}\n`;
+  if (tag === 'P' || tag === 'DIV' || (tag === 'SPAN' && node.classList.contains('block'))) {
+    return `${prefix}${text === '\n' ? '' : text}\n`;
+  }
   let formatted = text;
   if (tag === 'EM' || tag === 'I' || node.style.fontStyle === 'italic') formatted = wrap(formatted, '*');
   if (tag === 'STRONG' || tag === 'B' || node.style.fontWeight === 'bold' || Number(node.style.fontWeight) >= 600) formatted = wrap(formatted, '**');
@@ -230,6 +241,54 @@ export function DescriptionEditor({ value, onChange, className, placeholder, tit
   // The browser owns the editable DOM; React must not replace it on each input.
   const [initialContent] = useState(() => <MarkdownBody text={value} editable />);
   const [preview, setPreview] = useState(false);
+  const [kind, setKind] = useState<'highlight' | 'frame'>('highlight');
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [popup, setPopup] = useState<{ left: number; top: number; container: HTMLElement } | null>(null);
+  useEffect(() => {
+    if (!editable || preview) return;
+    const update = () => {
+      const el = ref.current;
+      const current = window.getSelection();
+      if (popupRef.current?.contains(document.activeElement)) return;
+      if (!el || !current?.rangeCount || current.isCollapsed || !el.contains(current.anchorNode) || !el.contains(current.focusNode)) {
+        setPopup(null); return;
+      }
+      const range = current.getRangeAt(0);
+      selection.current = range.cloneRange();
+      const rect = range.getBoundingClientRect();
+      const bounds = el.getBoundingClientRect();
+      if (!rect.width || rect.bottom < bounds.top || rect.top > bounds.bottom) { setPopup(null); return; }
+      const container = el.closest<HTMLElement>('[role="dialog"], [data-slot="dialog-content"]') || document.body;
+      const box = container === document.body ? null : container.getBoundingClientRect();
+      const width = Math.min(280, Math.min(window.innerWidth, box?.right || window.innerWidth) - Math.max(0, box?.left || 0) - 16);
+      const left = Math.max(Math.max(0, box?.left || 0) + 8, Math.min(Math.min(window.innerWidth, box?.right || window.innerWidth) - width - 8, rect.left + rect.width / 2 - width / 2));
+      const top = Math.max((box?.top || 0) + 8, Math.min(Math.min(window.innerHeight, box?.bottom || window.innerHeight) - 48, rect.top >= (box?.top || 0) + 52 ? rect.top - 46 : rect.bottom + 6));
+      setPopup({ left: left - (box?.left || 0) + (box ? container.scrollLeft : 0), top: top - (box?.top || 0) + (box ? container.scrollTop : 0), container });
+    };
+    const dismiss = () => { setPopup(null); };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && popupRef.current) {
+        event.preventDefault(); event.stopPropagation();
+        ref.current?.focus({ preventScroll: true });
+        dismiss();
+      }
+    };
+    const outside = (event: PointerEvent) => {
+      if (!popupRef.current?.contains(event.target as Node) && !ref.current?.contains(event.target as Node)) dismiss();
+    };
+    document.addEventListener('selectionchange', update);
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', key, true);
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    return () => {
+      document.removeEventListener('selectionchange', update);
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', key, true);
+      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('resize', dismiss);
+    };
+  }, [editable, preview]);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!editable && el && sourceRef.current && Array.from(el.childNodes).map(descriptionMarkdown).join('').trim() !== value.trim()) {
@@ -255,6 +314,18 @@ export function DescriptionEditor({ value, onChange, className, placeholder, tit
     if (command === 'formatBlock') argument = document.queryCommandValue('formatBlock').toLowerCase() === 'h2' ? 'p' : 'h2';
     document.execCommand(command, false, argument);
     rememberSelection(); sync();
+  };
+  const markSelection = (color: DescriptionColor | null) => {
+    const range = selection.current;
+    if (!range || range.collapsed || !ref.current?.contains(range.commonAncestorContainer)) return;
+    const result = formatDescriptionRange(ref.current, range, kind, color);
+    if (!result) return;
+    ref.current.focus({ preventScroll: true });
+    const current = window.getSelection();
+    current?.removeAllRanges();
+    current?.addRange(result);
+    rememberSelection();
+    sync();
   };
 
   const tools: [LucideIcon, string, string, string?][] = [
@@ -295,6 +366,16 @@ export function DescriptionEditor({ value, onChange, className, placeholder, tit
           </div>
         </div>
       </header>
+      {popup && editable && !preview && createPortal(
+        <div ref={popupRef} role="toolbar" aria-label="Estilo del texto seleccionado"
+          onPointerDown={e => e.preventDefault()}
+          style={{ position: popup.container === document.body ? 'fixed' : 'absolute', left: popup.left, top: popup.top, maxWidth: `min(calc(100vw - 16px), calc(100% - 16px))`, zIndex: 100 }}
+          className="flex min-h-10 w-[280px] flex-wrap items-center justify-center gap-0.5 rounded-2xl border bg-popover p-1 text-popover-foreground shadow-lg [&>button]:shrink-0">
+          {(['highlight', 'frame'] as const).map(mode => <button key={mode} type="button" aria-pressed={kind === mode} onClick={() => setKind(mode)} className={cn('rounded-full px-2 py-1 text-[11px] focus-visible:outline-2 focus-visible:outline-primary', kind === mode ? 'bg-muted font-semibold' : 'text-muted-foreground')}>{mode === 'highlight' ? 'Fondo' : 'Borde'}</button>)}
+          <span className="mx-0.5 h-4 w-px bg-border" />
+          {Object.entries(DESCRIPTION_COLORS).map(([color, hex], i) => <button key={color} type="button" aria-label={`${kind === 'highlight' ? 'Fondo' : 'Borde'} ${['amarillo', 'azul', 'verde', 'rosa', 'violeta'][i]}`} title={['Amarillo', 'Azul', 'Verde', 'Rosa', 'Violeta'][i]} onClick={() => markSelection(color as DescriptionColor)} className="h-5 w-5 shrink-0 rounded-full border-2 focus-visible:outline-2 focus-visible:outline-primary" style={{ borderColor: hex, backgroundColor: kind === 'highlight' ? hex : 'transparent' }} />)}
+          <button type="button" aria-label="Quitar fondo y borde" title="Quitar fondo y borde" onClick={() => markSelection(null)} className="rounded-full p-1 text-muted-foreground hover:bg-muted"><X className="h-3.5 w-3.5" /></button>
+        </div>, popup.container)}
       {preview && editable ? (
         <div className="tm-fade tm-noscroll min-h-[340px] flex-1 overflow-y-auto rounded-xl bg-background/70 p-4">
           {value.trim() ? <MarkdownBody text={value} className="text-[15px] leading-relaxed text-foreground/90" /> : <p className="text-sm italic text-muted-foreground">Nada para mostrar todavía</p>}

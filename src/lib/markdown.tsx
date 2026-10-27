@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { DESCRIPTION_COLORS, safeDescriptionHref, type DescriptionColor } from './description-format';
 
 /**
  * Minimal markdown renderer (comments, descriptions).
@@ -14,7 +15,7 @@ const MENTION_TOKEN = /@[\p{L}\p{N}'.-]+/gu;
 
 // Single-underscore italics are intentionally not supported (snake_case words).
 const INLINE_TOKEN =
-  /(\\[\\*_[\]`~#>+.!()-]|\*\*\*[^*\n]+\*\*\*|\*\*(?:\*[^*\n]+\*|[^*\n])+\*\*|__[^_\n]+__|~~[^~\n]+~~|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)|\*(?:\*\*[^*\n]+\*\*|[^*\n])+\*|https?:\/\/[^\s`<>]+|www\.[^\s`<>]+)/gi;
+  /(\{\{d1:(?:highlight|frame):(?:yellow|blue|green|pink|violet):[^{}\s]*\}\}|\\[\\*_[\]`~#>+.!()-]|\*\*\*[^*\n]+\*\*\*|\*\*(?:\*[^*\n]+\*|[^*\n])+\*\*|__[^_\n]+__|~~[^~\n]+~~|`[^`\n]+`|\[(?:\\.|[^\]\\\n])+\]\([^)\s]+\)|\*(?:\*\*[^*\n]+\*\*|[^*\n])+\*|https?:\/\/[^\s`<>]+|www\.[^\s`<>]+)/gi;
 
 type Atom = { kind: 'mention' | 'text'; value: string };
 
@@ -32,7 +33,7 @@ export function tokenizeAtoms(text: string): Atom[] {
 }
 
 function isSafeHref(href: string): boolean {
-  return /^(https?:|mailto:|\/|#)/i.test(href.trim());
+  return safeDescriptionHref(href);
 }
 
 export type RenderMention = (token: string, key: string) => ReactNode;
@@ -41,7 +42,8 @@ export type RenderText = (text: string, key: string) => ReactNode;
 const defaultRenderMention: RenderMention = (token, key) => <Fragment key={key}>{token}</Fragment>;
 const defaultRenderText: RenderText = (text, key) => <Fragment key={key}>{text}</Fragment>;
 
-function renderInlineChunk(chunk: string, keyBase: string, renderMention: RenderMention, renderText: RenderText, allowLinks = true): ReactNode[] {
+function renderInlineChunk(chunk: string, keyBase: string, renderMention: RenderMention, renderText: RenderText, allowLinks = true, depth = 0): ReactNode[] {
+   if (depth > 24) return [renderText(chunk, keyBase)];
   const out: ReactNode[] = [];
     const text = chunk;
     let cursor = 0;
@@ -53,7 +55,13 @@ function renderInlineChunk(chunk: string, keyBase: string, renderMention: Render
       const token = match[0];
       const key = `${keyBase}-t${tokenIdx++}`;
 
-      if (token.startsWith('\\')) {
+      if (token.startsWith('{{d1:')) {
+        const [, kind, color, payload] = token.slice(2, -2).split(':');
+        try {
+          const ink = DESCRIPTION_COLORS[color as DescriptionColor];
+          out.push(<span key={key} data-description-kind={kind} data-description-color={color} style={{ backgroundColor: kind === 'highlight' ? `${ink}40` : undefined, border: kind === 'frame' ? `2px solid ${ink}` : undefined, borderRadius: '4px', padding: '0 2px', boxDecorationBreak: 'clone', whiteSpace: 'pre-wrap' }}>{renderInlineChunk(decodeURIComponent(payload), key, renderMention, renderText, allowLinks, depth + 1)}</span>);
+        } catch { out.push(renderText(token, key)); }
+      } else if (token.startsWith('\\')) {
         out.push(renderText(token.slice(1), key));
       } else if (token.startsWith('***')) {
         out.push(<strong key={key} className="font-bold text-foreground"><em>{renderInlineChunk(token.slice(3, -3), key, renderMention, renderText, allowLinks)}</em></strong>);
@@ -78,7 +86,7 @@ function renderInlineChunk(chunk: string, keyBase: string, renderMention: Render
         out.push(!allowLinks
           ? <Fragment key={key}>{renderInlineChunk(label, key, renderMention, renderText, false)}</Fragment>
           : isSafeHref(href)
-            ? <a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 hover:opacity-80">{renderInlineChunk(label, key, renderMention, renderText, false)}</a>
+            ? <a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 hover:opacity-80">{renderInlineChunk(label, key, defaultRenderMention, (value, k) => <Fragment key={k}>{value}</Fragment>, false)}</a>
             : label);
       } else {
         out.push(<em key={key}>{renderInlineChunk(token.slice(1, -1), key, renderMention, renderText, allowLinks)}</em>);
@@ -105,6 +113,24 @@ const HEADING = /^\s{0,3}(#{1,3})\s+(.*)$/;
 const HEADING_CLS = ['text-xl font-bold', 'text-lg font-bold', 'text-base font-semibold'];
 
 export function MarkdownBody({ text, renderMention = defaultRenderMention, renderText = defaultRenderText, className, editable = false }: MarkdownBodyProps) {
+  const blocks = /\{\{d2:(highlight|frame):(yellow|blue|green|pink|violet):([^{}\s]*)\}\}/g;
+  const matches = Array.from(text.matchAll(blocks));
+  if (matches.length) {
+    const parts: ReactNode[] = [];
+    let cursor = 0;
+    for (const match of matches) {
+      const start = match.index!;
+      if (start > cursor) parts.push(<MarkdownBody key={`before${start}`} text={text.slice(cursor, start).replace(/\n$/, '')} {...{ renderMention, renderText, editable }} />);
+      try {
+        const payload = decodeURIComponent(match[3]).replace(/\n$/, '');
+        const ink = DESCRIPTION_COLORS[match[2] as DescriptionColor];
+        parts.push(<div key={start} data-description-kind={match[1]} data-description-color={match[2]} data-description-block="true" style={{ borderRadius: 6, padding: 8, backgroundColor: match[1] === 'highlight' ? `${ink}40` : undefined, border: match[1] === 'frame' ? `2px solid ${ink}` : undefined }}><MarkdownBody text={payload} {...{ renderMention, renderText, editable }} /></div>);
+      } catch { parts.push(<Fragment key={start}>{match[0]}</Fragment>); }
+      cursor = start + match[0].length;
+    }
+    if (cursor < text.length) parts.push(<MarkdownBody key="after" text={text.slice(cursor).replace(/\n$/, '')} {...{ renderMention, renderText, editable }} />);
+    return <div data-description-root="true" className={className}>{parts}</div>;
+  }
   const plainText = renderText;
   renderText = (value, key) => <Fragment key={key}>{tokenizeAtoms(value).map((atom, i) => <Fragment key={`${key}-${i}`}>{atom.kind === 'mention' ? renderMention(atom.value, `${key}-${i}`) : plainText(atom.value, `${key}-${i}`)}</Fragment>)}</Fragment>;
   const inline = (t: string, k: string) => renderInline(t, k, renderMention, renderText);
@@ -132,7 +158,7 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, rende
   for (let i = 0; i < lines.length; ) {
     const line = lines[i];
 
-    if (!line.trim()) { flushParagraph(); i++; continue; }
+    if (!line.trim()) { flushParagraph(); out.push(<span key={`blank${out.length}`} data-description-blank="true" className="block whitespace-pre-wrap">{'\n'}</span>); i++; continue; }
 
     if (line.trim().startsWith('```')) {
       flushParagraph();
@@ -194,5 +220,5 @@ export function MarkdownBody({ text, renderMention = defaultRenderMention, rende
 
   // Blocks are separated by a real gap so blank lines in the source are visible.
   if (editable) return <>{out}</>;
-  return <span className={cn('flex flex-col gap-2.5', className)}>{out}</span>;
+  return <span className={cn('block', className)}>{out}</span>;
 }

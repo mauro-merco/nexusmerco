@@ -18,6 +18,7 @@ import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
+import { MarkdownBody } from '@/lib/markdown';
 import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment, User as NexusUser } from '@/lib/types';
 import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
 import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
@@ -404,7 +405,7 @@ function AgendaList({ ideas, onIdeaClick }: { ideas: SocialIdea[]; onIdeaClick: 
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-foreground">{idea.title}</span>
                       {idea.description && (
-                        <span className="block truncate text-xs text-muted-foreground">{idea.description}</span>
+                        <MarkdownBody text={idea.description} className="block line-clamp-2 text-xs text-muted-foreground" />
                       )}
                     </span>
                     {statusCfg && (

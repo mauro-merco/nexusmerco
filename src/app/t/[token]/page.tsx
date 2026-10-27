@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { MarkdownBody } from '@/lib/markdown';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG } from '@/lib/task-config';
 import type { Task } from '@/lib/types';
@@ -186,7 +187,7 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
             <h1 className="text-xl font-bold">{task.title}</h1>
 
             {task.description ? (
-              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{task.description}</p>
+              <MarkdownBody text={task.description} className="text-sm text-foreground/80 leading-relaxed" />
             ) : (
               <p className="text-sm text-muted-foreground italic">Sin descripción</p>
             )}
