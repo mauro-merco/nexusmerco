@@ -7,6 +7,32 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getRequestUser(request, supabase);
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const { id } = await params;
+    const { url } = await request.json();
+    try {
+      if (typeof url !== 'string' || url.length > 2048) throw new Error();
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+    } catch {
+      return NextResponse.json({ error: 'Ingresá una URL válida con http:// o https://' }, { status: 400 });
+    }
+    const { data: attachment, error: attachmentError } = await supabase.from('task_attachments').select('task_id').eq('id', id).single();
+    if (attachmentError) throw attachmentError;
+    const { data: task, error: taskError } = await supabase.from('tasks').select('client_id').eq('id', attachment.task_id).single();
+    if (taskError) throw taskError;
+    if (!canAccessClient(user, task.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    const { data, error } = await supabase.from('task_attachments').update({ url: url.trim() }).eq('id', id).select().single();
+    if (error) throw error;
+    return NextResponse.json({ data });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getRequestUser(request, supabase);

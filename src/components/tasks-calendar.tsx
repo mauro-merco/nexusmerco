@@ -7,7 +7,7 @@ import {
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Loader2, Zap, ChevronRight as Chevron, CalendarX2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Zap, ChevronRight as Chevron, CalendarX2 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { departmentInfo } from '@/lib/department-config';
 import { taskStatusConfig } from '@/lib/task-config';
@@ -40,16 +40,18 @@ export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
   });
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [users, setUsers] = useState<{ id: string; full_name: string; email: string; avatar_url: string }[]>([]);
 
   useEffect(() => {
     let off = false;
     setLoading(true);
-    fetch(`/api/tasks?client_id=${clientId}`).then(r => r.json()).then(j => { if (!off) setTasks(j.data || []); }).catch(() => {}).finally(() => { if (!off) setLoading(false); });
+    fetch(`/api/tasks?client_id=${clientId}`).then(r => r.json()).then(j => { if (!off) setTasks(j.data || []); }).catch(() => {}).finally(() => { if (!off) { setLoading(false); setRefreshing(false); } });
     fetch('/api/users').then(r => r.json()).then(j => { if (!off) setUsers(j.data || []); }).catch(() => {});
     return () => { off = true; };
-  }, [clientId]);
+  }, [clientId, refreshKey]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -63,7 +65,7 @@ export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
   const onUpdated = (u: Task) => { setTasks(p => p.map(t => t.id === u.id ? u : t)); setSelectedTask(u); };
   const onDeleted = () => { if (!selectedTask) return; setTasks(p => p.filter(t => t.id !== selectedTask.id)); setSelectedTask(null); };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (loading && !refreshing) return <div className="flex items-center justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
   const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
@@ -76,6 +78,9 @@ export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
         </button>
         <Button variant="ghost" size="icon" className="tm-press h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
         <span className="ml-auto rounded-full bg-muted/40 px-3 py-1 text-xs font-semibold text-muted-foreground">{inMonth.length} tarea{inMonth.length !== 1 ? 's' : ''}</span>
+        <Button variant="secondary" size="sm" className="tm-press gap-1.5 rounded-lg" onClick={() => { setRefreshing(true); setRefreshKey(key => key + 1); }} disabled={refreshing} aria-label={refreshing ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={refreshing}>
+          <RefreshCw aria-hidden="true" className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> Actualizar
+        </Button>
       </div>
 
       {isMobile ? (

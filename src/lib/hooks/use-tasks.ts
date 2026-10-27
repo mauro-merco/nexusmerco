@@ -190,5 +190,14 @@ export function useTaskAttachments(taskId: string | null) {
     if (res.ok) setAttachments(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  return { attachments, loading, refetch: fetchAttachments, addAttachment, removeAttachment };
+  const updateAttachment = useCallback(async (id: string, url: string) => {
+    const res = await fetch(`/api/task-attachments/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Error al guardar el enlace');
+    setAttachments(prev => prev.map(a => a.id === id ? json.data : a));
+  }, []);
+
+  return { attachments, loading, refetch: fetchAttachments, addAttachment, updateAttachment, removeAttachment };
 }

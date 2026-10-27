@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Send, MessageCircle, Loader2, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy, Sun, Moon, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Send, MessageCircle, Loader2, RefreshCw, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy, Sun, Moon, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -699,6 +699,9 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="secondary" size="sm" className="gap-1.5 text-xs h-8 rounded-lg" onClick={fetchCalendar} disabled={fetchLoading} aria-label={fetchLoading ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={fetchLoading}>
+              <RefreshCw aria-hidden="true" className={cn('h-3.5 w-3.5', fetchLoading && 'animate-spin')} /> Actualizar
+            </Button>
             <div className="hidden md:flex items-center gap-1 bg-muted/40 rounded-xl p-1">
               <button
                 type="button"

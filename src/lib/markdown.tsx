@@ -41,7 +41,7 @@ export type RenderText = (text: string, key: string) => ReactNode;
 const defaultRenderMention: RenderMention = (token, key) => <Fragment key={key}>{token}</Fragment>;
 const defaultRenderText: RenderText = (text, key) => <Fragment key={key}>{text}</Fragment>;
 
-function renderInlineChunk(chunk: string, keyBase: string, renderMention: RenderMention, renderText: RenderText): ReactNode[] {
+function renderInlineChunk(chunk: string, keyBase: string, renderMention: RenderMention, renderText: RenderText, allowLinks = true): ReactNode[] {
   const out: ReactNode[] = [];
     const text = chunk;
     let cursor = 0;
@@ -56,15 +56,17 @@ function renderInlineChunk(chunk: string, keyBase: string, renderMention: Render
       if (token.startsWith('\\')) {
         out.push(renderText(token.slice(1), key));
       } else if (token.startsWith('***')) {
-        out.push(<strong key={key} className="font-bold text-foreground"><em>{renderInlineChunk(token.slice(3, -3), key, renderMention, renderText)}</em></strong>);
+        out.push(<strong key={key} className="font-bold text-foreground"><em>{renderInlineChunk(token.slice(3, -3), key, renderMention, renderText, allowLinks)}</em></strong>);
       } else if (/^(https?:\/\/|www\.)/i.test(token)) {
         const trailing = token.match(/[.,;:!?)\]]+$/)?.[0] ?? '';
         const raw = trailing ? token.slice(0, token.length - trailing.length) : token;
         const href = /^www\./i.test(raw) ? `https://${raw}` : raw;
-        out.push(<a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 break-all hover:opacity-80">{raw}</a>);
+        out.push(allowLinks
+          ? <a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 break-all hover:opacity-80">{raw}</a>
+          : renderText(raw, key));
         if (trailing) out.push(renderText(trailing, `${keyBase}-tr${tokenIdx++}`));
       } else if (token.startsWith('**') || token.startsWith('__')) {
-        out.push(<strong key={key} className="font-bold text-foreground">{renderInlineChunk(token.slice(2, -2), key, renderMention, renderText)}</strong>);
+        out.push(<strong key={key} className="font-bold text-foreground">{renderInlineChunk(token.slice(2, -2), key, renderMention, renderText, allowLinks)}</strong>);
       } else if (token.startsWith('~~')) {
         out.push(<s key={key} className="text-muted-foreground">{token.slice(2, -2)}</s>);
       } else if (token.startsWith('`')) {
@@ -73,11 +75,13 @@ function renderInlineChunk(chunk: string, keyBase: string, renderMention: Render
         const split = token.indexOf('](');
         const label = token.slice(1, split);
         const href = token.slice(split + 2, -1);
-        out.push(isSafeHref(href)
-          ? <a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 hover:opacity-80">{renderInlineChunk(label, key, renderMention, renderText)}</a>
-          : label);
+        out.push(!allowLinks
+          ? <Fragment key={key}>{renderInlineChunk(label, key, renderMention, renderText, false)}</Fragment>
+          : isSafeHref(href)
+            ? <a key={key} href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 hover:opacity-80">{renderInlineChunk(label, key, renderMention, renderText, false)}</a>
+            : label);
       } else {
-        out.push(<em key={key}>{renderInlineChunk(token.slice(1, -1), key, renderMention, renderText)}</em>);
+        out.push(<em key={key}>{renderInlineChunk(token.slice(1, -1), key, renderMention, renderText, allowLinks)}</em>);
       }
       cursor = start + token.length;
     }

@@ -34,7 +34,7 @@ import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import type { SocialIdea, IdeaStatus, PostType, EcommerceDate } from '@/lib/types';
 import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
 import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
-import { ChevronLeft, ChevronRight, Plus, Loader2, Check, ChevronDown, Copy, Share2, Users, ExternalLink, LayoutGrid, List as ListIcon, ChevronRight as ChevronRightIcon, ShoppingBag, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Loader2, RefreshCw, Check, ChevronDown, Copy, Share2, Users, ExternalLink, LayoutGrid, List as ListIcon, ChevronRight as ChevronRightIcon, ShoppingBag, Trash2 } from 'lucide-react';
 
 const STATUS_ORDER = IDEA_STATUS_ORDER;
 type ShareConfig = { token: string | null; allowed_client_id?: string; guest_enabled: boolean; allowed_user_ids: string[] };
@@ -159,15 +159,15 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
   const prevMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
   const nextMonthStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
 
-  const { ideas: socialIdeasCur, loading: loadingSocialCur, createIdea: createSocialIdea, updateIdea: updateSocialIdea, deleteIdea: deleteSocialIdea, patchIdea: patchSocialIdea } = useSocialIdeas(clientId, monthStr);
-  const { ideas: socialIdeasPrev } = useSocialIdeas(clientId, prevMonthStr);
-  const { ideas: socialIdeasNext } = useSocialIdeas(clientId, nextMonthStr);
-  const { ideas: adsIdeasCur, loading: loadingAdsCur, createIdea: createAdsIdea, updateIdea: updateAdsIdea, deleteIdea: deleteAdsIdea, patchIdea: patchAdsIdea } = useAdsIdeas(clientId, monthStr);
-  const { ideas: adsIdeasPrev } = useAdsIdeas(clientId, prevMonthStr);
-  const { ideas: adsIdeasNext } = useAdsIdeas(clientId, nextMonthStr);
-  const { dates: ecommerceDatesCur, createDate: createEcomDate, deleteDate: deleteEcomDate } = useEcommerceDates(clientId, monthStr);
-  const { dates: ecommerceDatesPrev } = useEcommerceDates(clientId, prevMonthStr);
-  const { dates: ecommerceDatesNext } = useEcommerceDates(clientId, nextMonthStr);
+  const { ideas: socialIdeasCur, loading: loadingSocialCur, refetch: refetchSocialCur, createIdea: createSocialIdea, updateIdea: updateSocialIdea, deleteIdea: deleteSocialIdea, patchIdea: patchSocialIdea } = useSocialIdeas(clientId, monthStr);
+  const { ideas: socialIdeasPrev, refetch: refetchSocialPrev } = useSocialIdeas(clientId, prevMonthStr);
+  const { ideas: socialIdeasNext, refetch: refetchSocialNext } = useSocialIdeas(clientId, nextMonthStr);
+  const { ideas: adsIdeasCur, loading: loadingAdsCur, refetch: refetchAdsCur, createIdea: createAdsIdea, updateIdea: updateAdsIdea, deleteIdea: deleteAdsIdea, patchIdea: patchAdsIdea } = useAdsIdeas(clientId, monthStr);
+  const { ideas: adsIdeasPrev, refetch: refetchAdsPrev } = useAdsIdeas(clientId, prevMonthStr);
+  const { ideas: adsIdeasNext, refetch: refetchAdsNext } = useAdsIdeas(clientId, nextMonthStr);
+  const { dates: ecommerceDatesCur, refetch: refetchEcomCur, createDate: createEcomDate, deleteDate: deleteEcomDate } = useEcommerceDates(clientId, monthStr);
+  const { dates: ecommerceDatesPrev, refetch: refetchEcomPrev } = useEcommerceDates(clientId, prevMonthStr);
+  const { dates: ecommerceDatesNext, refetch: refetchEcomNext } = useEcommerceDates(clientId, nextMonthStr);
 
   const socialIdeas = useMemo(() => [...new Map([...socialIdeasPrev, ...socialIdeasNext, ...socialIdeasCur].map(idea => [idea.id, idea])).values()], [socialIdeasPrev, socialIdeasCur, socialIdeasNext]);
   const adsIdeas = useMemo(() => [...new Map([...adsIdeasPrev, ...adsIdeasNext, ...adsIdeasCur].map(idea => [idea.id, idea])).values()], [adsIdeasPrev, adsIdeasCur, adsIdeasNext]);
@@ -190,6 +190,19 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
 
   const allIdeas = useMemo(() => [...socialIdeas.map(i => ({ ...i, _cal: 'social' as const })), ...adsIdeas.map(i => ({ ...i, _cal: 'ads' as const }))], [socialIdeas, adsIdeas]);
   const loading = loadingSocial || loadingAds;
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshCalendar = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetchSocialPrev(), refetchSocialCur(), refetchSocialNext(),
+        refetchAdsPrev(), refetchAdsCur(), refetchAdsNext(),
+        refetchEcomPrev(), refetchEcomCur(), refetchEcomNext(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const fetchShareToken = useCallback(async () => {
     if (!clientId) return;
@@ -292,7 +305,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
     return cells;
   }, [firstDayOfWeek, daysInMonth, monthStr, viewYear, viewMonth]);
 
-  if (loading) return <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /><p className="text-sm">Cargando calendario...</p></div>;
+  if (loading && !refreshing) return <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /><p className="text-sm">Cargando calendario...</p></div>;
 
   return (
     <>
@@ -309,6 +322,9 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
               <button type="button" onClick={() => setViewMode('agenda')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', viewMode === 'agenda' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}><ListIcon className="h-3.5 w-3.5" /> Agenda</button>
             </div>
             <div className="flex items-center gap-2 ml-auto">
+              <Button variant="secondary" size="sm" className="gap-1.5 rounded-lg" onClick={refreshCalendar} disabled={refreshing} aria-label={refreshing ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={refreshing}>
+                <RefreshCw aria-hidden="true" className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> Actualizar
+              </Button>
               <Button onClick={() => setShowNewEcomDate(true)} variant="secondary" size="sm" className="gap-1.5 rounded-lg"><ShoppingBag className="h-3.5 w-3.5" /> Crear fecha ecommerce</Button>
               <div className="relative" ref={shareBtnRef}>
                 <Button variant="secondary" size="sm" className="gap-1.5 rounded-lg" onClick={() => setShareOpen(o => !o)}><Share2 className="h-3.5 w-3.5" /> Compartir</Button>
@@ -326,7 +342,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
 
           <CalendarSearch className="mb-4" value={search} onChange={setSearch} ideas={allIdeas as SocialIdea[]} onSelect={(idea) => { const found = allIdeas.find((i: any) => i.id === idea.id) as any; setSelectedIdea(idea); setSelectedIdeaType(found?._cal || 'social'); }} />
           <CalendarFolders><CalendarMonthFolder clientId={clientId} calendarType="social" month={monthStr} /><CalendarGeneralFolders clientId={clientId} /></CalendarFolders>
-          <CalendarTypeFilter ideas={allIdeas as SocialIdea[]} active={activeTypes} onToggle={toggleType} />
+          <CalendarTypeFilter ideas={allIdeas.filter(idea => idea.publish_date.startsWith(`${monthStr}-`))} active={activeTypes} onToggle={toggleType} />
 
           {isSearching ? null : effectiveView === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>

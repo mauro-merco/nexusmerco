@@ -48,6 +48,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const fieldCls = 'w-full rounded-xl bg-background/70 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30';
+const readyFolderLabel = 'Carpeta para las piezas listas';
 
 function dueChip(dueDate: string, short = false) {
   const due = new Date(dueDate + 'T12:00:00');
@@ -67,7 +68,37 @@ function dueChip(dueDate: string, short = false) {
 export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTaskDeleted, users }: TaskDetailModalProps) {
   const { user } = useAuthStore();
   const { comments, addComment, deleteComment, updateComment } = useTaskComments(task.id);
-  const { attachments, addAttachment, removeAttachment } = useTaskAttachments(task.id);
+  const { attachments, loading: loadingAttachments, addAttachment, updateAttachment, removeAttachment } = useTaskAttachments(task.id);
+  const readyFolder = attachments.find(a => a.name === readyFolderLabel);
+  let readyFolderUrl: string | undefined;
+  try {
+    const parsed = new URL(readyFolder?.url || '');
+    if (['http:', 'https:'].includes(parsed.protocol)) readyFolderUrl = parsed.href;
+  } catch { /* Invalid legacy links must not be clickable. */ }
+  const [editingFolder, setEditingFolder] = useState(false);
+  const [folderDraft, setFolderDraft] = useState('');
+  const [savingFolder, setSavingFolder] = useState(false);
+  const [folderError, setFolderError] = useState<string | null>(null);
+  useEffect(() => { setEditingFolder(false); setFolderError(null); }, [task.id, open]);
+  const saveFolder = async () => {
+    setFolderError(null);
+    let url: URL;
+    try {
+      url = new URL(folderDraft.trim());
+      if (!['http:', 'https:'].includes(url.protocol) || url.href.length > 2048) throw new Error();
+    } catch {
+      setFolderError('Ingresá una URL válida con http:// o https://');
+      return;
+    }
+    setSavingFolder(true);
+    try {
+      if (readyFolder) await updateAttachment(readyFolder.id, url.href);
+      else await addAttachment(url.href, readyFolderLabel);
+      setEditingFolder(false);
+    } catch (err) {
+      setFolderError(err instanceof Error ? err.message : 'Error al guardar el enlace');
+    } finally { setSavingFolder(false); }
+  };
   const commentIds = useMemo(() => collectCommentIds(comments), [comments]);
   const reads = useCommentReads('task_comment', commentIds, user ? { id: user.id, name: user.full_name || '' } : null);
 
@@ -234,11 +265,28 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
         {/* ===== Header ===== */}
         <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3 pr-14">
           <div className="min-w-[220px] flex-1">
+            <div className="flex flex-wrap items-center gap-2">
             {editing ? (
               <Input value={title} onChange={e => setTitle(e.target.value)} className="h-10 rounded-xl border-0 bg-background/70 text-lg font-bold" />
             ) : (
-              <DialogTitle className="truncate text-lg font-bold">{task.title}</DialogTitle>
+              <DialogTitle className="min-w-0 truncate text-lg font-bold">{task.title}</DialogTitle>
             )}
+            <div className="flex flex-wrap items-center gap-1">
+              {readyFolderUrl && <a href={readyFolderUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-500/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:underline"><FolderOpen className="h-3.5 w-3.5 shrink-0" />{readyFolderLabel}</a>}
+              <Button type="button" variant="ghost" size="sm" disabled={loadingAttachments || savingFolder} aria-label={readyFolder ? `Editar ${readyFolderLabel}` : `Adjuntar ${readyFolderLabel}`} onClick={() => { setFolderDraft(readyFolder?.url || ''); setFolderError(null); setEditingFolder(true); }} className="h-8 gap-1 rounded-lg text-xs">
+                {readyFolder ? <Edit3 className="h-3.5 w-3.5" /> : <><FolderOpen className="h-3.5 w-3.5" />{readyFolderLabel}</>}
+              </Button>
+            </div>
+            </div>
+            {editingFolder && <form className="mt-2 space-y-1" onSubmit={e => { e.preventDefault(); saveFolder(); }}>
+              <Label htmlFor="task-ready-folder" className="text-xs">{readyFolderLabel}</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input id="task-ready-folder" type="url" required maxLength={2048} autoFocus value={folderDraft} disabled={savingFolder} onChange={e => setFolderDraft(e.target.value)} placeholder="https://drive.google.com/..." className="h-8 min-w-0 flex-1 rounded-lg text-xs" />
+                <Button type="submit" size="sm" disabled={savingFolder || !folderDraft.trim()} className="h-8 rounded-lg">{savingFolder ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Guardar'}</Button>
+                <Button type="button" variant="ghost" size="sm" disabled={savingFolder} onClick={() => setEditingFolder(false)} className="h-8 rounded-lg">Cancelar</Button>
+              </div>
+              {folderError && <p role="alert" className="text-xs text-destructive">{folderError}</p>}
+            </form>}
             <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
               {task.client && <span className="rounded-md bg-primary/10 px-2 py-0.5 font-semibold text-primary">{task.client.name}</span>}
               {task.due_date && dueChip(task.due_date)}
