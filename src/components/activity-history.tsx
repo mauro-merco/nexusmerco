@@ -110,9 +110,10 @@ interface ActivityHistoryProps {
   userId?: string;
   title?: string;
   scrollHeight?: number;
+  onOpenSource?: (event: ActivityEvent) => void;
 }
 
-export function ActivityHistory({ clientId, userId, title, scrollHeight }: ActivityHistoryProps) {
+export function ActivityHistory({ clientId, userId, title, scrollHeight, onOpenSource }: ActivityHistoryProps) {
   const { token } = useAuthStore();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [total, setTotal] = useState(0);
@@ -308,6 +309,7 @@ export function ActivityHistory({ clientId, userId, title, scrollHeight }: Activ
               group={g}
               open={open.has(g.key)}
               onToggle={() => toggleGroup(g.key)}
+              onOpenSource={onOpenSource}
             />
           ))}
         </div>
@@ -326,10 +328,12 @@ function GroupCard({
   group,
   open,
   onToggle,
+  onOpenSource,
 }: {
   group: ActivityGroup;
   open: boolean;
   onToggle: () => void;
+  onOpenSource?: (event: ActivityEvent) => void;
 }) {
   const Icon = AREA_ICON[group.area] || CircleDot;
   const cfg = ACTIVITY_AREA_CONFIG[group.area] || ACTIVITY_AREA_CONFIG.general;
@@ -358,6 +362,10 @@ function GroupCard({
           <span>{formatAt(group.events[0].created_at)}</span>
         </div>
       </button>
+
+      {onOpenSource && ['task', 'social_idea', 'ads_idea', 'calendar'].includes(group.entityType) && (group.events[0].entity_id || group.entityType === 'calendar') && !group.events.some(e => e.action === 'deleted') && (
+        <button type="button" onClick={() => onOpenSource(group.events[0])} className="mx-3 mb-2 text-xs font-medium text-primary hover:underline">Abrir origen</button>
+      )}
 
       <div className="space-y-0.5 px-3 pb-2.5">
         {preview.map((e) => (

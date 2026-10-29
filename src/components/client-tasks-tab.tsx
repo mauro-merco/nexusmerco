@@ -1,5 +1,6 @@
 'use client';
 import { ContentSkeleton } from '@/components/content-skeleton';
+import { TaskClientLink } from '@/components/task-client-link';
 
 import { useRouter } from 'next/navigation';
 import { useTasks } from '@/lib/hooks/use-tasks';
@@ -15,8 +16,10 @@ export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: ()
   const SIcon = sConfig.icon;
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); } }}
       onClick={onClick}
       className="w-full flex items-center gap-3 rounded-2xl bg-muted/25 hover:bg-muted/45 p-3.5 transition-colors text-left"
     >
@@ -27,7 +30,7 @@ export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: ()
         <p className="truncate text-sm font-semibold">{task.title}</p>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           {showClient && task.client?.name && (
-            <span className="rounded-full bg-background px-2 py-0.5 font-medium text-foreground/70">{task.client.name}</span>
+            <TaskClientLink clientId={task.client_id} name={task.client.name} className="rounded-full bg-background px-2 py-0.5 font-medium text-foreground/70" />
           )}
           <span className={cn('flex items-center gap-1 font-medium', sConfig.colorClass)}>
             <span className={cn('w-1.5 h-1.5 rounded-full', sConfig.dotColor)} /> {sConfig.label}
@@ -75,7 +78,7 @@ export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: ()
           )}
         </div>
       )}
-    </button>
+    </div>
   );
 }
 

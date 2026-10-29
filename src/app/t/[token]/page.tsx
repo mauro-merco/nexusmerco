@@ -1,5 +1,6 @@
 'use client';
 import { PageSkeleton } from '@/components/content-skeleton';
+import { TaskClientLink } from '@/components/task-client-link';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -182,7 +183,7 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
               <Badge variant="outline" className={cn('text-xs gap-1', pConfig.colorClass)}>
                 <span className={cn('w-2 h-2 rounded-full', pConfig.dotColor)} /> Prioridad {pConfig.label}
               </Badge>
-              {task.client && <span className="text-xs text-muted-foreground">{task.client.name}</span>}
+              {task.client && <TaskClientLink clientId={task.client_id} name={task.client.name} className="text-xs text-muted-foreground" />}
             </div>
 
             <h1 className="text-xl font-bold">{task.title}</h1>

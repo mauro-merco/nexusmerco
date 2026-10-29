@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { taskMutation } from '@/lib/task-mutation';
 import type { Task, TaskStatus, TaskComment, TaskAttachment, TaskPriority, TaskRole } from '@/lib/types';
 
 export function useTasks(clientId: string | null) {
@@ -11,6 +12,7 @@ export function useTasks(clientId: string | null) {
   const fetchTasks = useCallback(async () => {
     if (!clientId) { setLoading(false); return; }
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/tasks?client_id=${clientId}`);
       const json = await res.json();
@@ -42,7 +44,7 @@ export function useTasks(clientId: string | null) {
     pieces_feed?: number | null;
     pieces_reels?: number | null;
   }) => {
-    const res = await fetch('/api/tasks', {
+    const res = await taskMutation('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ client_id: clientId, ...data }),
@@ -70,7 +72,7 @@ export function useTasks(clientId: string | null) {
     pieces_reels: number | null;
     position: number;
   }>) => {
-    const res = await fetch(`/api/tasks/${id}`, {
+    const res = await taskMutation(`/api/tasks/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),

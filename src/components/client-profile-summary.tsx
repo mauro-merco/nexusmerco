@@ -15,7 +15,8 @@ import { WorkStatistics } from '@/components/work-statistics';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { ClientWall } from '@/components/client-wall';
 import { Input } from '@/components/ui/input';
-import { TASK_ROLE_CONFIG, taskStatusConfig, taskTypeInfo } from '@/lib/task-config';
+import { TASK_ROLE_CONFIG, TASK_PRIORITY_CONFIG, taskStatusConfig, taskTypeInfo } from '@/lib/task-config';
+import type { ActivityEvent } from '@/lib/activity-config';
 import { cn } from '@/lib/utils';
 import type { User, Task, NexusDocument } from '@/lib/types';
 import { KanbanSquare, CheckCircle2, Users2, Loader2, ChevronRight, FileText, Plus, Calendar, FolderOpen, ExternalLink, Trash2, MessageSquare, Send } from 'lucide-react';
@@ -31,12 +32,13 @@ function TaskRowInline({ task, onOpen, closed }: { task: Task; onOpen: () => voi
   const sConfig = taskStatusConfig(task.status);
   const SIcon = sConfig.icon;
   return (
+    <div className="rounded-xl bg-muted/40 p-2.5">
     <button
       type="button"
       onClick={onOpen}
-      className="group w-full flex items-center justify-between gap-2 rounded-xl bg-muted/40 p-2.5 text-left hover:bg-muted/70 transition-colors"
+      className="group w-full flex flex-wrap items-center justify-between gap-2 text-left hover:text-primary transition-colors"
     >
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         <Badge variant="outline" className={cn('text-[10px] gap-1 shrink-0 border-0', sConfig.bgColorClass, sConfig.colorClass)}>
           <SIcon className="h-3 w-3" /> {sConfig.label}
         </Badge>
@@ -51,7 +53,7 @@ function TaskRowInline({ task, onOpen, closed }: { task: Task; onOpen: () => voi
             </span>
           );
         })()}
-        <span className="text-sm font-medium truncate">{task.title}</span>
+        <span className="w-full text-sm font-medium break-words">{task.title}</span>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {task.assignees.length > 0 && (
@@ -84,6 +86,14 @@ function TaskRowInline({ task, onOpen, closed }: { task: Task; onOpen: () => voi
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary/70 transition-colors" />
       </div>
     </button>
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+      <span className={TASK_PRIORITY_CONFIG[task.priority].colorClass}>Prioridad: {TASK_PRIORITY_CONFIG[task.priority].label}</span>
+      <span>{task.assignees.length ? task.assignees.map(a => `${a.full_name || a.email} (${TASK_ROLE_CONFIG[a.task_role]?.shortLabel || 'Integrante'})`).join(' · ') : 'Sin asignar'}</span>
+      <a href={`/operations?task=${task.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline" aria-label={`Abrir origen de ${task.title} en otra pestaña`}>
+        <ExternalLink className="h-3 w-3" /> Abrir origen
+      </a>
+    </div>
+    </div>
   );
 }
 
@@ -103,7 +113,8 @@ function StatTile({ icon: Icon, iconClass, bgClass, value, label }: { icon: Reac
 
 export function ClientProfileSummary({ clientId }: { clientId: string }) {
   const router = useRouter();
-  const { tasks, loading, patchTask, refetch } = useTasks(clientId);
+  const { tasks, loading, error, patchTask, refetch } = useTasks(clientId);
+  const [sourceError, setSourceError] = useState('');
   const [users, setUsers] = useState<{ id: string; full_name: string; email: string; avatar_url: string }[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskTab, setTaskTab] = useState<'active' | 'history'>('active');
@@ -111,6 +122,28 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
   useEffect(() => {
     fetch('/api/users').then(r => r.json()).then(j => setUsers(j.data || [])).catch(() => {});
   }, []);
+
+  const openSource = async (event: ActivityEvent) => {
+    setSourceError('');
+    try {
+      if (event.entity_type === 'calendar') {
+        router.push(`/calendarios?client=${clientId}&type=unificado`);
+        return;
+      }
+      if (!event.entity_id) return;
+      const source = event.entity_type === 'task' ? 'tasks' : event.entity_type === 'social_idea' ? 'social-ideas' : 'ads-ideas';
+      const res = await fetch(`/api/${source}/${event.entity_id}`);
+      const json = await res.json();
+      if (!res.ok || !json.data) throw new Error(json.error || 'El origen ya no está disponible.');
+      if (source === 'tasks') setSelectedTask(json.data);
+      else {
+        const params = new URLSearchParams({ client: clientId, type: source === 'social-ideas' ? 'redes' : 'ads', month: json.data.publish_date.slice(0, 7), idea: event.entity_id });
+        router.push(`/calendarios?${params}`);
+      }
+    } catch (e) {
+      setSourceError(e instanceof Error ? e.message : 'No se pudo abrir el origen.');
+    }
+  };
 
   if (loading) {
     return (
@@ -121,6 +154,8 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
       </Card>
     );
   }
+
+  if (error) return <div role="alert" className="space-y-2 text-sm text-destructive"><p>{error}</p><Button variant="outline" onClick={refetch}>Reintentar</Button></div>;
 
   const activeTasks = tasks.filter(t => t.status !== 'cerrada');
   const historyTasks = tasks.filter(t => t.status === 'cerrada');
@@ -148,7 +183,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
                 <Users2 className="h-3.5 w-3.5" /> Equipo trabajando
               </p>
-              <button type="button" onClick={() => router.push('/operations')} className="flex items-center gap-1 text-[11px] text-primary font-medium">
+              <button type="button" onClick={() => { setTaskTab('active'); document.getElementById('client-active-tasks')?.scrollIntoView({ block: 'nearest' }); }} className="flex items-center gap-1 text-[11px] text-primary font-medium">
                 Ver tareas <ChevronRight className="h-3 w-3" />
               </button>
             </div>
@@ -174,8 +209,10 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
 
       {/* Row 2 — tasks tabs + piezas */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
-        <Card className="border-0 ring-0 shadow-none rounded-2xl">
+        <Card id="client-active-tasks" className="border-0 ring-0 shadow-none rounded-2xl">
           <CardContent className="p-4">
+            <h2 className="text-sm font-bold mb-1">Tareas del cliente</h2>
+            <p className="text-xs text-muted-foreground mb-3">Activas: todas las tareas que no están cerradas. Seleccioná una para ver el detalle.</p>
             <div className="flex items-center justify-between mb-3">
               <div className="flex gap-1.5">
                 <button type="button" onClick={() => setTaskTab('active')} className={cn('text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors', taskTab === 'active' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted')}>
@@ -191,7 +228,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
             ) : (
               <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
                 {shownTasks.map(t => (
-                  <TaskRowInline key={t.id} task={t} closed={taskTab === 'history'} onOpen={() => (taskTab === 'history' ? router.push(`/operations?task=${t.id}`) : setSelectedTask(t))} />
+                  <TaskRowInline key={t.id} task={t} closed={taskTab === 'history'} onOpen={() => setSelectedTask(t)} />
                 ))}
               </div>
             )}
@@ -209,14 +246,15 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
       {/* Row 3 — actividad del equipo */}
       <Card className="border-0 ring-0 shadow-none rounded-2xl">
         <CardContent className="p-4">
-          <TeamActivity tasks={tasks} />
+          <TeamActivity tasks={tasks} onTaskClick={setSelectedTask} />
         </CardContent>
       </Card>
 
       {/* Row 3b — historial exhaustivo (tareas, redes, ADS) */}
       <Card className="border-0 ring-0 shadow-none rounded-2xl">
         <CardContent className="p-4">
-          <ActivityHistory clientId={clientId} scrollHeight={440} />
+          {sourceError && <p role="alert" className="mb-2 text-sm text-destructive">{sourceError}</p>}
+          <ActivityHistory clientId={clientId} scrollHeight={440} onOpenSource={openSource} />
         </CardContent>
       </Card>
 

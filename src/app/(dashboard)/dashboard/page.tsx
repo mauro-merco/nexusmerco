@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
@@ -76,7 +76,8 @@ export default function DashboardPage() {
   const activeClients = allClients.filter(c => c.status === 'active' || c.status === 'onboarding');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientView, setClientView] = useState<'menu' | 'analysis' | 'calendar' | 'ads' | null>(null);
-  const selectedClient = clients.find(c => c.id === selectedClientId);
+  const selectedClient = allClients.find(c => c.id === selectedClientId);
+  const appliedClientParam = useRef<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
 
@@ -104,12 +105,14 @@ export default function DashboardPage() {
   // Deep link from global search: ?client=<id>
   useEffect(() => {
     const clientParam = searchParams.get('client');
-    if (!clientParam || clientParam === selectedClientId || clients.length === 0) return;
-    const client = clients.find(c => c.id === clientParam);
+    if (!clientParam) { appliedClientParam.current = null; return; }
+    if (clientParam === appliedClientParam.current || loading) return;
+    const client = clients.find(c => c.id === clientParam && (allowedClientIds === null || allowedClientIds.includes(c.id)));
     if (!client) return;
+    appliedClientParam.current = clientParam;
     setSelectedClientId(clientParam);
     setClientView('menu');
-  }, [clients, selectedClientId, searchParams]);
+  }, [clients, loading, allowedClientIds, searchParams]);
 
   if (!canView) {
     return (
@@ -123,6 +126,11 @@ export default function DashboardPage() {
   }
 
   const handleBack = () => {
+    if (searchParams.has('client')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('client');
+      router.replace(`/dashboard${params.size ? `?${params}` : ''}`, { scroll: false });
+    }
     setClientView(null);
     setSelectedClientId(null);
   };

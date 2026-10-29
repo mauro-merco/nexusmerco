@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 import { logActivity, type ActivityLogInput } from '@/lib/activity-events';
 import { departmentInfo, calculateDueDate } from '@/lib/department-config';
+import { validateTaskClosure, EFFORT_LABELS } from '@/lib/task-closure';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,9 +71,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const user = await getRequestUser(request, supabase);
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    const { data: targetTask } = await supabase.from('tasks').select('client_id, status, title, needs_client_material, department, start_date').eq('id', id).single();
+    const { data: targetTask } = await supabase.from('tasks').select('client_id, status, title, problem_note, needs_client_material, department, start_date').eq('id', id).single();
     if (!targetTask || !canAccessClient(user, targetTask.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     const body = await request.json();
+    if (body.status === 'cerrada' && targetTask.status !== 'cerrada') {
+      const error = validateTaskClosure(body);
+      if (error) return NextResponse.json({ error, code: 'task_closure_required' }, { status: 422 });
+    }
     const roleList = ['lead', 'executor', 'reviewer'];
     if (Array.isArray(body.assignees) && !roleList.every(role => body.assignees.some((assignee: { role?: string }) => assignee?.role === role))) {
       return NextResponse.json({ error: 'Responsable, ejecutor y control son obligatorios' }, { status: 400 });
@@ -125,7 +130,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
 
     if (body.status !== undefined) {
-      const { data: prevTask } = await supabase.from('tasks').select('status, problem_note').eq('id', id).single();
+      const prevTask = targetTask;
       if (body.status === 'problemas') {
         const note = typeof body.problem_note === 'string' ? body.problem_note.trim() : '';
         if (!note && !(prevTask?.problem_note || '').trim()) {
@@ -133,12 +138,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         }
       }
       if (body.status !== prevTask?.status) {
-        if (body.status === 'cerrada') updates.completed_at = new Date().toISOString();
-        else if (prevTask?.status === 'cerrada') updates.completed_at = null;
+        if (body.status === 'cerrada') Object.assign(updates, { completed_at: new Date().toISOString(), closed_at: new Date().toISOString(), closed_by: user.id, closure_effort: body.closure_effort, actual_minutes: body.actual_minutes ?? null, closure_summary: body.closure_summary.trim() });
+        else if (prevTask?.status === 'cerrada') Object.assign(updates, { completed_at: null, closed_at: null, closed_by: null, closure_effort: null, actual_minutes: null, closure_summary: null });
       }
     }
 
-    const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).select().single();
+    const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).eq('status', targetTask.status).select().single();
+    if (error?.code === 'PGRST116') return NextResponse.json({ error: 'La tarea cambió mientras la editabas. Actualizá la vista e intentá de nuevo.' }, { status: 409 });
     if (error) throw error;
 
     const events: ActivityLogInput[] = [];
@@ -149,7 +155,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
     if (body.status !== undefined && body.status !== prevStatus) {
       events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'status_changed', detail: 'Cambió el estado', fromValue: prevStatus, toValue: body.status, actorId: user.id });
-      if (body.status === 'cerrada') events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'completed', detail: 'Cerró la tarea', actorId: user.id });
+      if (body.status === 'cerrada') events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'completed', detail: `Cerró la tarea · Esfuerzo ${EFFORT_LABELS[body.closure_effort as keyof typeof EFFORT_LABELS]} · ${data.actual_minutes != null ? `${data.actual_minutes} min` : 'Sin tiempo registrado'}: ${data.closure_summary}`, actorId: user.id });
       if (body.status === 'problemas') events.push({ clientId: data.client_id, area: 'task', entityType: 'task', entityId: id, entityTitle: data.title, action: 'problem_reported', detail: String(body.problem_note || ''), actorId: user.id });
     }
     if (body.needs_client_material === true && !targetTask?.needs_client_material) {

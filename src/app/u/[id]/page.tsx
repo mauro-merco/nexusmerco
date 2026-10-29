@@ -1,4 +1,5 @@
 'use client';
+import { TaskClientLink } from '@/components/task-client-link';
 import { PageSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -295,7 +296,7 @@ export default function PublicProfilePage() {
                               <strong className="text-foreground">{firstName}</strong>{' '}
                               {cfg.verb} «<strong className="text-foreground/90">{t.title}</strong>»
                             </span>
-                            {t.client?.name && <Badge variant="secondary" className="text-[10px]">{t.client.name}</Badge>}
+                            {t.client?.name && <TaskClientLink clientId={t.client_id} name={t.client.name} className="rounded-full bg-secondary px-2 py-0.5 text-[10px]" />}
                             <span className={cn(
                               'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold',
                               sCfg.bgColorClass, sCfg.colorClass,
@@ -379,7 +380,7 @@ export default function PublicProfilePage() {
                             </span>
                           );
                         })()}
-                        {t.client?.name && <Badge variant="secondary" className="text-[10px]">{t.client.name}</Badge>}
+                        {t.client?.name && <TaskClientLink clientId={t.client_id} name={t.client.name} className="rounded-full bg-secondary px-2 py-0.5 text-[10px]" />}
                         <Badge variant="outline" className={cn('text-[10px] capitalize', TASK_STATUS_CONFIG[t.status].colorClass)}>{t.status.replace(/_/g, ' ')}</Badge>
                         <Badge variant="outline" className="text-[10px] capitalize">{t.priority}</Badge>
                         {t.due_date && (

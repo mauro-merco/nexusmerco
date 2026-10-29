@@ -126,8 +126,10 @@ export default function OperationsPage() {
 
   const handleTaskMove = useCallback(async (taskId: string, newStatus: TaskStatus) => {
     if (newStatus === 'problemas') { setProblemMove({ taskId }); return; }
-    setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-    await updateTask(taskId, { status: newStatus });
+    try {
+      const updated = await updateTask(taskId, { status: newStatus });
+      setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updated } : t));
+    } catch { /* Cancellation or failure leaves the board unchanged. */ }
   }, [updateTask]);
 
   const confirmProblemMove = useCallback(async (note: string) => {

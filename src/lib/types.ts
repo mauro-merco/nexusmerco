@@ -234,6 +234,11 @@ export interface Task {
   pieces_feed: number | null;
   pieces_reels: number | null;
   completed_at: string | null;
+  closed_at?: string | null;
+  closed_by?: string | null;
+  closure_effort?: 'low' | 'medium' | 'high' | 'very_high' | null;
+  actual_minutes?: number | null;
+  closure_summary?: string | null;
   position: number;
   share_token: string;
   is_public: boolean;

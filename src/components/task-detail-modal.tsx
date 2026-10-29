@@ -1,5 +1,8 @@
 'use client';
 import { ContentSkeleton } from '@/components/content-skeleton';
+import { TaskClientLink } from '@/components/task-client-link';
+import { taskMutation } from '@/lib/task-mutation';
+import { EFFORT_LABELS } from '@/lib/task-closure';
 
 import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
@@ -170,7 +173,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   const saveDescription = async () => {
     setSavingDescription(true); setDescriptionError(null);
     try {
-      const res = await fetch(`/api/tasks/${task.id}`, {
+      const res = await taskMutation(`/api/tasks/${task.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description: descriptionDraft }),
       });
@@ -185,7 +188,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     setSaving(true); setSaveError(null);
     try {
       if (!roles.lead.length || !roles.executor.length || !roles.reviewer.length) throw new Error('Asigná al menos una persona como responsable, ejecutor y control');
-      const res = await fetch(`/api/tasks/${task.id}`, {
+      const res = await taskMutation(`/api/tasks/${task.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title, description, status, priority, assignees: rolesToList(roles), department,
@@ -207,7 +210,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
     if (newStatus === 'problemas') { setProblemPrompt({ note: problemNote }); return; }
     setChangingStatus(true);
     try {
-      const res = await fetch(`/api/tasks/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
+      const res = await taskMutation(`/api/tasks/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
       const json = await res.json();
       if (res.ok) { setStatus(newStatus); onTaskUpdated(json.data); }
     } catch { /* */ } finally { setChangingStatus(false); }
@@ -289,7 +292,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               {folderError && <p role="alert" className="text-xs text-destructive">{folderError}</p>}
             </form>}
             <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-              {task.client && <span className="rounded-md bg-primary/10 px-2 py-0.5 font-semibold text-primary">{task.client.name}</span>}
+              {task.client && <TaskClientLink clientId={task.client_id} name={task.client.name} onNavigate={() => onOpenChange(false)} className="rounded-md bg-primary/10 px-2 py-0.5 font-semibold text-primary" />}
               {task.due_date && dueChip(task.due_date)}
             </DialogDescription>
           </div>
@@ -527,6 +530,11 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               </>
             ) : (
               <>
+                {task.status === 'cerrada' && <section className="rounded-2xl bg-emerald-500/10 p-4 space-y-2">
+                  <h3 className="text-sm font-semibold">Resultado y cierre</h3>
+                  <p className="text-xs text-muted-foreground">{new Date(task.closed_at || task.completed_at || task.updated_at).toLocaleString('es-AR')} · Esfuerzo: {task.closure_effort ? EFFORT_LABELS[task.closure_effort] : 'Sin registrar'} · {task.actual_minutes != null ? `${task.actual_minutes} minutos` : 'Sin tiempo registrado'}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm">{task.closure_summary || 'Esta tarea no tiene una ficha de cierre registrada.'}</p>
+                </section>}
                 {task.needs_client_material && (
                   <div className="rounded-2xl bg-red-500/10 p-4">
                     <p className="flex items-center gap-2 text-sm font-black uppercase text-red-600 dark:text-red-400"><AlertTriangle className="h-4 w-4" /> Necesito material del cliente</p>

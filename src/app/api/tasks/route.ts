@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 import { logActivity } from '@/lib/activity-events';
+import { validateTaskClosure } from '@/lib/task-closure';
 import { departmentInfo, calculateDueDate } from '@/lib/department-config';
 
 const supabase = createClient(
@@ -147,6 +148,10 @@ export async function POST(request: Request) {
       .eq('client_id', client_id);
 
     const initialStatus = status || 'borrador';
+    if (initialStatus === 'cerrada') {
+      const error = validateTaskClosure(body);
+      if (error) return NextResponse.json({ error, code: 'task_closure_required' }, { status: 422 });
+    }
     if (initialStatus === 'problemas' && !(typeof problem_note === 'string' && problem_note.trim())) {
       return NextResponse.json({ error: 'Escribí cuál es el problema' }, { status: 400 });
     }
@@ -174,6 +179,7 @@ export async function POST(request: Request) {
         pieces_feed: toCount(pieces_feed),
         pieces_reels: toCount(pieces_reels),
         completed_at: initialStatus === 'cerrada' ? new Date().toISOString() : null,
+        ...(initialStatus === 'cerrada' ? { closed_at: new Date().toISOString(), closed_by: user.id, closure_effort: body.closure_effort, actual_minutes: body.actual_minutes ?? null, closure_summary: body.closure_summary.trim() } : {}),
         position: count || 0,
       })
       .select()
@@ -226,6 +232,7 @@ export async function POST(request: Request) {
 
     await logActivity(supabase, [
       { clientId: client_id, area: 'task', entityType: 'task', entityId: data.id, entityTitle: title, action: 'created', detail: 'Creó la tarea', actorId: user.id },
+      ...(initialStatus === 'cerrada' ? [{ clientId: client_id, area: 'task' as const, entityType: 'task', entityId: data.id, entityTitle: title, action: 'completed', detail: `Creó la tarea cerrada: ${data.closure_summary}`, actorId: user.id }] : []),
       ...assigneesOut.map((a) => ({ clientId: client_id, area: 'task' as const, entityType: 'task', entityId: data.id, entityTitle: title, action: 'assignee_added', detail: a.full_name || a.email || '', toValue: a.task_role, actorId: user.id })),
     ]);
     return NextResponse.json({ data: { ...data, assignees: assigneesOut } });

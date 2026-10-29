@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { TaskClientLink } from '@/components/task-client-link';
 import {
   DndContext, DragOverlay, closestCenter,
   PointerSensor, useSensor, useSensors, type DragStartEvent, type DragEndEvent,
@@ -51,7 +52,7 @@ function TaskCard({ task, onClick, showClient }: { task: Task; onClick: () => vo
       )}
     >
       <div className="flex items-center gap-2">
-        <span className="flex-1 truncate text-[11px] font-semibold text-primary/80">{showClient && task.client?.name ? task.client.name : '\u00A0'}</span>
+        <span className="flex-1 truncate text-[11px] font-semibold text-primary/80">{showClient && task.client?.name ? <TaskClientLink clientId={task.client_id} name={task.client.name} /> : '\u00A0'}</span>
         <span title={`Prioridad ${p.label}`} className={cn('h-2 w-2 shrink-0 rounded-full', p.dotColor)} />
       </div>
       <p className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug">{task.title}</p>
