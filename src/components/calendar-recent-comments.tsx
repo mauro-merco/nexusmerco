@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState } from 'react';
 import { MessageSquare, ArrowUpRight, ChevronDown } from 'lucide-react';
@@ -60,7 +61,7 @@ export function CalendarRecentComments({
       </header>
 
       {loading ? (
-        <p className="py-4 text-xs text-muted-foreground">Cargando comentarios...</p>
+        <ContentSkeleton variant="comments" label="Cargando comentarios" />
       ) : latest.length === 0 ? (
         <p className="py-4 text-xs text-muted-foreground">Todavía no hay comentarios en ideas este mes.</p>
       ) : (

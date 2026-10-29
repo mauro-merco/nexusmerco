@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/auth-store';
@@ -336,7 +337,7 @@ function TwoFactorAuthSection() {
 
       {step === 'setup' && loading && (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <ContentSkeleton variant="form" />
         </div>
       )}
 
@@ -470,7 +471,7 @@ function UsersTab() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <ContentSkeleton />
         </div>
       ) : (
         <div className="space-y-6">

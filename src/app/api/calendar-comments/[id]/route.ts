@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { decodeJwt } from 'jose';
+import { getRequestUser } from '@/lib/api-security';
 import {
   getSupabaseAdmin,
   isCalendarType,
@@ -8,11 +8,9 @@ import {
 } from '@/lib/calendar-access-server';
 
 /**
- * Resolves the acting user for a delete request. Public visitors may use a
- * share token (session or guest email) so a guest can remove their own comment;
- * internal users authenticate with their Supabase session.
+ * Verifies the session and, for public requests, the target's share-link scope.
  */
-async function resolveActor(request: Request): Promise<{ id: string; isAdmin: boolean } | null> {
+async function resolveActor(request: Request, id: string): Promise<{ id: string; isAdmin: boolean } | null> {
   const supabase = getSupabaseAdmin();
   const { searchParams } = new URL(request.url);
   const shareToken = searchParams.get('token') || '';
@@ -25,23 +23,26 @@ async function resolveActor(request: Request): Promise<{ id: string; isAdmin: bo
       isCalendarType(typeParam) ? typeParam : 'social',
     );
     if ('error' in resolved) return null;
+    if (resolved.type !== typeParam) return null;
     const viewer = await resolveCalendarViewer(request, supabase, resolved.link);
     if (!viewer) return null;
-    return { id: viewer.id, isAdmin: viewer.isStaff };
+    const ideaScope = searchParams.get('scope') === 'idea';
+    const table = ideaScope ? (resolved.type === 'ads' ? 'ads_comments' : 'social_comments') : 'calendar_comments';
+    const { data: comment, error } = await supabase.from(table).select('*').eq('id', id).maybeSingle();
+    if (error || !comment) return null;
+    if (ideaScope) {
+      const { data: idea, error: ideaError } = await supabase.from(resolved.type === 'ads' ? 'ads_ideas' : 'social_ideas')
+        .select('client_id, publish_date').eq('id', comment.idea_id).maybeSingle();
+      if (ideaError || !idea || idea.client_id !== resolved.client.id ||
+        (resolved.month && !idea.publish_date?.startsWith(`${resolved.month}-`))) return null;
+    } else if (comment.client_id !== resolved.client.id || comment.calendar_type !== resolved.type ||
+      (resolved.month && comment.month !== resolved.month)) return null;
+    return { id: viewer.id, isAdmin: false };
   }
 
-  const authHeader = request.headers.get('authorization') || '';
-  const jwt = authHeader.replace('Bearer ', '');
-  if (!jwt || jwt === 'undefined') return null;
-
-  let userId = '';
-  try {
-    const payload = decodeJwt(jwt);
-    userId = String(payload.sub || '');
-  } catch {
-    return null;
-  }
-  if (!userId) return null;
+  const user = await getRequestUser(request, supabase);
+  if (!user) return null;
+  const userId = user.id;
 
   const { data: me } = await supabase.from('users').select('role').eq('id', userId).maybeSingle();
   return { id: userId, isAdmin: me?.role === 'admin' };
@@ -68,7 +69,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
           : 'social_comments'
         : 'calendar_comments';
 
-    const actor = await resolveActor(request);
+    const actor = await resolveActor(request, id);
     if (!actor) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
     const { data: comment } = await supabase
@@ -115,7 +116,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
           : 'social_comments'
         : 'calendar_comments';
 
-    const actor = await resolveActor(request);
+    const actor = await resolveActor(request, id);
     if (!actor) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
     const { data: comment } = await supabase

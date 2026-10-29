@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ import { TaskRow } from '@/components/client-tasks-tab';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus, TaskPriority } from '@/lib/types';
 import { TASK_PRIORITY_CONFIG, TASK_PRIORITIES } from '@/lib/task-config';
-import { KanbanSquare, Plus, Loader2, Layers, CheckCircle2, AlertTriangle, Clock, LayoutGrid, List as ListIcon, ChevronDown, Check, X, Building2, Flag } from 'lucide-react';
+import { KanbanSquare, Plus, Layers, CheckCircle2, AlertTriangle, Clock, LayoutGrid, List as ListIcon, ChevronDown, Check, X, Building2, Flag } from 'lucide-react';
 
 type ViewMode = 'kanban' | 'list';
 
@@ -150,7 +151,7 @@ export default function OperationsPage() {
     setSelectedTask(null);
   }, [deleteTask]);
 
-  if (clientsLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (clientsLoading) return <ContentSkeleton variant="cards" />;
 
   if (clients.length === 0) {
     return (
@@ -234,7 +235,7 @@ export default function OperationsPage() {
       </div>
 
       {allLoading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <ContentSkeleton variant={view === 'kanban' ? 'board' : 'list'} />
       ) : view === 'kanban' ? (
         <KanbanBoard tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskMove={handleTaskMove} showClient />
       ) : (

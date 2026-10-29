@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,9 +46,7 @@ export function ClientWall({ clientId }: { clientId: string }) {
 
         <div className="space-y-3 max-h-80 overflow-y-auto">
           {loading && (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
+            <ContentSkeleton variant="comments" />
           )}
           {!loading && messages.length === 0 && (
             <p className="text-sm text-muted-foreground/60 italic text-center py-4">Sin mensajes todavía</p>

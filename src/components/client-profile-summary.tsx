@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -115,7 +116,7 @@ export function ClientProfileSummary({ clientId }: { clientId: string }) {
     return (
       <Card className="border-0 ring-0 shadow-none rounded-2xl">
         <CardContent className="flex items-center justify-center py-10">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <ContentSkeleton />
         </CardContent>
       </Card>
     );
@@ -323,7 +324,7 @@ function DriveFoldersSection({ clientId }: { clientId: string }) {
         </div>
         {error && <p className="text-xs text-destructive">{error}</p>}
         {loading ? (
-          <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+          <ContentSkeleton />
         ) : folders.length === 0 ? (
           <p className="text-sm text-muted-foreground/70 italic text-center py-3">Todavía no hay carpetas importantes.</p>
         ) : (
@@ -401,7 +402,7 @@ function DocumentsSection({ clientId }: { clientId: string }) {
           </Button>
         </div>
         {loading ? (
-          <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+          <ContentSkeleton />
         ) : docs.length === 0 ? (
           <p className="text-sm text-muted-foreground/70 italic text-center py-3">Sin documentos para este cliente</p>
         ) : (

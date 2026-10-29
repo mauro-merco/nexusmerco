@@ -1,4 +1,5 @@
 'use client';
+import { PageSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -92,7 +93,7 @@ export default function SharedTaskPage({ params }: { params: Promise<{ token: st
   useEffect(() => { if (token) load(token); }, [token, load]);
 
   if (state.status === 'loading' || !token) {
-    return <div className={cn(bg, 'flex items-center justify-center')}><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return <div className={bg}><PageSkeleton variant="form" /></div>;
   }
 
   if (state.status === 'not_found') {

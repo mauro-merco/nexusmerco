@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useEffect, useState } from 'react';
 import {
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/auth-store';
-import { Loader2, Share2, UserCheck, UserPlus } from 'lucide-react';
+import { Share2, UserCheck, UserPlus } from 'lucide-react';
 import type { NexusDocument } from '@/lib/types';
 
 function authHeaders() {
@@ -114,9 +115,7 @@ export function DocumentShareDialog({
 
         <div className="max-h-72 overflow-y-auto space-y-1">
           {loading && (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-            </div>
+            <ContentSkeleton />
           )}
           {!loading && filteredUsers.length === 0 && (
             <p className="text-center text-muted-foreground text-sm py-8">No hay usuarios disponibles</p>

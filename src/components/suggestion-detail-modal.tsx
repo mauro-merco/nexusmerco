@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -138,7 +139,7 @@ export function SuggestionDetailModal({ suggestion, open, onOpenChange, onUpdate
 
         <div className="flex-1 overflow-y-auto min-h-0 space-y-4 py-4">
           {loading && !current.title && (
-            <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            <ContentSkeleton variant="comments" />
           )}
 
           <div>

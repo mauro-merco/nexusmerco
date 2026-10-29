@@ -1,11 +1,12 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, GitCommit, FileCode, Bug, Wrench, FileText, Sparkles, TestTube, Package, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
+import { GitCommit, FileCode, Bug, Wrench, FileText, Sparkles, TestTube, Package, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -126,9 +127,7 @@ export function DevelopmentLogPanel() {
 
       <CardContent>
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <ContentSkeleton />
         ) : logs.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <FileCode className="h-12 w-12 mx-auto mb-3 opacity-50" />

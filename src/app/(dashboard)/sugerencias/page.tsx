@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -12,7 +13,7 @@ import { SUGGESTION_TYPE_CONFIG, SUGGESTION_STATUS_CONFIG, SUGGESTION_STATUSES }
 import { cn } from '@/lib/utils';
 import { MentionedText } from '@/components/mention';
 import type { Suggestion, SuggestionType, SuggestionStatus } from '@/lib/types';
-import { Lightbulb, Bug, Plus, Heart, MessageSquare, Loader2, Megaphone } from 'lucide-react';
+import { Lightbulb, Bug, Plus, Heart, MessageSquare, Megaphone } from 'lucide-react';
 
 export default function SuggestionsPage() {
   const { user } = useAuthStore();
@@ -142,7 +143,7 @@ export default function SuggestionsPage() {
 
       {/* Cards */}
       {loading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <ContentSkeleton variant="cards" />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-muted-foreground">
           <Lightbulb className="h-12 w-12 opacity-30" />

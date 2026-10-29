@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
@@ -67,7 +68,7 @@ function dueChip(dueDate: string, short = false) {
 
 export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTaskDeleted, users }: TaskDetailModalProps) {
   const { user } = useAuthStore();
-  const { comments, addComment, deleteComment, updateComment } = useTaskComments(task.id);
+  const { comments, loading: loadingComments, addComment, deleteComment, updateComment } = useTaskComments(task.id);
   const { attachments, loading: loadingAttachments, addAttachment, updateAttachment, removeAttachment } = useTaskAttachments(task.id);
   const readyFolder = attachments.find(a => a.name === readyFolderLabel);
   let readyFolderUrl: string | undefined;
@@ -557,6 +558,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   {addingAttach ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
                 </Button>
               </div>
+              {loadingAttachments && attachments.length === 0 && <ContentSkeleton />}
               {attachments.length > 0 && (
                 <div className="mt-3 space-y-1.5">
                   {attachments.map(att => (
@@ -580,7 +582,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               Comentarios ({comments.length})
             </p>
             <Scroller className="mb-3 flex-1" innerClassName="space-y-4">
-              {comments.length === 0 && <p className="py-6 text-center text-sm italic text-muted-foreground/50">Sin comentarios</p>}
+              {loadingComments && comments.length === 0 ? <ContentSkeleton variant="comments" label="Cargando comentarios" /> : comments.length === 0 && <p className="py-6 text-center text-sm italic text-muted-foreground/50">Sin comentarios</p>}
               {comments.map(c => (
                 <TaskCommentItem key={c.id} comment={c} currentUserId={user?.id} onReply={setReplyTo} onDelete={deleteComment}
                   editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}

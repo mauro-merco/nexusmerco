@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -125,10 +126,7 @@ export default function ClientsPage() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <p>Cargando clientes...</p>
-        </div>
+        <ContentSkeleton variant="cards" />
       )}
 
       {error && (

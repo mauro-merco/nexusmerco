@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useEffect, useState } from 'react';
 import { Settings, Loader2 } from 'lucide-react';
@@ -130,7 +131,7 @@ export function CalendarGuestAccessDialog({ clientId, calendarType, month, confi
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
+              <ContentSkeleton />
             ) : users.length === 0 ? (
               <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No hay usuarios cliente creados en Configuración.</p>
             ) : (

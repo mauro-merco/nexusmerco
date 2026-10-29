@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useNotifications } from '@/lib/hooks/use-notifications';
 import { useAuthStore } from '@/store/auth-store';
 import {
-  Bell, CheckCheck, Loader2, ExternalLink, UserPlus, AtSign, FileText, AlarmClock, CheckCircle2, Info, ChevronRight,
+  Bell, CheckCheck, ExternalLink, UserPlus, AtSign, FileText, AlarmClock, CheckCircle2, Info, ChevronRight,
   Mail,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -87,9 +88,7 @@ export function NotificationBell() {
             </div>
             <div className="overflow-y-auto flex-1">
               {loading && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
+                <ContentSkeleton />
               )}
               {!loading && notifications.length === 0 && (
                 <div className="text-center py-8 text-xs text-muted-foreground">

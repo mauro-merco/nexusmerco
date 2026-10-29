@@ -1,4 +1,5 @@
 'use client';
+import { PageSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Send, MessageCircle, Loader2, RefreshCw, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy, Sun, Moon, LayoutGrid, List as ListIcon } from 'lucide-react';
@@ -638,7 +639,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
   if (authMode === 'loading' || !token) {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return <div className="min-h-screen bg-background"><PageSkeleton variant="calendar" /></div>;
   }
 
   if (authMode === 'gate') {
@@ -646,7 +647,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   }
 
   if (!data && fetchLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return <div className="min-h-screen bg-background"><PageSkeleton variant="calendar" /></div>;
   }
 
   if (error || !data) {
@@ -896,7 +897,7 @@ function GateWithClientFetch({ token, calendarType, onEnter }: {
     );
   }
   if (!client) {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return <div className="min-h-screen bg-background"><PageSkeleton variant="calendar" /></div>;
   }
   return <AuthGate token={token} client={client} calendarType={calendarType} onEnter={onEnter} />;
 }

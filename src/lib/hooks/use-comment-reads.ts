@@ -21,13 +21,14 @@ interface CommentNode {
 }
 
 /** "Visto" marks per comment/reply: `readers[commentId]` = who already saw it. */
-export function useCommentReads(type: CommentReadType, ids: string[], me: Me | null) {
+export function useCommentReads(type: CommentReadType, ids: string[], me: Me | null, enabled = true) {
   const [readers, setReaders] = useState<Record<string, CommentReader[]>>({});
   const [pending, setPending] = useState<string | null>(null);
 
   const key = ids.filter(Boolean).sort().join(',');
 
   useEffect(() => {
+    if (!enabled) return;
     if (!key) { setReaders({}); return; }
     let cancelled = false;
     (async () => {
@@ -38,7 +39,7 @@ export function useCommentReads(type: CommentReadType, ids: string[], me: Me | n
       } catch { /* keep what we have */ }
     })();
     return () => { cancelled = true; };
-  }, [type, key]);
+  }, [type, key, enabled]);
 
   const toggle = useCallback(async (id: string) => {
     if (!id) return;

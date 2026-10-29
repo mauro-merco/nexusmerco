@@ -1,11 +1,12 @@
 'use client';
+import { PageSkeleton } from '@/components/content-skeleton';
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   TrendingUp, DollarSign, Eye, MousePointer, ShoppingCart, Globe, Search, Megaphone,
-  PieChart, Loader2, AlertCircle, Sparkles, Target, Activity, Lightbulb, ArrowUpRight,
+  PieChart, AlertCircle, Sparkles, Target, Activity, Lightbulb, ArrowUpRight,
   Users, BarChart3, MousePointerClick, Hash, CalendarDays,
 } from 'lucide-react';
 import {
@@ -164,11 +165,8 @@ export default function PublicClientPage() {
   const insights = useMemo(() => data ? generateInsights(data) : { paragraphs: [], tips: [] }, [data]);
 
   if (loading) return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">Cargando reporte...</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <PageSkeleton variant="report" />
     </div>
   );
 

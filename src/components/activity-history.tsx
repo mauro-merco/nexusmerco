@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -13,7 +14,7 @@ import {
 import { STATUS_CONFIG } from '@/lib/social-config';
 import { TASK_STATUS_CONFIG, TASK_ROLE_CONFIG } from '@/lib/task-config';
 import {
-  History, Loader2, RefreshCw, Download, ClipboardList, Sparkles, Megaphone,
+  History, RefreshCw, Download, ClipboardList, Sparkles, Megaphone,
   CircleDot, ChevronDown, ChevronRight, Inbox, User2,
 } from 'lucide-react';
 
@@ -285,9 +286,7 @@ export function ActivityHistory({ clientId, userId, title, scrollHeight }: Activ
       </div>
 
       {loading && events.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
+        <ContentSkeleton />
       ) : error ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-muted-foreground">
           <Inbox className="h-8 w-8 opacity-30" />

@@ -1,8 +1,10 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { MessageSquare, Send, Trash2, Loader2, AlertCircle, Search, X } from 'lucide-react';
+import { MessageSquare, Send, Trash2, Pencil, Loader2, AlertCircle, Search, X } from 'lucide-react';
+import { CommentReadEye } from '@/components/comment-read';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -58,13 +60,10 @@ export function CalendarComments({
   guestEmail,
   viewerAuthToken,
   mentionUsers = [],
-  currentUserId,
-  currentUserEmail,
-  isAdmin,
   title,
   className,
 }: CalendarCommentsProps) {
-  const { comments, loading, error, addComment, removeComment } = useCalendarComments({
+  const { comments, loading, error, readError, viewerId, readers, updateComment, toggleSeen, addComment, removeComment } = useCalendarComments({
     clientId,
     calendarType,
     month,
@@ -78,6 +77,9 @@ export function CalendarComments({
   const [sendError, setSendError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const monthLabel = month ? format(new Date(`${month}-01T00:00:00`), 'MMMM yyyy') : '';
   const needle = query.trim().toLowerCase();
@@ -107,21 +109,25 @@ export function CalendarComments({
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
+    setSendError(null);
     try {
       await removeComment(id, 'calendar');
-    } catch {
-      /* keep the comment visible if the delete failed */
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : 'No se pudo eliminar');
     } finally {
       setDeletingId(null);
     }
   };
 
-  const canDelete = (c: CalendarComment) => {
-    const matchesEmail =
-      !!currentUserEmail &&
-      !!c.user?.email &&
-      c.user.email.toLowerCase() === currentUserEmail.toLowerCase();
-    return (!!currentUserId && c.user_id === currentUserId) || matchesEmail || !!isAdmin;
+  const handleAction = async (id: string, edit: boolean) => {
+    setPendingId(id);
+    setSendError(null);
+    try {
+      if (edit) { await updateComment(id, draft); setEditingId(null); }
+      else await toggleSeen(id);
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : 'No se pudo guardar');
+    } finally { setPendingId(null); }
   };
 
   return (
@@ -170,13 +176,12 @@ export function CalendarComments({
       </div>
 
       {error && (
-        <p className="mb-2 text-xs text-muted-foreground">No se pudieron cargar los comentarios.</p>
+        <p role="alert" className="mb-2 text-xs text-destructive">{error}</p>
       )}
+      {readError && <p role="alert" className="mb-2 text-xs text-destructive">No se pudieron cargar los vistos: {readError}</p>}
 
       {loading ? (
-        <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando comentarios…
-        </div>
+        <ContentSkeleton variant="comments" label="Cargando comentarios" />
       ) : general.length === 0 ? (
         <p className="py-2 text-xs text-muted-foreground">Todavía no hay comentarios sobre este mes.</p>
       ) : (
@@ -227,12 +232,18 @@ export function CalendarComments({
                       <span className="shrink-0 text-[10px] text-muted-foreground">
                         {timeAgo(comment.created_at)}
                       </span>
-                      {canDelete(comment) && (
+                      {viewerId === comment.user_id && (
+                        <button type="button" aria-label="Editar comentario" className="ml-auto rounded p-1 text-muted-foreground hover:text-foreground"
+                          onClick={() => { setEditingId(comment.id); setDraft(comment.content); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {viewerId === comment.user_id && (
                         <button
                           type="button"
                           onClick={() => handleDelete(comment.id)}
                           disabled={deletingId === comment.id}
-                          className="ml-auto rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus:opacity-100 group-hover:opacity-100"
+                          className="rounded p-1 text-muted-foreground hover:text-destructive"
                           aria-label="Eliminar comentario"
                         >
                           {deletingId === comment.id ? (
@@ -243,6 +254,15 @@ export function CalendarComments({
                         </button>
                       )}
                     </div>
+                    {editingId === comment.id ? (
+                      <div className="mt-2 space-y-2">
+                        <MentionTextarea value={draft} onChange={setDraft} users={mentionUsers} rows={2} />
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={!draft.trim() || pendingId !== null} onClick={() => handleAction(comment.id, true)}>Guardar</Button>
+                          <Button size="sm" variant="ghost" disabled={pendingId !== null} onClick={() => setEditingId(null)}>Cancelar</Button>
+                        </div>
+                      </div>
+                    ) : (
                     <div className="mt-0.5 text-sm text-foreground/80">
                       <MarkdownBody
                         text={comment.content}
@@ -254,6 +274,9 @@ export function CalendarComments({
                         }
                       />
                     </div>
+                    )}
+                    <CommentReadEye readers={readers[comment.id]} currentUserId={viewerId}
+                      pending={pendingId !== null || !viewerId} onToggle={() => handleAction(comment.id, false)} />
                   </div>
                 </li>
               ))}

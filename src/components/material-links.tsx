@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, FolderOpen, Loader2, Plus, Trash2 } from 'lucide-react';
@@ -70,7 +71,7 @@ export function MaterialLinks({
         </div>
       )}
       <div className="flex flex-wrap gap-2">
-        {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        {loading ? <ContentSkeleton />
           : links.length === 0 ? <p className="text-xs text-muted-foreground">Sin material cargado.</p>
           : links.map(f => (
             <span key={f.id} className="inline-flex items-center gap-2 rounded-xl border bg-background/60 px-3 py-2 text-sm">

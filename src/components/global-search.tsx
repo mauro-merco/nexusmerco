@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6,7 +7,7 @@ import { useAuthStore } from '@/store/auth-store';
 import {
   Command, CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
 } from '@/components/ui/command';
-import { Search, Building2, User, FileText, KanbanSquare, Loader2 } from 'lucide-react';
+import { Search, Building2, User, FileText, KanbanSquare } from 'lucide-react';
 
 interface SearchResult {
   type: 'client' | 'user' | 'document' | 'task';
@@ -106,9 +107,7 @@ export function GlobalSearch() {
           <CommandInput placeholder="Buscar clientes, usuarios, documentos, tareas..." value={query} onValueChange={setQuery} />
           <CommandList>
             {loading && (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
+              <ContentSkeleton />
             )}
             {!loading && query.trim().length >= 2 && results.length === 0 && (
               <CommandEmpty>Sin resultados para &quot;{query}&quot;</CommandEmpty>

@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@/lib/types';
 
-export function useInternalUsers() {
+export function useInternalUsers(enabled = true) {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
+    if (!enabled) return;
     let active = true;
     fetch('/api/users')
       .then(response => response.json())
@@ -18,7 +19,7 @@ export function useInternalUsers() {
         if (active) setUsers([]);
       });
     return () => { active = false; };
-  }, []);
+  }, [enabled]);
 
   return users;
 }

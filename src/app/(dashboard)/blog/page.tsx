@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { startTransition, useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth-store';
@@ -377,7 +378,7 @@ export default function BlogPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+        <ContentSkeleton variant="cards" />
       ) : data?.posts.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.posts.map(post => (

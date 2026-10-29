@@ -1,5 +1,5 @@
 import type { TaskStatus, TaskPriority, TaskRole, Task } from '@/lib/types';
-import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck, Share2, Megaphone, Globe, ShoppingCart, Target, Hourglass, RefreshCw, Sparkles } from 'lucide-react';
+import { Clock, Eye, CheckCircle, AlertTriangle, Archive, Camera, Images, Video, Crown, Hammer, SearchCheck, Share2, Megaphone, Globe, ShoppingCart, Target, Hourglass, RefreshCw, Sparkles, Play } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -41,6 +41,13 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; icon: Lucid
     colorClass: 'text-indigo-600',
     bgColorClass: 'bg-indigo-50 dark:bg-indigo-950',
     dotColor: 'bg-indigo-500',
+  },
+  ejecutando: {
+    label: 'Ejecutando',
+    icon: Play,
+    colorClass: 'text-fuchsia-600',
+    bgColorClass: 'bg-fuchsia-50 dark:bg-fuchsia-950',
+    dotColor: 'bg-fuchsia-500',
   },
   diseno_listo: {
     label: 'Diseño listo',
@@ -101,6 +108,7 @@ export const TASK_STATUSES: TaskStatus[] = [
   'espera_cliente',
   'necesita_modificaciones',
   'listo_para_disenar',
+  'ejecutando',
   'diseno_listo',
   'aprobada',
   'problemas',

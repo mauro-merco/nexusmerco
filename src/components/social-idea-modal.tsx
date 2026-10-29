@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
@@ -58,8 +59,8 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
   const { user } = useAuthStore();
   const isSocial = calendarType === 'social';
   const endpoint = calendarType === 'ads' ? '/api/ads-ideas' : '/api/social-ideas';
-  const { attachments, addAttachment, removeAttachment } = useSocialAttachments(isSocial ? idea.id : null);
-  const { comments, addComment, deleteComment, updateComment } = useSocialComments(isSocial && !publicComments ? idea.id : null);
+  const { attachments, loading: loadingAttachments, addAttachment, removeAttachment } = useSocialAttachments(isSocial ? idea.id : null);
+  const { comments, loading: loadingComments, addComment, deleteComment, updateComment } = useSocialComments(isSocial && !publicComments ? idea.id : null);
 
   const [editing, setEditing] = useState(false);
   const [detailOpen, setDetailOpen] = useState(true);
@@ -348,6 +349,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                     {addingAttach ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
+                {loadingAttachments && attachments.length === 0 && <ContentSkeleton />}
                 {attachments.length > 0 && (
                   <div className="mt-3 space-y-1.5">
                     {attachments.map(att => (
@@ -370,7 +372,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                 {publicComments ? 'Comentarios' : `Comentarios (${comments.length})`}
               </p>
               <div className="min-h-0 flex-1">
-                {publicComments || <SocialComment ideaId={idea.id} comments={comments} onAddComment={addComment} onDeleteComment={deleteComment} onUpdateComment={updateComment} currentUserId={user?.id} />}
+                {publicComments || <SocialComment ideaId={idea.id} comments={comments} loading={loadingComments} onAddComment={addComment} onDeleteComment={deleteComment} onUpdateComment={updateComment} currentUserId={user?.id} />}
               </div>
             </div>
           )}
@@ -408,6 +410,7 @@ function modalStatusStyle(status: IdeaStatus) {
     idea_aprobada: { label: '✓ Idea aprobada', banner: 'bg-teal-500/20 text-teal-800 dark:text-teal-100' },
     idea_rechazada: { label: 'Idea rechazada', banner: 'bg-rose-600 text-white' },
     listo_para_disenar: { label: 'Listo para diseñar', banner: 'bg-indigo-500/20 text-indigo-800 dark:text-indigo-100' },
+    ejecutando: { label: 'Ejecutando', banner: 'bg-fuchsia-500/20 text-fuchsia-800 dark:text-fuchsia-100' },
     diseno_listo: { label: '✓ Diseño listo', banner: 'bg-cyan-500/20 text-cyan-800 dark:text-cyan-100' },
     aprobada: { label: '✓ Aprobado', banner: 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-100' },
     listo_para_postear: { label: 'Listo para postear', banner: 'bg-violet-500/20 text-violet-900 dark:text-violet-100' },

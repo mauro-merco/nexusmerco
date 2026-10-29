@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
@@ -301,7 +302,7 @@ export default function MessagesPage() {
           <div className="flex-1 overflow-y-auto px-2 pb-2">
             {loading && (
               <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <ContentSkeleton />
               </div>
             )}
 

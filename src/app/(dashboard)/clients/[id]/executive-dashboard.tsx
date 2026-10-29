@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { useGcMetrics } from '@/lib/hooks/use-data';
 import { cn } from '@/lib/utils';
 import {
   DollarSign, ShoppingCart, TrendingUp, Target,
-  Loader2, AlertCircle, BarChart3, LineChart as LineChartIcon, TrendingDown,
+  AlertCircle, BarChart3, LineChart as LineChartIcon, TrendingDown,
   Users, Ticket, CreditCard, Percent,
   PieChart, Search, Lightbulb, Sparkles,
 } from 'lucide-react';
@@ -272,9 +273,8 @@ export function ExecutiveDashboard({ clientId }: ExecutiveDashboardProps) {
   if (loading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <p className="text-sm">Cargando datos del semestre...</p>
+        <CardContent className="py-6">
+          <ContentSkeleton variant="report" />
         </CardContent>
       </Card>
     );

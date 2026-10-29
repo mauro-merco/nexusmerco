@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useMemo } from 'react';
 import {
@@ -7,7 +8,7 @@ import {
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Zap, ChevronRight as Chevron, CalendarX2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw, Zap, ChevronRight as Chevron, CalendarX2 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { departmentInfo } from '@/lib/department-config';
 import { taskStatusConfig } from '@/lib/task-config';
@@ -65,7 +66,7 @@ export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
   const onUpdated = (u: Task) => { setTasks(p => p.map(t => t.id === u.id ? u : t)); setSelectedTask(u); };
   const onDeleted = () => { if (!selectedTask) return; setTasks(p => p.filter(t => t.id !== selectedTask.id)); setSelectedTask(null); };
 
-  if (loading && !refreshing) return <div className="flex items-center justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (loading && !refreshing) return <ContentSkeleton variant="calendar" />;
 
   const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 

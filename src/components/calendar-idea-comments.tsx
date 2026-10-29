@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
@@ -177,9 +178,7 @@ export function CalendarIdeaComments({
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando comentarios…
-        </div>
+        <ContentSkeleton variant="comments" label="Cargando comentarios" />
       ) : groups.length === 0 ? (
         <p className="py-2 text-xs text-muted-foreground">
           Ninguna idea de este mes tiene comentarios todavía.

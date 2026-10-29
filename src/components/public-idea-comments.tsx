@@ -1,10 +1,10 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
-import { useState } from 'react';
-import { useCalendarComments } from '@/lib/hooks/use-calendar-comments';
-import { MarkdownBody } from '@/lib/markdown';
-import { Button } from '@/components/ui/button';
-import type { SocialIdea } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { SocialComment } from '@/components/social-comment';
+import type { SocialIdea, SocialComment as Comment } from '@/lib/types';
+import type { CommentReader } from '@/lib/hooks/use-comment-reads';
 
 export function PublicIdeaComments({ idea, shareToken, viewerAuthToken, calendarType, onChanged }: {
   idea: SocialIdea;
@@ -13,46 +13,54 @@ export function PublicIdeaComments({ idea, shareToken, viewerAuthToken, calendar
   calendarType: 'social' | 'ads';
   onChanged: () => void;
 }) {
-  const { comments, loading, error, refresh } = useCalendarComments({
-    clientId: idea.client_id, calendarType, month: idea.publish_date.slice(0, 7), shareToken, viewerAuthToken,
-  });
-  const [content, setContent] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const thread = comments.filter(c => c.idea_id === idea.id);
+  const [data, setData] = useState<{ data: Comment[]; readers: Record<string, CommentReader[]>; user_id?: string }>({ data: [], readers: {} });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const url = `/api/calendar-links/${encodeURIComponent(shareToken)}/comments?${new URLSearchParams({ idea_id: idea.id, calendar_type: calendarType })}`;
 
-  async function send() {
-    if (!content.trim() || sending) return;
-    setSending(true);
-    setSendError(null);
-    try {
-      const res = await fetch(`/api/calendar-links/${encodeURIComponent(shareToken)}/actions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(viewerAuthToken ? { Authorization: `Bearer ${viewerAuthToken}` } : {}) },
-        body: JSON.stringify({ idea_id: idea.id, calendar_type: calendarType, action_type: 'comment', content: content.trim() }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'No se pudo enviar el comentario');
-      setContent('');
-      await refresh();
-      onChanged();
-    } catch (e) {
-      setSendError(e instanceof Error ? e.message : 'No se pudo enviar el comentario');
-    } finally { setSending(false); }
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setData({ data: [], readers: {} });
+    async function load() {
+      try {
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${viewerAuthToken || ''}` } });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        if (active) { setData(json); setError(null); }
+      } catch (e) { if (active) setError(e instanceof Error ? e.message : 'No se pudieron cargar los comentarios'); }
+      finally { if (active) setLoading(false); }
+    }
+    void load();
+    const timer = setInterval(load, 30000);
+    return () => { active = false; clearInterval(timer); };
+  }, [url, viewerAuthToken]);
+
+  async function mutate(method: string, body: object) {
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${viewerAuthToken || ''}` }, body: JSON.stringify(body) });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'No se pudo guardar');
+    setData(json);
+    setError(null);
+    window.dispatchEvent(new Event('calendar-comments-changed'));
+    onChanged();
+    return undefined;
   }
 
-  return <div className="flex h-full min-h-0 flex-col gap-3">
-    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-      {loading ? <p>Cargando comentarios...</p> : error ? <p role="alert">{error}</p> : thread.length === 0 ? <p>No hay comentarios</p> : thread.map(c => <div key={c.id}>
-        <p className="text-sm font-semibold">{c.user?.full_name || 'Usuario'}</p>
-        <MarkdownBody text={c.content} />
-        {c.replies.map(r => <div key={r.id} className="ml-4 mt-2 border-l pl-3"><p className="text-sm font-semibold">{r.user?.full_name || 'Usuario'}</p><MarkdownBody text={r.content} /></div>)}
-      </div>)}
-    </div>
-    {sendError && <p role="alert" className="text-sm text-destructive">{sendError}</p>}
-    <form className="shrink-0 space-y-2" onSubmit={e => { e.preventDefault(); void send(); }}>
-      <textarea aria-label="Comentario" className="w-full rounded-xl border p-3 text-sm" value={content} onChange={e => setContent(e.target.value)} maxLength={5000} disabled={sending} />
-      <Button type="submit" disabled={sending || !content.trim() || !viewerAuthToken}>{sending ? 'Enviando...' : 'Enviar'}</Button>
-    </form>
+  return <div className="flex h-full min-h-0 flex-col gap-2">
+    {loading && <ContentSkeleton variant="comments" label="Cargando comentarios" />}
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    <SocialComment ideaId={idea.id} comments={data.data} currentUserId={data.user_id}
+      onAddComment={(_userId, content, parentId) => mutate('POST', { content, parent_id: parentId })}
+      onUpdateComment={(id, content) => mutate('PUT', { id, content })}
+      onDeleteComment={async id => { await mutate('DELETE', { id }); }}
+      publicReads={{ readers: data.readers, pending, toggle: async id => {
+        if (pending) return;
+        setPending(id);
+        try { await mutate('POST', { id, action: 'seen' }); }
+        catch (e) { setError(e instanceof Error ? e.message : 'No se pudo marcar como visto'); }
+        finally { setPending(null); }
+      } }} />
   </div>;
 }

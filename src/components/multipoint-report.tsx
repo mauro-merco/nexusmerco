@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import {
   TrendingUp, TrendingDown, AlertCircle, Lightbulb,
   Target, BarChart3, Globe, Search,
   ShoppingCart, DollarSign, Activity,
-  Sparkles, Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { loadClientCSVs, aggregateMetrics } from '@/lib/data-helper';
 import type { ParsedMetrics } from '@/lib/csv-parser';
@@ -343,12 +344,7 @@ export function MultipointReport({ clientId, clientName }: MultipointReportProps
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <p className="text-sm">Generando informe mensual...</p>
-        </div>
-      </div>
+      <ContentSkeleton variant="report" />
     );
   }
 

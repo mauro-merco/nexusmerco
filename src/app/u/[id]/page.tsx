@@ -1,4 +1,5 @@
 'use client';
+import { PageSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -93,8 +94,8 @@ export default function PublicProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="min-h-screen bg-background">
+        <PageSkeleton variant="report" />
       </div>
     );
   }

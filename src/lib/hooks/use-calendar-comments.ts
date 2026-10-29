@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/auth-store';
+import type { CommentReader } from './use-comment-reads';
 
 export interface CalendarCommentUser {
   id: string;
@@ -75,11 +76,28 @@ function authHeaders(o: Options) {
   return headers;
 }
 
+async function readCommentResponse(res: Response, requireData = true) {
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = typeof json?.error === 'string' ? json.error.trim() : '';
+    throw new Error(message && message !== 'Error'
+      ? message
+      : `No se pudo procesar el comentario (HTTP ${res.status}). Intenta nuevamente.`);
+  }
+  if (!json || typeof json !== 'object' || (requireData && !('data' in json))) {
+    throw new Error('El servidor devolvio una respuesta de comentarios invalida.');
+  }
+  return json;
+}
+
 export function useCalendarComments(options: Options) {
   const { clientId, calendarType, month, shareToken, guestEmail, viewerAuthToken, pollMs = 30000 } = options;
   const [comments, setComments] = useState<CalendarComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewerId, setViewerId] = useState<string>();
+  const [readers, setReaders] = useState<Record<string, CommentReader[]>>({});
+  const [readError, setReadError] = useState<string | null>(null);
 
   const opts: Options = { clientId, calendarType, month, shareToken, guestEmail, viewerAuthToken, pollMs };
 
@@ -103,10 +121,21 @@ export function useCalendarComments(options: Options) {
       const res = await fetch(`/api/calendar-comments?${buildQuery(opts).toString()}`, {
         headers: authHeaders(opts),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
+      const json = await readCommentResponse(res);
+      if (!Array.isArray(json.data)) throw new Error('El servidor devolvio una lista de comentarios invalida.');
       setComments(json.data || []);
+      setViewerId(json.user_id);
       setError(null);
+      try {
+        const params = buildQuery(opts);
+        params.set('action', 'readers');
+        const response = await fetch(`/api/calendar-comments?${params}`, { headers: authHeaders(opts) });
+        const marks = await readCommentResponse(response);
+        setReaders(marks.data);
+        setReadError(null);
+      } catch (e) {
+        setReadError(e instanceof Error ? e.message : 'No se pudieron cargar los vistos');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error');
     } finally {
@@ -115,7 +144,16 @@ export function useCalendarComments(options: Options) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, calendarType, month, shareToken, guestEmail, viewerAuthToken]);
 
-  useEffect(() => { fetchComments(); }, [fetchComments]);
+  useEffect(() => {
+    const timer = setTimeout(() => { void fetchComments(); }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchComments]);
+
+  useEffect(() => {
+    const refresh = () => { void fetchComments(); };
+    window.addEventListener('calendar-comments-changed', refresh);
+    return () => window.removeEventListener('calendar-comments-changed', refresh);
+  }, [fetchComments]);
 
   useEffect(() => {
     const t = setInterval(fetchComments, pollMs);
@@ -135,8 +173,10 @@ export function useCalendarComments(options: Options) {
           ...(shareToken ? { token: shareToken } : {}),
         }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
+      const json = await readCommentResponse(res);
+      if (!json.data || typeof json.data.id !== 'string' || typeof json.data.content !== 'string') {
+        throw new Error('El servidor no confirmo la creacion del comentario. Actualiza antes de reintentar.');
+      }
       // Normalize the POST payload to the same shape as the feed rows.
       const created: CalendarComment = {
         ...(json.data as Omit<CalendarComment, 'scope' | 'idea' | 'replies'>),
@@ -157,6 +197,14 @@ export function useCalendarComments(options: Options) {
    */
   const removeComment = useCallback(
     async (id: string, scope: 'calendar' | 'idea' = 'calendar') => {
+      if (scope === 'calendar') {
+        const res = await fetch(`/api/calendar-comments?${buildQuery(opts)}`, {
+          method: 'DELETE', headers: authHeaders(opts), body: JSON.stringify({ id }),
+        });
+        await readCommentResponse(res);
+        setComments(prev => prev.filter(c => c.id !== id));
+        return;
+      }
       const headers: Record<string, string> = {};
       const params = new URLSearchParams();
       params.set('scope', scope);
@@ -174,13 +222,27 @@ export function useCalendarComments(options: Options) {
         method: 'DELETE',
         headers,
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
+      await readCommentResponse(res, false);
       // Drop the comment plus the replies that were only visible under it.
       setComments(prev => prev.filter(c => c.id !== id && !c.replies.some(r => r.id === id)));
     },
-    [shareToken, guestEmail, viewerAuthToken, calendarType],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shareToken, guestEmail, viewerAuthToken, calendarType, clientId, month],
   );
 
-  return { comments, loading, error, addComment, removeComment, refresh: fetchComments };
+  const updateComment = async (id: string, content: string) => {
+    const res = await fetch(`/api/calendar-comments?${buildQuery(opts)}`, {
+      method: 'PUT', headers: authHeaders(opts), body: JSON.stringify({ id, content }),
+    });
+    await readCommentResponse(res);
+    setComments(prev => prev.map(c => c.id === id ? { ...c, content: content.trim() } : c));
+  };
+  const toggleSeen = async (id: string) => {
+    const res = await fetch(`/api/calendar-comments?${buildQuery(opts)}`, {
+      method: 'POST', headers: authHeaders(opts), body: JSON.stringify({ id, action: 'seen' }),
+    });
+    await readCommentResponse(res);
+    await fetchComments();
+  };
+  return { comments, loading, error, readError, viewerId, readers, updateComment, toggleSeen, addComment, removeComment, refresh: fetchComments };
 }

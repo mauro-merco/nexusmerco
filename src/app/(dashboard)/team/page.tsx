@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/store/auth-store';
@@ -10,7 +11,7 @@ import { hasModuleAccess } from '@/lib/permissions';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import type { Task, TaskRole, User } from '@/lib/types';
 import {
-  Loader2, Users2, KanbanSquare, CheckCircle2, Shield,
+  Users2, KanbanSquare, CheckCircle2, Shield,
   Activity, Users, TrendingUp,
 } from 'lucide-react';
 import {
@@ -123,9 +124,7 @@ export default function TeamPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <ContentSkeleton variant="cards" />
     );
   }
 

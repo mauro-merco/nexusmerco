@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -15,7 +16,7 @@ import { NoAccess } from '@/components/no-access';
 import { hasModuleAccess, getAllowedClientIds } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
-  Building2, Search, Calendar, ArrowLeft, Loader2, ChevronRight, ListTodo,
+  Building2, Search, Calendar, ArrowLeft, ChevronRight, ListTodo,
 } from 'lucide-react';
 
 type CalendarTab = 'unificado' | 'tareas';
@@ -67,9 +68,7 @@ export default function CalendariosPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-      </div>
+      <ContentSkeleton variant="cards" />
     );
   }
 

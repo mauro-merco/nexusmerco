@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { PageSkeleton } from '@/components/content-skeleton';
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
@@ -15,7 +16,7 @@ import { SuggestionsFloatingButtons } from '@/components/suggestions-floating-bu
 import { MinimizedDock } from '@/components/minimized-dock';
 import { useAuthStore } from '@/store/auth-store';
 import { initAuthSync } from '@/lib/auth-sync';
-import { BookOpenText, Loader2 } from 'lucide-react';
+import { BookOpenText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function DashboardLayout({
@@ -38,11 +39,8 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <p className="text-sm">Cargando sesión...</p>
-        </div>
+      <div className="min-h-screen bg-background pt-14">
+        <PageSkeleton />
       </div>
     );
   }

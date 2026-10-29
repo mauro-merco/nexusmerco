@@ -1,9 +1,10 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles, Wallet, MessageSquare, MessagesSquare, CalendarDays, ExternalLink } from 'lucide-react';
+import { Sparkles, Wallet, MessageSquare, MessagesSquare, CalendarDays, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ModelUsage {
@@ -106,9 +107,7 @@ export function AiUsagePanel() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
+        <ContentSkeleton variant="report" />
       )}
 
       {error && <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}

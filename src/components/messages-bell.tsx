@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useUnreadMessages } from '@/lib/hooks/use-unread-messages';
-import { Mail, Loader2, Inbox, ChevronRight } from 'lucide-react';
+import { Mail, Inbox, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { User, Message } from '@/lib/types';
 
@@ -67,9 +68,7 @@ export function MessagesBell() {
             </div>
             <div className="overflow-y-auto flex-1">
               {loading && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
+                <ContentSkeleton />
               )}
               {!loading && conversations.length === 0 && (
                 <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">

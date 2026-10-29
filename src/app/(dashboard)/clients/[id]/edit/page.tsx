@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -99,10 +100,7 @@ export default function EditClientPage() {
 
   if (loadingClient) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <p className="text-sm">Cargando cliente...</p>
-      </div>
+      <ContentSkeleton variant="form" />
     );
   }
 

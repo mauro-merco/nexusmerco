@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,10 +15,12 @@ import { Send, Trash2, Loader2, Pencil, Check, X, Reply } from 'lucide-react';
 interface SocialCommentProps {
   ideaId: string;
   comments: SocialCommentType[];
+  loading?: boolean;
   onAddComment: (userId: string, content: string, parentId?: string) => Promise<SocialCommentType | undefined>;
   onDeleteComment: (id: string) => Promise<void>;
   onUpdateComment: (id: string, content: string) => Promise<SocialCommentType | undefined>;
   currentUserId?: string;
+  publicReads?: { readers: Record<string, CommentReader[]>; toggle: (id: string) => void; pending: string | null };
 }
 
 function CommentItem({
@@ -104,7 +107,7 @@ function CommentItem({
                 onToggle={() => onToggleRead(comment.id)}
                 pending={readPendingId === comment.id}
               />
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 {!isReply && (
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
                     onClick={() => onReply(comment.id)}>
@@ -159,26 +162,29 @@ function CommentItem({
   );
 }
 
-export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdateComment, currentUserId }: SocialCommentProps) {
+export function SocialComment({ comments, loading = false, onAddComment, onDeleteComment, onUpdateComment, currentUserId, publicReads }: SocialCommentProps) {
+  const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const mentionUsers = useInternalUsers();
+  const mentionUsers = useInternalUsers(!publicReads);
 
   const commentIds = useMemo(() => collectCommentIds(comments), [comments]);
-  const reads = useCommentReads('social_comment', commentIds, currentUserId ? { id: currentUserId, name: '' } : null);
+  const internalReads = useCommentReads('social_comment', commentIds, currentUserId ? { id: currentUserId, name: '' } : null, !publicReads);
+  const reads = publicReads || internalReads;
 
   const handleSend = async () => {
-    if (!newComment.trim() || !currentUserId) return;
+    if (!newComment.trim() || !currentUserId || sending) return;
+    setError(null);
     setSending(true);
     try {
       await onAddComment(currentUserId, newComment.trim(), replyTo || undefined);
       setNewComment('');
       setReplyTo(null);
-    } catch { /* */ } finally {
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo enviar'); } finally {
       setSending(false);
     }
   };
@@ -194,13 +200,14 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
   };
 
   const saveEdit = async (id: string) => {
-    if (!editContent.trim()) return;
+    if (!editContent.trim() || savingEdit) return;
+    setError(null);
     setSavingEdit(true);
     try {
       await onUpdateComment(id, editContent.trim());
       setEditingId(null);
       setEditContent('');
-    } catch { /* */ } finally {
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo guardar'); } finally {
       setSavingEdit(false);
     }
   };
@@ -210,7 +217,7 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {comments.length === 0 ? (
+        {loading && comments.length === 0 ? <ContentSkeleton variant="comments" label="Cargando comentarios" /> : comments.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             <p>No hay comentarios todavía</p>
           </div>
@@ -222,7 +229,7 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
                 comment={comment}
                 currentUserId={currentUserId}
                 onReply={setReplyTo}
-                onDelete={onDeleteComment}
+                onDelete={async id => { try { setError(null); await onDeleteComment(id); } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo eliminar'); } }}
                 onEdit={startEdit}
                 editingId={editingId}
                 editContent={editContent}
@@ -240,6 +247,7 @@ export function SocialComment({ comments, onAddComment, onDeleteComment, onUpdat
         )}
       </div>
 
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {currentUserId && (
         <div className="shrink-0 space-y-2 border-t border-border/30 pt-3">
           {replyComment && (

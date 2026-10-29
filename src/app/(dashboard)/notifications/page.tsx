@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,7 +11,7 @@ import { useNotifications } from '@/lib/hooks/use-notifications';
 import type { Notification } from '@/lib/types';
 import {
   Bell, UserPlus, AtSign, FileText, AlarmClock, CheckCircle2, Info,
-  ExternalLink, Trash2, RotateCcw, Loader2, CheckCheck, Inbox, Archive,
+  ExternalLink, Trash2, RotateCcw, CheckCheck, Inbox, Archive,
 } from 'lucide-react';
 
 const TYPE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; bg: string; label: string }> = {
@@ -246,14 +247,14 @@ export default function NotificationsPage() {
       {tab === 'active' ? (
         loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <ContentSkeleton />
           </div>
         ) : (
           renderList(notifications)
         )
       ) : deletedLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <ContentSkeleton />
         </div>
       ) : (
         renderList(deleted, { deleted: true })

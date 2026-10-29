@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -94,9 +95,7 @@ export function RemindersBell() {
 
             <div className="overflow-y-auto flex-1">
               {loading && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
+                <ContentSkeleton />
               )}
               {!loading && reminders.length === 0 && (
                 <div className="text-center py-8 text-xs text-muted-foreground">

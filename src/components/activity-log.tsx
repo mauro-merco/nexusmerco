@@ -1,11 +1,12 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useEffect, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
 import type { ActivityEntry } from '@/app/api/activity-log/route';
 import {
-  Loader2, RefreshCw, ClipboardList, Pencil, CheckCircle2, MessageSquare, Sparkles,
+  RefreshCw, ClipboardList, Pencil, CheckCircle2, MessageSquare, Sparkles,
   FileText, FilePen, Mail, Lightbulb, Bug, StickyNote, CalendarDays, Inbox, Copy, Check,
   Rocket,
 } from 'lucide-react';
@@ -133,7 +134,7 @@ export function ActivityLog() {
       </div>
 
       {loading && entries.length === 0 ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <ContentSkeleton />
       ) : error ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-muted-foreground">
           <Inbox className="h-10 w-10 opacity-30" />

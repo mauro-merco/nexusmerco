@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useRouter } from 'next/navigation';
 import { useTasks } from '@/lib/hooks/use-tasks';
@@ -6,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/types';
 import { TASK_ROLE_CONFIG, TASK_PRIORITY_CONFIG, PIECE_TYPES, taskPieceTotal, taskTypeInfo, taskStatusConfig } from '@/lib/task-config';
-import { Loader2, Calendar, KanbanSquare, CheckCircle2, Layers, ImageIcon } from 'lucide-react';
+import { Calendar, KanbanSquare, CheckCircle2, Layers, ImageIcon } from 'lucide-react';
 
 export function TaskRow({ task, onClick, showClient }: { task: Task; onClick: () => void; showClient?: boolean }) {
   const sConfig = taskStatusConfig(task.status);
@@ -151,7 +152,7 @@ export function ClientTasksTab({ clientId }: { clientId: string }) {
   const openTask = (id: string) => router.push(`/operations?task=${id}`);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return <ContentSkeleton variant="list" />;
   }
 
   if (tasks.length === 0) {

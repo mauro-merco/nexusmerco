@@ -50,41 +50,6 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const STORAGE_KEY = 'nexus-sidebar-collapsed';
 
-function TransitionOverlay({ label }: { label: string }) {
-  return (
-    <div
-      role="status"
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-8 bg-background/85 backdrop-blur-md animate-[transition-fade_0.4s_ease-out_both]"
-    >
-      <div className="bg-gradient-tech pointer-events-none absolute left-1/4 top-1/4 h-72 w-72 animate-pulse rounded-full opacity-30 blur-[90px]" />
-      <div
-        className="pointer-events-none absolute bottom-1/4 right-1/4 h-72 w-72 animate-pulse rounded-full opacity-30 blur-[90px]"
-        style={{ backgroundImage: 'radial-gradient(circle, rgba(34,211,238,0.5), transparent 70%)' }}
-      />
-      <div className="relative flex h-36 w-36 items-center justify-center">
-        <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_both] rounded-full border border-cyan-400/50" />
-        <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_0.35s_both] rounded-full border border-violet-500/50" />
-        <div className="absolute inset-0 animate-[transition-ring_1s_ease-out_0.7s_both] rounded-full border border-fuchsia-500/50" />
-        <svg viewBox="0 0 80 80" className="h-24 w-24 animate-[transition-pop_0.5s_cubic-bezier(0.22,1,0.36,1)_both]">
-          <defs>
-            <linearGradient id="transition-loader-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#22d3ee" />
-              <stop offset="50%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#a855f7" />
-            </linearGradient>
-          </defs>
-          <circle cx="40" cy="40" r="34" fill="none" stroke="url(#transition-loader-grad)" strokeWidth="5" strokeLinecap="round" strokeDasharray="214" strokeDashoffset="214" style={{ animation: 'draw 1.4s ease-in-out infinite' }} />
-        </svg>
-        <div className="bg-gradient-tech pointer-events-none absolute h-10 w-10 animate-pulse rounded-full opacity-30 blur-2xl" />
-      </div>
-      <div className="space-y-1 text-center">
-        <p className="text-xs text-muted-foreground">Cargando</p>
-        <p className="text-gradient-tech text-2xl font-bold">{label}</p>
-      </div>
-    </div>
-  );
-}
-
 function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolean; onToggle: () => void; onNavigate: (href: string, label: string) => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
@@ -279,7 +244,6 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
 }
 
 export function Sidebar() {
-  const [transition, setTransition] = useState<{ href: string; label: string } | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -289,19 +253,9 @@ export function Sidebar() {
     if (stored !== null) setCollapsed(stored === '1');
   }, []);
 
-  useEffect(() => {
-    if (!transition) return;
-    const t = setTimeout(() => router.push(transition.href), 700);
-    return () => clearTimeout(t);
-  }, [transition, router]);
-
-  useEffect(() => {
-    setTransition(null);
-  }, [pathname]);
-
-  const handleNavigate = (href: string, label: string) => {
+  const handleNavigate = (href: string) => {
     if (pathname === href) return;
-    setTransition({ href, label });
+    router.push(href);
   };
 
   const toggleCollapsed = () => {
@@ -315,7 +269,6 @@ export function Sidebar() {
     <>
       <DesktopSidebar collapsed={collapsed} onToggle={toggleCollapsed} onNavigate={handleNavigate} />
       <MobileBottomNav onNavigate={handleNavigate} />
-      {transition && <TransitionOverlay label={transition.label} />}
     </>
   );
 }

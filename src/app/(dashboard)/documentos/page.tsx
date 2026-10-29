@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
@@ -47,6 +48,7 @@ export default function DocumentosPage() {
   const [view, setView] = useState<'list' | 'editor'>('list');
   const [tab, setTab] = useState<'docs' | 'notes'>('docs');
   const [currentDoc, setCurrentDoc] = useState<NexusDocument | null>(null);
+  const [openingDocument, setOpeningDocument] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
@@ -70,6 +72,7 @@ export default function DocumentosPage() {
   });
 
   const openEditor = useCallback(async (doc: NexusDocument) => {
+    setOpeningDocument(true);
     try {
       setError(null);
       const full = await getDocument(doc.id);
@@ -79,6 +82,8 @@ export default function DocumentosPage() {
       setView('editor');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al abrir documento');
+    } finally {
+      setOpeningDocument(false);
     }
   }, [getDocument]);
 
@@ -148,6 +153,7 @@ export default function DocumentosPage() {
     const docId = new URLSearchParams(window.location.search).get('doc');
     if (!docId) return;
     let cancelled = false;
+    setOpeningDocument(true);
     (async () => {
       try {
         const full = await getDocument(docId);
@@ -158,6 +164,8 @@ export default function DocumentosPage() {
         setView('editor');
       } catch {
         /* doc no encontrado o sin acceso */
+      } finally {
+        if (!cancelled) setOpeningDocument(false);
       }
     })();
     return () => { cancelled = true; };
@@ -196,6 +204,8 @@ export default function DocumentosPage() {
   }, [deleteTarget, deleteDocument, currentDoc, refetch]);
 
   // Editor view
+  if (openingDocument) return <ContentSkeleton variant="form" label="Cargando documento" />;
+
   if (view === 'editor' && currentDoc) {
     const owner = isOwner(currentDoc);
     const canEdit = currentDoc.can_edit ?? owner;
@@ -412,11 +422,7 @@ export default function DocumentosPage() {
       ) : (
         <>
           {loading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="rounded-3xl bg-muted/40 dark:bg-white/[0.04] p-5 space-y-3 h-40 animate-pulse" />
-              ))}
-            </div>
+            <ContentSkeleton variant="cards" />
           )}
 
           {!loading && filtered.length === 0 && (

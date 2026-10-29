@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -352,7 +353,7 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
   }, [firstDayOfWeek, daysInMonth, monthStr, viewYear, viewMonth]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /><p className="text-sm">Cargando calendario ADS...</p></div>;
+    return <ContentSkeleton variant="calendar" />;
   }
 
   return (

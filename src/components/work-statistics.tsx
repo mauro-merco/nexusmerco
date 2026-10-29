@@ -1,10 +1,11 @@
 'use client';
+import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useEffect, useState } from 'react';
 import { TASK_ROLE_CONFIG } from '@/lib/task-config';
 import type { WorkRole, WorkStatsItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Activity, CheckCircle2, History, Layers, Loader2 } from 'lucide-react';
+import { Activity, CheckCircle2, History, Layers } from 'lucide-react';
 
 type Range = 'day' | 'week' | 'month';
 
@@ -37,7 +38,7 @@ export function WorkStatistics({ clientId, userId, compact }: { clientId?: strin
       .finally(() => setLoading(false));
   }, [clientId, userId]);
 
-  if (loading) return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <ContentSkeleton variant="report" />;
   if (!data) return null;
 
   if (compact) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestUser } from '@/lib/api-security';
+import { getRequestUser, safeError } from '@/lib/api-security';
 import { createMentionNotifications } from '@/lib/mentions';
 import { logActivity } from '@/lib/activity-events';
 import {
@@ -21,6 +21,22 @@ type ResolvedAccess = {
 
 type Access = { error: string; status: number } | ResolvedAccess;
 
+function commentErrorResponse(error: unknown) {
+  const databaseError = error as { code?: string; message?: string } | null;
+  const code = typeof databaseError?.code === 'string' ? databaseError.code : undefined;
+  const message = typeof databaseError?.message === 'string' ? databaseError.message : '';
+  if ((code === '42703' || code === 'PGRST204') && message.includes('parent_id')) {
+    return NextResponse.json({
+      error: 'Las respuestas a comentarios requieren aplicar la migracion 00076_calendar_comments_replies.sql.',
+      code: 'CALENDAR_COMMENT_REPLIES_UNAVAILABLE',
+    }, { status: 503 });
+  }
+  return NextResponse.json({
+    error: `No se pudo procesar el comentario: ${safeError(message || error, 'Error interno')}`,
+    ...(code ? { code } : {}),
+  }, { status: 500 });
+}
+
 /**
  * Resolves who is acting and which thread they are allowed to touch.
  * Public visitors go through a share token (session or guest email); internal
@@ -33,15 +49,20 @@ async function resolveAccess(request: Request, clientId?: string | null, calenda
   const supabase = getSupabaseAdmin();
 
   if (token) {
+    if (calendarType && !isCalendarType(calendarType)) return { error: 'Tipo de calendario inválido', status: 400 };
     const requestedType: CalendarType = isCalendarType(calendarType || '')
       ? (calendarType as CalendarType)
       : 'social';
     const resolved = await resolveCalendarLink(supabase, token, requestedType);
     if ('error' in resolved) return resolved;
+    if (resolved.type !== requestedType || (clientId && clientId !== resolved.client.id) ||
+      (resolved.month && month && resolved.month !== month)) {
+      return { error: 'Calendario fuera del alcance del enlace', status: 403 };
+    }
     const viewer = await resolveCalendarViewer(request, supabase, resolved.link);
     if (!viewer) return { error: 'Email no autorizado para este calendario', status: 401 };
     const targetMonth = resolved.month || month || '';
-    if (!isValidMonth(targetMonth)) return { error: 'Mes inválido', status: 400 };
+    if (!isValidMonth(targetMonth) || !/-(0[1-9]|1[0-2])$/.test(targetMonth)) return { error: 'Mes inválido', status: 400 };
     return {
       clientId: resolved.client.id,
       calendarType: resolved.type,
@@ -71,7 +92,7 @@ async function resolveAccess(request: Request, clientId?: string | null, calenda
     return { error: 'No autorizado para este cliente', status: 403 };
   }
   if (!calendarType || !isCalendarType(calendarType)) return { error: 'Tipo de calendario inválido', status: 400 };
-  if (!month || !isValidMonth(month)) return { error: 'Mes inválido', status: 400 };
+  if (!month || !isValidMonth(month) || !/-(0[1-9]|1[0-2])$/.test(month)) return { error: 'Mes inválido', status: 400 };
 
   return {
     clientId,
@@ -236,15 +257,36 @@ export async function GET(request: Request) {
       searchParams.get('month'),
     );
     if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
-    return NextResponse.json({ data: await listComments(access) });
+    if (searchParams.get('action') === 'readers') {
+      const db = getSupabaseAdmin();
+      const { data: comments, error } = await db.from('calendar_comments').select('id')
+        .eq('client_id', access.clientId).eq('calendar_type', access.calendarType).eq('month', access.month);
+      if (error) throw error;
+      const ids = (comments || []).map(c => c.id);
+      const { data: marks, error: readError } = ids.length
+        ? await db.from('comment_reads').select('comment_id, user_id').eq('comment_type', 'calendar_comment').in('comment_id', ids)
+        : { data: [], error: null };
+      if (readError) throw readError;
+      const userIds = [...new Set((marks || []).map(r => r.user_id))];
+      const { data: users, error: usersError } = userIds.length
+        ? await db.from('users').select('id, full_name, avatar_url').in('id', userIds)
+        : { data: [], error: null };
+      if (usersError) throw usersError;
+      const map = Object.fromEntries((users || []).map(u => [u.id, u]));
+      const readers: Record<string, unknown[]> = {};
+      for (const mark of marks || []) (readers[mark.comment_id] ||= []).push(map[mark.user_id] || { id: mark.user_id, full_name: null, avatar_url: null });
+      return NextResponse.json({ data: readers }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+    return NextResponse.json({ data: await listComments(access), user_id: access.userId }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
+    return commentErrorResponse(e);
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    if (body.action === 'seen') return await monthlyAction(request, body);
     const access = await resolveAccess(request, body.client_id, body.calendar_type, body.month);
     if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
@@ -256,9 +298,10 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdmin();
     if (parentId) {
-      const { data: parent } = await supabase.from('calendar_comments')
+      const { data: parent, error: parentError } = await supabase.from('calendar_comments')
         .select('id').eq('id', parentId).eq('client_id', access.clientId)
         .eq('calendar_type', access.calendarType).eq('month', access.month).maybeSingle();
+      if (parentError) throw parentError;
       if (!parent) return NextResponse.json({ error: 'Comentario padre no encontrado' }, { status: 400 });
     }
     const { data, error } = await supabase
@@ -269,7 +312,8 @@ export async function POST(request: Request) {
         month: access.month,
         user_id: access.userId,
         content,
-        parent_id: parentId,
+        // Root comments also work before the optional replies migration is applied.
+        ...(parentId ? { parent_id: parentId } : {}),
       })
       .select()
       .single();
@@ -300,6 +344,50 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ data: { ...data, user: user || null } });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Error' }, { status: 500 });
+    return commentErrorResponse(e);
   }
+}
+
+async function monthlyAction(request: Request, body: Record<string, unknown>) {
+  const query = new URL(request.url).searchParams;
+  const access = await resolveAccess(request, query.get('client_id'), query.get('calendar_type'), query.get('month'));
+  if ('error' in access) return NextResponse.json({ error: access.error }, { status: access.status });
+  const db = getSupabaseAdmin();
+  const id = typeof body.id === 'string' ? body.id : '';
+  if (!id) return NextResponse.json({ error: 'Comentario requerido' }, { status: 400 });
+  const { data: target, error } = await db.from('calendar_comments').select('id, user_id')
+    .eq('id', id).eq('client_id', access.clientId).eq('calendar_type', access.calendarType).eq('month', access.month).maybeSingle();
+  if (error) throw error;
+  if (!target) return NextResponse.json({ error: 'Comentario no encontrado' }, { status: 404 });
+  if (body.action === 'seen') {
+    const { data: existing, error: readError } = await db.from('comment_reads').select('user_id')
+      .eq('comment_type', 'calendar_comment').eq('comment_id', id).eq('user_id', access.userId).maybeSingle();
+    if (readError) throw readError;
+    const result = existing
+      ? await db.from('comment_reads').delete().eq('comment_type', 'calendar_comment').eq('comment_id', id).eq('user_id', access.userId)
+      : await db.from('comment_reads').insert({ comment_type: 'calendar_comment', comment_id: id, user_id: access.userId });
+    if (result.error) return NextResponse.json({ error: 'No se pudo guardar el visto. Verifica que se haya aplicado 00078_calendar_comment_reads.sql.' }, { status: 503 });
+  } else {
+    if (target.user_id !== access.userId) return NextResponse.json({ error: 'Solo el autor puede modificar el comentario' }, { status: 403 });
+    if (request.method === 'DELETE') {
+      const { error: deleteError } = await db.from('calendar_comments').delete().eq('id', id).eq('user_id', access.userId);
+      if (deleteError) throw deleteError;
+    } else {
+      const content = typeof body.content === 'string' ? body.content.trim() : '';
+      if (!content || content.length > 5000) return NextResponse.json({ error: 'El comentario debe tener entre 1 y 5000 caracteres' }, { status: 400 });
+      const { error: updateError } = await db.from('calendar_comments').update({ content }).eq('id', id).eq('user_id', access.userId);
+      if (updateError) throw updateError;
+    }
+  }
+  return NextResponse.json({ data: { id } });
+}
+
+export async function PUT(request: Request) {
+  try { return await monthlyAction(request, await request.json()); }
+  catch (error) { return commentErrorResponse(error); }
+}
+
+export async function DELETE(request: Request) {
+  try { return await monthlyAction(request, await request.json()); }
+  catch (error) { return commentErrorResponse(error); }
 }
