@@ -183,9 +183,9 @@ export default function OperationsPage() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', view === 'kanban' && 'flex h-full min-h-0 flex-col')}>
       {/* Header + stats inline */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-3">
         <div className="mr-auto">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Tareas</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">Todos los clientes, un solo tablero</p>
@@ -205,7 +205,7 @@ export default function OperationsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <div className="flex rounded-xl bg-muted/40 p-1">
           {([['kanban', LayoutGrid, 'Kanban'], ['list', ListIcon, 'Lista']] as const).map(([k, I, l]) => (
             <button key={k} type="button" onClick={() => setView(k)}
@@ -239,7 +239,9 @@ export default function OperationsPage() {
       {allLoading ? (
         <ContentSkeleton variant={view === 'kanban' ? 'board' : 'list'} />
       ) : view === 'kanban' ? (
-        <KanbanBoard tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskMove={handleTaskMove} showClient />
+        <div className="flex min-h-32 min-w-0 flex-1 flex-col">
+          <KanbanBoard tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskMove={handleTaskMove} showClient />
+        </div>
       ) : (
         <div className="tm-fade space-y-6">
           {sectionMeta.map(sec => {

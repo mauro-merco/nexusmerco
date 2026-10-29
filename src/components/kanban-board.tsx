@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useId } from 'react';
 import { TaskClientLink } from '@/components/task-client-link';
 import {
   DndContext, DragOverlay, closestCenter,
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/lib/types';
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG, TASK_STATUSES, taskPieceTotal, taskTypeInfo } from '@/lib/task-config';
 import { Scroller } from '@/components/task-ui';
-import { MessageSquare, Paperclip, Calendar, Layers } from 'lucide-react';
+import { MessageSquare, Paperclip, Calendar, Layers, ChevronDown } from 'lucide-react';
 
 function initials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('');
@@ -94,25 +94,39 @@ function KanbanColumn({ status, tasks, onTaskClick, showClient }: { status: Task
   const cfg = TASK_STATUS_CONFIG[status];
   const Icon = cfg.icon;
   const empty = tasks.length === 0;
+  const [expanded, setExpanded] = useState(false);
+  const collapsible = status === 'cerrada';
+  const collapsed = collapsible && !expanded;
+  const listId = useId();
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'flex shrink-0 flex-col rounded-2xl transition-[width,box-shadow] duration-300 ease-out',
+        'flex h-full min-h-0 shrink-0 flex-col rounded-2xl transition-[width,box-shadow] duration-300 ease-out',
         cfg.bgColorClass,
-        empty ? 'w-[190px]' : 'w-[272px]',
+        empty || collapsed ? 'w-[190px]' : 'w-[272px]',
         isOver && 'shadow-[inset_0_0_0_2px_rgb(99_102_241/.45)]',
       )}
     >
-      <div className={cn('sticky top-0 z-10 flex items-center gap-2 rounded-t-2xl px-3 py-2.5 backdrop-blur', cfg.bgColorClass)}>
+      <div className={cn('flex shrink-0 items-center gap-2 rounded-t-2xl px-3 py-2.5', cfg.bgColorClass)}>
         <Icon className={cn('h-4 w-4 shrink-0', cfg.colorClass)} />
         <span className={cn('truncate text-[13px] font-semibold', cfg.colorClass)}>{cfg.label}</span>
         <span className="ml-auto rounded-full bg-background/70 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{tasks.length}</span>
+        {collapsible && (
+          <button type="button" aria-expanded={expanded} aria-controls={listId}
+            aria-label={`${expanded ? 'Ocultar' : 'Mostrar'} tareas cerradas`}
+            onClick={() => setExpanded(value => !value)}
+            className="rounded-md p-1 hover:bg-background/70 focus-visible:outline-2 focus-visible:outline-primary">
+            <ChevronDown className={cn('h-4 w-4', expanded && 'rotate-180')} />
+          </button>
+        )}
       </div>
-      <div className="flex min-h-[72px] flex-col gap-2 px-2 pb-2">
+      <div id={listId} hidden={collapsed} className={cn(!collapsed && 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:thin]')}>
+        {!collapsed && <div className="flex flex-col gap-2 px-2 pb-2">
         {tasks.map(t => <TaskCard key={t.id} task={t} onClick={() => onTaskClick(t)} showClient={showClient} />)}
         {empty && <div className="py-4 text-center text-[11px] text-muted-foreground/50">Soltá una tarea acá</div>}
+        </div>}
       </div>
     </div>
   );
@@ -149,10 +163,9 @@ export function KanbanBoard({ tasks, onTaskClick, onTaskMove, showClient }: Kanb
   }, [onTaskMove]);
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onStart} onDragEnd={onEnd}>
-      {/* Single scroll container for the whole board: one horizontal + one vertical bar, thin */}
-      <Scroller axis="x" className="h-auto" innerClassName="h-auto rounded-2xl">
-        <div className="flex w-max items-start gap-3 pb-2 pr-2">
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onStart} onDragEnd={onEnd} onDragCancel={() => setActiveTask(null)}>
+      <Scroller axis="x" className="min-w-0 flex-1" innerClassName="overflow-y-hidden rounded-2xl">
+        <div className="flex h-full w-max items-stretch gap-3 pb-2 pr-2">
           {columns.map(c => <KanbanColumn key={c.status} status={c.status} tasks={c.tasks} onTaskClick={onTaskClick} showClient={showClient} />)}
         </div>
       </Scroller>
