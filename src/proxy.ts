@@ -22,7 +22,7 @@ function isPublicApi(request: NextRequest) {
   const path = request.nextUrl.pathname;
   if (request.method === 'OPTIONS') return true;
   if (path === '/api/ai/status') return true;
-  if (path.startsWith('/api/public/') || path.startsWith('/api/profiles/') || path.startsWith('/api/tasks/public/')) return true;
+  if (path.startsWith('/api/public/') || path.startsWith('/api/profiles/') || path.startsWith('/api/sala-participation') || path.startsWith('/api/tasks/public/')) return true;
   if (path.startsWith('/api/calendar-links/') || path.startsWith('/api/calendar-comments')) return true;
   return false;
 }

@@ -12,6 +12,7 @@ export const es = {
     calendar: 'Calendario de clientes',
     documents: 'Documentos',
     messages: 'Mensajes',
+    salas: 'Salas',
     suggestions: 'Sugerencias',
     development: 'Reporte diario',
     apps: 'Aplicaciones',

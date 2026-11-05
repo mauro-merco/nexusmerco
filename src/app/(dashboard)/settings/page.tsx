@@ -40,6 +40,7 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   calendarios: 'Calendario de clientes',
   documentos: 'Documentos',
   mensajes: 'Mensajes',
+  salas: 'Salas',
   sugerencias: 'Sugerencias',
   desarrollo: 'Reporte diario',
 };

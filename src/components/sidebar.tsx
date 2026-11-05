@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth-store';
 import { useT } from '@/lib/use-t';
 import { DEFAULT_MODULES } from '@/lib/types';
+import { hasModuleAccess } from '@/lib/permissions';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LangToggle } from '@/components/lang-toggle';
 import {
@@ -20,6 +21,7 @@ import {
   Users2,
   Lightbulb,
   FileCode,
+  MessagesSquare,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -33,6 +35,7 @@ const navItems: NavItem[] = [
   { label: 'calendar', href: '/calendarios', icon: 'Calendar', moduleId: 'calendarios', roles: ['admin', 'operador', 'client'] },
   { label: 'documents', href: '/documentos', icon: 'FileText', moduleId: 'documentos', roles: ['admin', 'operador', 'client'] },
   { label: 'suggestions', href: '/sugerencias', icon: 'Lightbulb', moduleId: 'sugerencias', roles: ['admin', 'operador', 'client'] },
+  { label: 'salas', href: '/salas', icon: 'MessagesSquare', moduleId: 'salas', roles: ['admin', 'operador', 'client'] },
   { label: 'development', href: '/desarrollo', icon: 'FileCode', moduleId: 'desarrollo', roles: ['admin', 'operador'] },
 ];
 
@@ -46,6 +49,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Users2,
   Lightbulb,
   FileCode,
+  MessagesSquare,
 };
 
 const STORAGE_KEY = 'nexus-sidebar-collapsed';
@@ -56,7 +60,7 @@ function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolea
   const _ = useT();
 
   const visibleItems = navItems.filter(
-    (item) => user && user.visible_modules?.includes(item.moduleId)
+    (item) => hasModuleAccess(user, item.moduleId)
   );
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
@@ -168,7 +172,7 @@ function MobileBottomNav({ onNavigate }: { onNavigate: (href: string, label: str
   const [open, setOpen] = useState(false);
 
   const visibleItems = navItems.filter(
-    (item) => user && user.visible_modules?.includes(item.moduleId)
+    (item) => hasModuleAccess(user, item.moduleId)
   );
 
   const handleAppClick = (href: string, label: string) => {

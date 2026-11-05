@@ -1,12 +1,12 @@
 export type UserRole = 'admin' | 'operador' | 'client';
 
-export const ALL_MODULES = ['dashboard', 'datos', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'sugerencias', 'desarrollo'] as const;
+export const ALL_MODULES = ['dashboard', 'datos', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'salas', 'sugerencias', 'desarrollo'] as const;
 export type ModuleId = typeof ALL_MODULES[number];
 
 export const DEFAULT_MODULES: Record<UserRole, ModuleId[]> = {
-  admin: ['dashboard', 'datos', 'tareas', 'equipo', 'calendarios', 'documentos', 'mensajes', 'sugerencias', 'desarrollo'],
-  operador: ['dashboard', 'datos', 'tareas', 'equipo', 'calendarios', 'documentos', 'mensajes', 'sugerencias', 'desarrollo'],
-  client: ['dashboard', 'datos', 'calendarios', 'documentos', 'mensajes', 'sugerencias'],
+  admin: ['dashboard', 'datos', 'tareas', 'equipo', 'calendarios', 'documentos', 'mensajes', 'salas', 'sugerencias', 'desarrollo'],
+  operador: ['dashboard', 'datos', 'tareas', 'equipo', 'calendarios', 'documentos', 'mensajes', 'salas', 'sugerencias', 'desarrollo'],
+  client: ['dashboard', 'datos', 'calendarios', 'documentos', 'mensajes', 'salas', 'sugerencias'],
 };
 
 export interface User {
@@ -457,4 +457,129 @@ export interface PublicProfile {
   work_items: ProfileWorkItem[];
   documents: NexusDocument[];
   notes: StickyNote[];
+}
+
+// ---------------------------------------------------------------------------
+// Salas (Discord-style rooms): boletines (announcement channels) + chat rooms.
+// ---------------------------------------------------------------------------
+
+export type SalaKind = 'chat' | 'boletin';
+export type SalaVisibility = 'publica' | 'privada';
+export type SalaMemberRole = 'owner' | 'moderator' | 'member';
+
+export type SalaParticipationAction =
+  | 'joined'
+  | 'left'
+  | 'message_sent'
+  | 'reply_sent'
+  | 'bulletin_published'
+  | 'reaction_added'
+  | 'reaction_removed'
+  | 'message_viewed'
+  | 'message_deleted'
+  | 'room_created'
+  | 'room_updated'
+  | 'room_deleted';
+
+export interface SalaAuthor {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  email?: string | null;
+  role?: UserRole;
+}
+
+export interface SalaMember {
+  sala_id: string;
+  user_id: string;
+  role: SalaMemberRole;
+  last_read_at: string;
+  user?: SalaAuthor | null;
+}
+
+export interface SalaMessageReaction {
+  emoji: string;
+  count: number;
+  reacted_by_me: boolean;
+  users: SalaAuthor[];
+}
+
+export interface SalaMessage {
+  id: string;
+  sala_id: string;
+  author_id: string | null;
+  content: string;
+  parent_id: string | null;
+  pinned: boolean;
+  edited_at: string | null;
+  created_at: string;
+  author?: SalaAuthor | null;
+  reactions?: SalaMessageReaction[];
+  readers?: SalaAuthor[];
+  read_count?: number;
+  read_by_me?: boolean;
+  replies?: SalaMessage[];
+}
+
+export interface Sala {
+  id: string;
+  name: string;
+  description: string;
+  kind: SalaKind;
+  visibility: SalaVisibility;
+  emoji: string;
+  color: string;
+  created_by: string | null;
+  archived: boolean;
+  position: number;
+  created_at: string;
+  updated_at: string;
+  joined?: boolean;
+  my_role?: SalaMemberRole | null;
+  member_count?: number;
+  unread?: number;
+  message_count?: number;
+  members?: SalaMember[];
+  last_message?: SalaMessage | null;
+}
+
+export interface SalaParticipationStats {
+  messages: number;
+  replies: number;
+  bulletins: number;
+  reactions: number;
+  views: number;
+  rooms: number;
+  total: number;
+}
+
+export interface SalaParticipationRoom {
+  sala_id: string | null;
+  sala_name: string;
+  total: number;
+  messages: number;
+  replies: number;
+  bulletins: number;
+  reactions: number;
+  views: number;
+  last_at: string;
+}
+
+export interface SalaParticipationEvent {
+  id: string;
+  sala_id: string | null;
+  sala_name: string;
+  message_id: string | null;
+  user_id: string;
+  action: SalaParticipationAction;
+  emoji: string | null;
+  detail: string | null;
+  created_at: string;
+}
+
+export interface SalaParticipation {
+  user: SalaAuthor | null;
+  stats: SalaParticipationStats;
+  rooms: SalaParticipationRoom[];
+  events: SalaParticipationEvent[];
 }

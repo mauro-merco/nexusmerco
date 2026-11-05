@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { TASK_ROLE_CONFIG, TASK_ROLES, TASK_STATUS_CONFIG, taskTypeInfo } from '@/lib/task-config';
 import { WorkStatistics } from '@/components/work-statistics';
+import { SalaParticipationPanel } from '@/components/sala-participation-panel';
 import {
   Mail,
   ArrowLeft,
@@ -26,6 +27,7 @@ import {
   Activity,
   History,
   Layers,
+  MessagesSquare,
 } from 'lucide-react';
 import type { PublicProfile, TaskRole } from '@/lib/types';
 
@@ -39,7 +41,8 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [tab, setTab] = useState<'tasks' | 'docs' | 'notes'>('tasks');
+  const [tab, setTab] = useState<'tasks' | 'docs' | 'notes' | 'salas'>('tasks');
+  const [salaTotal, setSalaTotal] = useState(0);
   const [msgOpen, setMsgOpen] = useState(false);
   const [msgText, setMsgText] = useState('');
   const [sending, setSending] = useState(false);
@@ -67,6 +70,16 @@ export default function PublicProfilePage() {
   useEffect(() => {
     if (id) fetchProfile();
   }, [id, fetchProfile]);
+
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/sala-participation?user_id=${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(json => setSalaTotal(json?.data?.stats?.total || 0))
+      .catch(() => setSalaTotal(0));
+  }, [id, token]);
 
   const isSelf = !!user && user.id === id;
 
@@ -135,6 +148,7 @@ export default function PublicProfilePage() {
     tasks: tasksList.length + workItems.length,
     docs: profile.documents?.length || 0,
     notes: profile.notes?.length || 0,
+    salas: salaTotal,
   };
 
   const stats = [
@@ -318,11 +332,12 @@ export default function PublicProfilePage() {
         <WorkStatistics userId={id} />
 
         {/* Stats + tabs */}
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { key: 'tasks' as const, label: 'Tareas', icon: KanbanSquare },
             { key: 'docs' as const, label: 'Documentos', icon: FileText },
             { key: 'notes' as const, label: 'Notas', icon: StickyNote },
+            { key: 'salas' as const, label: 'Salas', icon: MessagesSquare },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -468,6 +483,13 @@ export default function PublicProfilePage() {
                 ))}
               </div>
             </>
+          )}
+
+          {tab === 'salas' && (
+            <SalaParticipationPanel
+              userId={id}
+              title={`Participación de ${firstName} en las salas`}
+            />
           )}
         </div>
       </main>

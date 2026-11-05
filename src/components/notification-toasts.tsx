@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useNotifications } from '@/lib/hooks/use-notifications';
 import type { Notification } from '@/lib/types';
 import {
-  Bell, UserPlus, AtSign, FileText, AlarmClock, CheckCircle2, Info, X,
+  Bell, UserPlus, AtSign, FileText, AlarmClock, CheckCircle2, Info, X, Megaphone,
 } from 'lucide-react';
 
 const TYPE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string }> = {
@@ -16,6 +16,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: stri
   document_shared: { icon: FileText, color: 'text-blue-400' },
   reminder: { icon: AlarmClock, color: 'text-amber-400' },
   task_completed: { icon: CheckCircle2, color: 'text-emerald-400' },
+  sala: { icon: Megaphone, color: 'text-amber-400' },
 };
 
 function getConfig(type: string) {

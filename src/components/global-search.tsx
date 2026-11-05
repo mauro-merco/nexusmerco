@@ -7,10 +7,10 @@ import { useAuthStore } from '@/store/auth-store';
 import {
   Command, CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
 } from '@/components/ui/command';
-import { Search, Building2, User, FileText, KanbanSquare } from 'lucide-react';
+import { Search, Building2, User, FileText, KanbanSquare, CalendarDays, MessageSquare, Lightbulb, MessagesSquare } from 'lucide-react';
 
 interface SearchResult {
-  type: 'client' | 'user' | 'document' | 'task';
+  type: 'client' | 'user' | 'document' | 'task' | 'task_comment' | 'social_idea' | 'ads_idea' | 'social_comment' | 'ads_comment' | 'calendar_comment' | 'suggestion' | 'suggestion_comment' | 'sala_message';
   id: string;
   label: string;
   sublabel: string;
@@ -22,6 +22,15 @@ const GROUP_LABELS: Record<SearchResult['type'], string> = {
   user: 'Usuarios',
   document: 'Documentos',
   task: 'Tareas',
+  task_comment: 'Comentarios en tareas',
+  social_idea: 'Ideas de Redes',
+  ads_idea: 'Ideas de ADS',
+  social_comment: 'Comentarios en Redes',
+  ads_comment: 'Comentarios en ADS',
+  calendar_comment: 'Comentarios en calendarios',
+  suggestion: 'Sugerencias y bugs',
+  suggestion_comment: 'Comentarios en sugerencias',
+  sala_message: 'Mensajes en salas',
 };
 
 const GROUP_ICONS: Record<SearchResult['type'], typeof Search> = {
@@ -29,6 +38,15 @@ const GROUP_ICONS: Record<SearchResult['type'], typeof Search> = {
   user: User,
   document: FileText,
   task: KanbanSquare,
+  task_comment: MessageSquare,
+  social_idea: CalendarDays,
+  ads_idea: CalendarDays,
+  social_comment: MessageSquare,
+  ads_comment: MessageSquare,
+  calendar_comment: MessageSquare,
+  suggestion: Lightbulb,
+  suggestion_comment: MessageSquare,
+  sala_message: MessagesSquare,
 };
 
 export function GlobalSearch() {
@@ -39,6 +57,7 @@ export function GlobalSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestRef = useRef(0);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -57,7 +76,8 @@ export function GlobalSearch() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) { setResults([]); setLoading(false); return; }
+    if (query.trim().length < 2) { requestRef.current++; setResults([]); setLoading(false); return; }
+    const requestId = ++requestRef.current;
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
       try {
@@ -65,11 +85,11 @@ export function GlobalSearch() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json();
-        setResults(json.data || []);
+        if (requestId === requestRef.current) setResults(json.data || []);
       } catch {
-        setResults([]);
+        if (requestId === requestRef.current) setResults([]);
       } finally {
-        setLoading(false);
+        if (requestId === requestRef.current) setLoading(false);
       }
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
@@ -80,32 +100,31 @@ export function GlobalSearch() {
     router.push(href);
   }, [router]);
 
-  const groups: SearchResult['type'][] = ['client', 'user', 'document', 'task'];
+  const groups: SearchResult['type'][] = ['client', 'user', 'task', 'task_comment', 'social_idea', 'social_comment', 'ads_idea', 'ads_comment', 'calendar_comment', 'document', 'suggestion', 'suggestion_comment', 'sala_message'];
 
   return (
     <>
+      <div className="search-glow hidden w-44 rounded-xl p-px sm:block lg:w-56">
+        <button type="button" onClick={() => setOpen(true)}
+          className="relative flex h-9 w-full items-center gap-2 rounded-[11px] bg-background px-3 text-xs text-muted-foreground transition-colors hover:text-foreground">
+          <Search className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1 text-left">Buscar...</span>
+          <kbd className="hidden text-[10px] font-mono opacity-60 lg:inline">Ctrl K</kbd>
+        </button>
+      </div>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="hidden sm:flex items-center gap-2 rounded-lg border border-input/40 bg-input/20 px-3 py-1.5 text-xs text-muted-foreground hover:border-input/70 transition-colors w-56"
-      >
-        <Search className="h-3.5 w-3.5 shrink-0" />
-        <span className="flex-1 text-left">Buscar...</span>
-        <kbd className="text-[10px] font-mono opacity-60">Ctrl K</kbd>
-      </button>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="sm:hidden flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+        className="search-glow flex h-9 w-9 items-center justify-center rounded-xl p-px text-muted-foreground sm:hidden"
         aria-label="Buscar"
       >
-        <Search className="h-4 w-4" />
+        <span className="relative flex h-full w-full items-center justify-center rounded-[11px] bg-background"><Search className="h-4 w-4" /></span>
       </button>
 
-      <CommandDialog open={open} onOpenChange={setOpen} title="Buscar" description="Buscá clientes, usuarios, documentos y tareas">
+      <CommandDialog open={open} onOpenChange={setOpen} title="Buscar" description="Buscá contenido en la plataforma" className="search-modal-glow top-[12vh] w-[calc(100%-2rem)] max-w-2xl translate-y-0 border-0 p-px sm:top-[15vh]">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Buscar clientes, usuarios, documentos, tareas..." value={query} onValueChange={setQuery} />
-          <CommandList>
+          <CommandInput placeholder="Buscar tareas, comentarios, ideas, usuarios..." value={query} onValueChange={setQuery} />
+          <CommandList className="max-h-[min(65vh,560px)]">
             {loading && (
               <ContentSkeleton />
             )}

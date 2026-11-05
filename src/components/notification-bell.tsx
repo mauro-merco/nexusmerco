@@ -8,7 +8,7 @@ import { useNotifications } from '@/lib/hooks/use-notifications';
 import { useAuthStore } from '@/store/auth-store';
 import {
   Bell, CheckCheck, ExternalLink, UserPlus, AtSign, FileText, AlarmClock, CheckCircle2, Info, ChevronRight,
-  Mail,
+  Mail, Megaphone,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { Notification } from '@/lib/types';
@@ -20,6 +20,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: stri
   reminder: { icon: AlarmClock, color: 'text-amber-400', bg: 'bg-amber-400/10' },
   task_completed: { icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
   message: { icon: Mail, color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
+  sala: { icon: Megaphone, color: 'text-amber-400', bg: 'bg-amber-400/10' },
 };
 
 export function NotificationBell() {

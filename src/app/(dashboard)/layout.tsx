@@ -55,7 +55,8 @@ export default function DashboardLayout({
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
         <header className="h-14 shrink-0 bg-background flex items-center justify-between px-4 gap-2">
-          <div className="flex-1 flex justify-center px-2">
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-2 px-1 sm:px-2">
+            <SuggestionsFloatingButtons />
             <GlobalSearch />
           </div>
           <div className="flex items-center gap-2">
@@ -78,7 +79,6 @@ export default function DashboardLayout({
       </div>
       <AIWidget />
       <NotificationToasts />
-      <SuggestionsFloatingButtons />
       <MinimizedDock />
     </div>
   );

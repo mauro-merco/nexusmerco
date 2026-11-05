@@ -12,6 +12,7 @@ export const en = {
     calendar: 'Client Calendar',
     documents: 'Documents',
     messages: 'Messages',
+    salas: 'Rooms',
     suggestions: 'Suggestions',
     development: 'Daily Report',
     apps: 'Apps',

@@ -6,6 +6,7 @@ import type { User, ModuleId } from './types';
  */
 export function hasModuleAccess(user: User | null, moduleId: ModuleId): boolean {
   if (!user) return false;
+  if (moduleId === 'salas') return true;
   return user.visible_modules?.includes(moduleId) ?? false;
 }
 
