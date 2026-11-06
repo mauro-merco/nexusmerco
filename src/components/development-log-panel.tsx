@@ -174,7 +174,11 @@ export function DevelopmentLogPanel() {
                               <Badge variant="outline" className={cn('text-xs', cfg.color)}>
                                 {cfg.label}
                               </Badge>
-                              {log.deployed ? (
+                              {log.source === 'code' ? (
+                                <Badge variant="outline" className="text-xs text-blue-500 gap-1">
+                                  <FileCode className="h-3 w-3" /> Implementado en código · despliegue sin confirmar
+                                </Badge>
+                              ) : log.deployed ? (
                                 <Badge variant="outline" className="text-xs text-emerald-500 gap-1">
                                   <CheckCircle2 className="h-3 w-3" /> Desplegado
                                 </Badge>

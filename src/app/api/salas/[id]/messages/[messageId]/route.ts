@@ -52,6 +52,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .single();
     if (error) throw error;
 
+    if (typeof body.content === 'string') await logSalaParticipation(supabase, {
+      salaId: id, salaName: access.sala.name, messageId, userId: user.id,
+      action: 'message_edited', detail: messageExcerpt(data.content),
+    });
+
     return NextResponse.json({ data });
   } catch (e) {
     console.error('PUT /api/salas/[id]/messages/[messageId] error:', e);

@@ -86,6 +86,7 @@ export const SALA_ACTION_CONFIG: Record<SalaParticipationAction, {
   reaction_removed: { label: 'Quitó una reacción', icon: MessageSquare, colorClass: 'text-slate-500', bgColorClass: 'bg-slate-500/10' },
   message_viewed: { label: 'Marcó un mensaje como visto', icon: MessageSquare, colorClass: 'text-emerald-600 dark:text-emerald-300', bgColorClass: 'bg-emerald-500/10' },
   message_deleted: { label: 'Eliminó un mensaje', icon: MessageSquare, colorClass: 'text-red-600 dark:text-red-300', bgColorClass: 'bg-red-500/10' },
+  message_edited: { label: 'Editó un mensaje', icon: MessageSquare, colorClass: 'text-blue-600 dark:text-blue-300', bgColorClass: 'bg-blue-500/10' },
   room_created: { label: 'Creó una sala', icon: MessageSquare, colorClass: 'text-violet-600 dark:text-violet-300', bgColorClass: 'bg-violet-500/10' },
   room_updated: { label: 'Editó una sala', icon: MessageSquare, colorClass: 'text-slate-500', bgColorClass: 'bg-slate-500/10' },
   room_deleted: { label: 'Eliminó una sala', icon: MessageSquare, colorClass: 'text-red-600 dark:text-red-300', bgColorClass: 'bg-red-500/10' },

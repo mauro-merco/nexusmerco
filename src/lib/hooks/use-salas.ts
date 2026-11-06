@@ -110,7 +110,7 @@ export function useSalas() {
 }
 
 export function useSalaFeed(salaId: string | null) {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const [sala, setSala] = useState<Sala | null>(null);
   const [messages, setMessages] = useState<SalaMessage[]>([]);
   const [canPost, setCanPost] = useState(false);
@@ -119,6 +119,18 @@ export function useSalaFeed(salaId: string | null) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
+  const pendingReactions = useRef(new Set<string>());
+  const pendingViews = useRef(new Set<string>());
+
+  const changeMessage = useCallback((messageId: string, update: (message: SalaMessage) => SalaMessage) => {
+    setMessages(previous => previous.map(message => {
+      if (message.id === messageId) return update(message);
+      if (message.replies?.some(reply => reply.id === messageId)) {
+        return { ...message, replies: message.replies.map(reply => reply.id === messageId ? update(reply) : reply) };
+      }
+      return message;
+    }));
+  }, []);
 
   const refresh = useCallback(async (silent = false) => {
     if (!salaId || !token) return;
@@ -179,26 +191,72 @@ export function useSalaFeed(salaId: string | null) {
 
   const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
     if (!salaId || !token) return;
-    const res = await fetch(`/api/salas/${salaId}/messages/${messageId}/reactions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ emoji }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json.error || 'No se pudo reaccionar');
-    await refresh(true);
-  }, [salaId, token, refresh]);
+    const key = `${messageId}:${emoji}`;
+    if (pendingReactions.current.has(key)) return;
+    pendingReactions.current.add(key);
+    const apply = (message: SalaMessage) => {
+      const current = message.reactions || [];
+      const existing = current.find(reaction => reaction.emoji === emoji);
+      const added = !existing?.reacted_by_me;
+      const count = (existing?.count || 0) + (added ? 1 : -1);
+      return {
+        ...message,
+        reactions: [
+          ...current.filter(reaction => reaction.emoji !== emoji),
+          ...(count > 0 ? [{ emoji, count, reacted_by_me: added,
+            users: added ? [...(existing?.users || []), { id: user?.id || '', full_name: user?.full_name || null, avatar_url: user?.avatar_url || null }] : (existing?.users || []).filter(reader => reader.id !== user?.id) }] : []),
+        ],
+      };
+    };
+    changeMessage(messageId, apply);
+    try {
+      const res = await fetch(`/api/salas/${salaId}/messages/${messageId}/reactions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ emoji }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'No se pudo reaccionar');
+    } catch (error) {
+      changeMessage(messageId, apply);
+      throw error;
+    } finally { pendingReactions.current.delete(key); }
+  }, [salaId, token, user, changeMessage]);
 
   const markViewed = useCallback(async (messageId: string) => {
     if (!salaId || !token) return;
-    const res = await fetch(`/api/salas/${salaId}/messages/${messageId}/read`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+    if (pendingViews.current.has(messageId)) return;
+    const target = messages.flatMap(message => [message, ...(message.replies || [])]).find(message => message.id === messageId);
+    if (target?.read_by_me) return;
+    pendingViews.current.add(messageId);
+    changeMessage(messageId, message => {
+      if (message.read_by_me) return message;
+      return { ...message, read_by_me: true, read_count: (message.read_count || 0) + 1,
+        readers: [...(message.readers || []), { id: user?.id || '', full_name: user?.full_name || null, avatar_url: user?.avatar_url || null }],
+      };
+    });
+    try {
+      const res = await fetch(`/api/salas/${salaId}/messages/${messageId}/read`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'No se pudo marcar como visto');
+    } catch (error) {
+      changeMessage(messageId, message => ({ ...message, read_by_me: false,
+        read_count: Math.max(0, (message.read_count || 0) - 1),
+        readers: (message.readers || []).filter(reader => reader.id !== user?.id),
+      }));
+      throw error;
+    } finally { pendingViews.current.delete(messageId); }
+  }, [salaId, token, user, messages, changeMessage]);
+
+  const editMessage = useCallback(async (messageId: string, content: string) => {
+    if (!salaId || !token) throw new Error('No autorizado');
+    const res = await fetch(`/api/salas/${salaId}/messages/${messageId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ content }),
     });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json.error || 'No se pudo marcar como visto');
-    await refresh(true);
-  }, [salaId, token, refresh]);
+    if (!res.ok) throw new Error(json.error || 'No se pudo editar');
+    changeMessage(messageId, message => ({ ...message, content: json.data.content, edited_at: json.data.edited_at }));
+  }, [salaId, token, changeMessage]);
 
   const deleteMessage = useCallback(async (messageId: string) => {
     if (!salaId || !token) return;
@@ -208,12 +266,14 @@ export function useSalaFeed(salaId: string | null) {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.error || 'No se pudo eliminar el mensaje');
-    await refresh(true);
-  }, [salaId, token, refresh]);
+    setMessages(previous => previous.filter(message => message.id !== messageId).map(message => ({
+      ...message, replies: message.replies?.filter(reply => reply.id !== messageId),
+    })));
+  }, [salaId, token]);
 
   return {
     sala, messages, canPost, canModerate, loading, sending, error,
-    refresh, sendMessage, toggleReaction, markViewed, deleteMessage,
+    refresh, sendMessage, toggleReaction, markViewed, editMessage, deleteMessage,
   };
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { decodeJwt } from 'jose';
+import { DEVELOPMENT_MILESTONES } from '@/lib/development-milestones';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,6 +24,7 @@ export type DevLogEntry = {
   pr_url: string | null;
   deployed: boolean;
   deployed_at: string | null;
+  source?: 'code';
   author_name?: string;
   author_avatar?: string | null;
 };
@@ -98,7 +100,17 @@ export async function GET(request: Request) {
       author_avatar: log.author_id ? userMap.get(log.author_id)?.avatar : undefined,
     }));
 
-    return NextResponse.json({ data: enriched, days });
+    const milestones = DEVELOPMENT_MILESTONES.filter(entry =>
+      new Date(entry.created_at) >= fromDate &&
+      (!category || entry.category === category) &&
+      (deployedFilter !== 'true') &&
+      !enriched.some(log => log.commit_hash === entry.commit_hash && log.title === entry.title)
+    );
+
+    return NextResponse.json({
+      data: [...enriched, ...milestones].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
+      days,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Error al cargar el log' },

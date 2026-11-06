@@ -477,6 +477,7 @@ export type SalaParticipationAction =
   | 'reaction_removed'
   | 'message_viewed'
   | 'message_deleted'
+  | 'message_edited'
   | 'room_created'
   | 'room_updated'
   | 'room_deleted';

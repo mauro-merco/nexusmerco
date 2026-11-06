@@ -72,6 +72,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       const currentIds = new Set((current || []).map(m => m.user_id));
       const nextIdSet = new Set(nextIds);
       const toAdd = nextIds.filter(uid => !currentIds.has(uid));
+      if (toAdd.length) {
+        const { data: eligible, error: eligibleError } = await supabase.from('users').select('id')
+          .eq('app_id', 'nexus').in('role', ['admin', 'operador']).in('id', toAdd);
+        if (eligibleError) throw eligibleError;
+        if (eligible?.length !== toAdd.length) return NextResponse.json({ error: 'Solo podés invitar integrantes del equipo' }, { status: 400 });
+      }
       const toRemove = [...currentIds].filter(uid => !nextIdSet.has(uid) && uid !== access.sala.created_by);
       if (toAdd.length) {
         await supabase.from('sala_members').insert(toAdd.map(uid => ({ sala_id: id, user_id: uid, role: 'member' })));

@@ -10,7 +10,7 @@ import {
   MessageSquareReply,
   SmilePlus,
   Trash2,
-  Megaphone,
+  Megaphone, Pencil, Check, X,
 } from 'lucide-react';
 
 function initials(name?: string | null) {
@@ -37,6 +37,7 @@ interface SalaMessageCardProps {
   onReact: (message: SalaMessage, emoji: string) => void;
   onView: (message: SalaMessage) => void;
   onDelete: (message: SalaMessage) => void;
+  onEdit: (message: SalaMessage, content: string) => Promise<void>;
 }
 
 export function SalaMessageCard({
@@ -50,14 +51,28 @@ export function SalaMessageCard({
   onReact,
   onView,
   onDelete,
+  onEdit,
 }: SalaMessageCardProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.content);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState('');
   const author = message.author;
   const isMine = !!meId && message.author_id === meId;
   const canDelete = isMine || canModerate;
   const reactions = message.reactions || [];
   const readers = message.readers || [];
   const readerNames = readers.map(r => r.full_name || 'Usuario').join(', ');
+  const imageUrls = [...message.content.matchAll(/https?:\/\/[^\s<>]+?\.(?:png|jpe?g|webp|gif)(?:\?[^\s<>]*)?(?=\s|$)/gi)]
+    .map(match => match[0]).slice(0, 3);
+  const saveEdit = async () => {
+    if (!draft.trim() || draft.trim() === message.content) { setEditing(false); return; }
+    setSaving(true); setEditError('');
+    try { await onEdit(message, draft.trim()); setEditing(false); }
+    catch (error) { setEditError(error instanceof Error ? error.message : 'No se pudo editar'); }
+    finally { setSaving(false); }
+  };
 
   const card = (
     <div className={cn(
@@ -100,13 +115,22 @@ export function SalaMessageCard({
           )}
         </div>
 
-        <MessageContent
-          text={message.content}
-          className={cn(
-            'mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90',
-            isBulletin && 'text-[15px] font-medium leading-relaxed'
-          )}
-        />
+        {editing ? <div className="mt-2 space-y-1.5">
+          <textarea value={draft} onChange={event => setDraft(event.target.value)} maxLength={4000} rows={3}
+            className="w-full resize-y rounded-lg border bg-background p-2 text-sm outline-none focus:border-primary" />
+          {editError && <p className="text-xs text-destructive">{editError}</p>}
+          <div className="flex gap-2">
+            <button type="button" disabled={saving || !draft.trim()} onClick={saveEdit} className="flex items-center gap-1 text-xs text-primary"><Check className="h-3.5 w-3.5" /> Guardar</button>
+            <button type="button" onClick={() => setEditing(false)} className="flex items-center gap-1 text-xs text-muted-foreground"><X className="h-3.5 w-3.5" /> Cancelar</button>
+          </div>
+        </div> : <>
+          <MessageContent text={message.content} className={cn('mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90', isBulletin && 'text-[15px] font-medium leading-relaxed')} />
+          {imageUrls.map(url => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="mt-2 block w-fit max-w-full">
+            {/* External image/GIF: the browser loads it from its original host, never from our storage. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="Imagen adjunta" loading="lazy" referrerPolicy="no-referrer" className="max-h-72 max-w-full rounded-xl border object-contain" />
+          </a>)}
+        </>}
 
         {(reactions.length > 0 || readers.length > 0) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
@@ -148,7 +172,7 @@ export function SalaMessageCard({
       </div>
 
       {/* Hover actions */}
-      <div className="absolute -top-3 right-2 z-10 hidden items-center gap-0.5 rounded-lg border bg-popover p-0.5 shadow-md group-hover:flex">
+      <div className="absolute -top-3 right-2 z-10 flex items-center gap-0.5 rounded-lg border bg-popover p-0.5 shadow-md md:hidden md:group-hover:flex">
         <div className="relative">
           <button
             type="button"
@@ -196,6 +220,10 @@ export function SalaMessageCard({
           >
             <MessageSquareReply className="h-3.5 w-3.5" />
           </button>
+        )}
+        {canDelete && (
+          <button type="button" title="Editar mensaje" onClick={() => { setDraft(message.content); setEditing(true); }}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
         )}
         {canDelete && (
           <button

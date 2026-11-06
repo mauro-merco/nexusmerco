@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useAuthStore } from '@/store/auth-store';
 import { useSalaFeed } from '@/lib/hooks/use-salas';
 import { SALA_KIND_CONFIG, SALA_MEMBER_ROLE_CONFIG } from '@/lib/sala-config';
 import { SalaMessageCard } from '@/components/sala-message';
@@ -17,6 +19,7 @@ import {
   LogOut,
   Megaphone,
   MessageSquareReply,
+  ImagePlus, UserPlus,
   Pencil,
   Send,
   Trash2,
@@ -50,11 +53,18 @@ export function SalaRoomView({
   onLoaded,
 }: SalaRoomViewProps) {
   const feed = useSalaFeed(salaId);
+  const { token } = useAuthStore();
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<SalaMessage | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteUsers, setInviteUsers] = useState<User[]>([]);
+  const [invitedIds, setInvitedIds] = useState<string[]>([]);
+  const [inviting, setInviting] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const notifiedRef = useRef<string | null>(null);
@@ -67,6 +77,7 @@ export function SalaRoomView({
   const joined = !!current?.joined;
   const canWrite = feed.canPost || !!replyTo;
   const canModerate = feed.canModerate;
+  const canInvite = canModerate && (current?.created_by === me?.id || me?.role === 'admin');
   const members = current?.members || [];
 
   useEffect(() => {
@@ -116,6 +127,46 @@ export function SalaRoomView({
     setActionError(null);
     try { await feed.deleteMessage(message.id); }
     catch (e) { setActionError(e instanceof Error ? e.message : 'No se pudo eliminar'); }
+  };
+
+  const handleEdit = async (message: SalaMessage, content: string) => feed.editMessage(message.id, content);
+
+  const openInvite = async () => {
+    setInviteOpen(true);
+    setInvitedIds([]);
+    try {
+      const res = await fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('No se pudo cargar el equipo');
+      const json = await res.json();
+      setInviteUsers((json.data || []).filter((member: User) =>
+        (member.role === 'admin' || member.role === 'operador') && member.id !== me?.id && !members.some(existing => existing.user_id === member.id)));
+    } catch (error) { setActionError(error instanceof Error ? error.message : 'Error al cargar usuarios'); }
+  };
+
+  const sendInvites = async () => {
+    setInviting(true);
+    try {
+      const res = await fetch(`/api/salas/${salaId}/invite`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ user_ids: invitedIds }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'No se pudo invitar');
+      setInviteOpen(false);
+      onLoaded?.();
+    } catch (error) { setActionError(error instanceof Error ? error.message : 'No se pudo invitar'); }
+    finally { setInviting(false); }
+  };
+
+  const addImageLink = () => {
+    const url = imageUrl.trim();
+    if (!/^https:\/\/\S+\.(?:png|jpe?g|webp|gif)(?:\?\S*)?$/i.test(url)) {
+      setActionError('Pegá un enlace HTTPS directo a una imagen o GIF (.png, .jpg, .webp, .gif).');
+      return;
+    }
+    setText(previous => `${previous.trim()}${previous.trim() ? '\n' : ''}${url}`);
+    setImageUrl(''); setImageOpen(false); setActionError(null);
+    inputRef.current?.focus();
   };
 
   const handleJoin = async () => {
@@ -206,6 +257,8 @@ export function SalaRoomView({
             {current?.member_count || members.length || 1}
             <ChevronDown className={cn('h-3 w-3 transition-transform', showMembers && 'rotate-180')} />
           </button>
+          {canInvite && <button type="button" onClick={openInvite} title="Invitar integrantes del equipo"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border bg-background/50 text-muted-foreground hover:text-primary"><UserPlus className="h-4 w-4" /></button>}
           {joined ? (
             <button
               type="button"
@@ -308,6 +361,7 @@ export function SalaRoomView({
                 onReact={handleReact}
                 onView={handleView}
                 onDelete={handleDelete}
+                onEdit={handleEdit}
               />
               {(message.replies || []).length > 0 && (
                 <div className="ml-9 space-y-1 border-l-2 border-border/60 pl-2 sm:ml-11">
@@ -323,6 +377,7 @@ export function SalaRoomView({
                       onReact={handleReact}
                       onView={handleView}
                       onDelete={handleDelete}
+                      onEdit={handleEdit}
                     />
                   ))}
                 </div>
@@ -371,6 +426,8 @@ export function SalaRoomView({
               </span>
             )}
             <div className="flex min-w-0 flex-1 items-end rounded-2xl border bg-card px-2 py-1 focus-within:border-primary/40">
+              <button type="button" onClick={() => setImageOpen(true)} title="Adjuntar imagen o GIF desde un enlace externo"
+                className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-primary"><ImagePlus className="h-4 w-4" /></button>
               <textarea
                 ref={inputRef}
                 value={text}
@@ -405,6 +462,29 @@ export function SalaRoomView({
           Enter para enviar · Shift+Enter para salto de línea · Cada interacción queda en tu perfil
         </p>
       </div>
+      <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle>Compartir imagen o GIF</DialogTitle>
+          <DialogDescription>Pegá el enlace directo a una imagen pública. Se mostrará desde su sitio original; no se sube ningún archivo acá.</DialogDescription>
+          <input value={imageUrl} onChange={event => setImageUrl(event.target.value)} placeholder="https://sitio.com/imagen.gif"
+            onKeyDown={event => { if (event.key === 'Enter') addImageLink(); }} className="h-10 w-full rounded-lg border bg-background px-3 text-sm" />
+          <Button onClick={addImageLink}>Agregar al mensaje</Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle>Invitar al equipo</DialogTitle>
+          <DialogDescription>Solo se puede invitar a usuarios admin u operador. Recibirán una notificación.</DialogDescription>
+          <div className="max-h-60 space-y-1 overflow-y-auto">
+            {inviteUsers.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No hay integrantes nuevos para invitar.</p>}
+            {inviteUsers.map(member => <label key={member.id} className="flex cursor-pointer items-center gap-2 rounded-lg p-2 text-sm hover:bg-muted">
+              <input type="checkbox" checked={invitedIds.includes(member.id)} onChange={() => setInvitedIds(previous => previous.includes(member.id) ? previous.filter(id => id !== member.id) : [...previous, member.id])} />
+              {member.full_name || member.email}
+            </label>)}
+          </div>
+          <Button disabled={!invitedIds.length || inviting} onClick={sendInvites}>{inviting ? 'Invitando…' : `Invitar (${invitedIds.length})`}</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

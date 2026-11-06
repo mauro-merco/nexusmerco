@@ -123,16 +123,22 @@ export async function POST(request: Request) {
     const color = String(body.color || (kind === 'boletin' ? 'amber' : 'cyan')).slice(0, 20);
     const description = String(body.description || '').trim();
 
+    const rawMemberIds: unknown[] = Array.isArray(body.member_ids) ? body.member_ids : [];
+    const memberIds: string[] = Array.from(new Set(rawMemberIds.map(id => String(id)).filter(Boolean)))
+      .filter(id => id !== user.id);
+    if (visibility === 'privada' && memberIds.length) {
+      const { data: eligible, error: eligibleError } = await supabase.from('users').select('id')
+        .eq('app_id', 'nexus').in('role', ['admin', 'operador']).in('id', memberIds);
+      if (eligibleError) throw eligibleError;
+      if (eligible?.length !== memberIds.length) return NextResponse.json({ error: 'Solo podés invitar integrantes del equipo' }, { status: 400 });
+    }
+
     const { data: room, error } = await supabase
       .from('salas')
       .insert({ name, description, kind, visibility, emoji, color, created_by: user.id })
       .select()
       .single();
     if (error) throw error;
-
-    const rawMemberIds: unknown[] = Array.isArray(body.member_ids) ? body.member_ids : [];
-    const memberIds: string[] = Array.from(new Set(rawMemberIds.map(id => String(id)).filter(Boolean)))
-      .filter(id => id !== user.id);
 
     const rows = [
       { sala_id: room.id, user_id: user.id, role: 'owner' },

@@ -61,7 +61,7 @@ export function SalaDialog({ open, onOpenChange, initial, onSave }: SalaDialogPr
     if (!open || !token) return;
     fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(json => setUsers((json.data || []).filter((u: User) => u.id !== user?.id)))
+      .then(json => setUsers((json.data || []).filter((u: User) => u.id !== user?.id && (u.role === 'admin' || u.role === 'operador'))))
       .catch(() => setUsers([]));
   }, [open, token, user?.id]);
 
