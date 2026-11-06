@@ -84,6 +84,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       })),
     }));
 
+    // The shared calendar has its own guest authorization; dashboard-only
+    // /api/material-links cannot be called by visitors of this link.
+    const materialLinks: Record<string, { id: string; title: string; url: string }[]> = {};
+    if (ideas?.length) {
+      const { data: links, error: linksError } = await supabase
+        .from('material_links')
+        .select('id, entity_id, title, url')
+        .eq('entity_type', type === 'ads' ? 'ads_idea' : 'social_idea')
+        .in('entity_id', ideas.map(idea => idea.id))
+        .order('created_at', { ascending: true });
+      if (linksError) throw linksError;
+      for (const item of links || []) {
+        (materialLinks[item.entity_id] ??= []).push({ id: item.id, title: item.title, url: item.url });
+      }
+    }
+
     // Fetch attachments (social only — ads doesn't have attachments yet)
     let attachments: Record<string, { url: string; name: string; type: string }[]> = {};
     if (type === 'social' && ideas && ideas.length > 0) {
@@ -161,6 +177,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       client: { id: client.id, name: client.name, logo_url: client.logo_url },
       ideas: publicIdeas,
       attachments_by_idea: attachments,
+      material_links_by_idea: materialLinks,
       comments_by_idea: comments,
       ecommerce_dates: ecommerceDates,
       calendar_type: type,

@@ -15,7 +15,7 @@ import { useAuthStore } from '@/store/auth-store';
 import type { SocialIdea, PostType, IdeaStatus, User as NexusUser } from '@/lib/types';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
-import { MaterialLinks } from '@/components/material-links';
+import { MaterialLinks, type MaterialLink } from '@/components/material-links';
 import { MarkdownBody } from '@/lib/markdown';
 import { MoveIdeaDialog } from '@/components/move-idea-dialog';
 import { Scroller, Menu, Collapse, Switch, type MenuOption } from '@/components/task-ui';
@@ -51,15 +51,18 @@ interface SocialIdeaModalProps {
   users: NexusUser[];
   calendarType?: 'social' | 'ads';
   publicComments?: ReactNode;
+  publicMaterialLinks?: MaterialLink[];
+  publicAttachments?: { url: string; name: string; type: string }[];
 }
 
 const fieldCls = 'w-full rounded-xl bg-background/70 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30';
 
-export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social', publicComments }: SocialIdeaModalProps) {
+export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social', publicComments, publicMaterialLinks, publicAttachments }: SocialIdeaModalProps) {
   const { user } = useAuthStore();
   const isSocial = calendarType === 'social';
   const endpoint = calendarType === 'ads' ? '/api/ads-ideas' : '/api/social-ideas';
-  const { attachments, loading: loadingAttachments, addAttachment, removeAttachment } = useSocialAttachments(isSocial ? idea.id : null);
+  const { attachments: privateAttachments, loading: loadingAttachments, addAttachment, removeAttachment } = useSocialAttachments(isSocial && publicAttachments === undefined ? idea.id : null);
+  const attachments = publicAttachments ?? privateAttachments;
   const { comments, loading: loadingComments, addComment, deleteComment, updateComment } = useSocialComments(isSocial && !publicComments ? idea.id : null);
 
   const [editing, setEditing] = useState(false);
@@ -337,25 +340,25 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
             )}
 
             <Module icon={FolderOpen} title="Material" tone="text-indigo-600" toneBg="bg-indigo-500/15">
-              <MaterialLinks entityType={calendarType === 'ads' ? 'ads_idea' : 'social_idea'} entityId={idea.id} />
+              <MaterialLinks entityType={calendarType === 'ads' ? 'ads_idea' : 'social_idea'} entityId={idea.id} readOnly={publicMaterialLinks !== undefined} publicLinks={publicMaterialLinks} />
             </Module>
 
             {isSocial && (
               <Module icon={Paperclip} title={`Adjuntos (${attachments.length})`} tone="text-emerald-600" toneBg="bg-emerald-500/15">
-                <div className="flex items-center gap-2">
+                {publicAttachments === undefined && <div className="flex items-center gap-2">
                   <Input placeholder="Pegá un link de Drive..." value={newAttachUrl} onChange={e => setNewAttachUrl(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddAttachment(); } }} className="h-9 rounded-xl border-0 bg-background/70 text-sm" />
                   <Button size="sm" onClick={handleAddAttachment} disabled={addingAttach || !newAttachUrl.trim()} className="tm-press h-9 shrink-0 rounded-xl">
                     {addingAttach ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
                   </Button>
-                </div>
+                </div>}
                 {loadingAttachments && attachments.length === 0 && <ContentSkeleton />}
                 {attachments.length > 0 && (
                   <div className="mt-3 space-y-1.5">
                     {attachments.map(att => (
-                      <div key={att.id} className="tm-rise flex items-center justify-between gap-2 rounded-xl bg-background/60 p-2 transition-colors hover:bg-background">
+                      <div key={att.url} className="tm-rise flex items-center justify-between gap-2 rounded-xl bg-background/60 p-2 transition-colors hover:bg-background">
                         <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-2"><Link className="h-3.5 w-3.5 shrink-0 text-green-500" /><span className="truncate text-xs font-medium">{att.url}</span></a>
-                        <Button variant="ghost" size="sm" className="tm-press h-6 w-6 shrink-0 rounded-lg p-0 text-red-400 hover:text-red-600" onClick={() => removeAttachment(att.id)}><Trash2 className="h-3 w-3" /></Button>
+                        {publicAttachments === undefined && 'id' in att && typeof att.id === 'string' && <Button variant="ghost" size="sm" className="tm-press h-6 w-6 shrink-0 rounded-lg p-0 text-red-400 hover:text-red-600" onClick={() => removeAttachment(att.id as string)}><Trash2 className="h-3 w-3" /></Button>}
                       </div>
                     ))}
                   </div>

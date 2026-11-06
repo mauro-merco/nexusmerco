@@ -36,6 +36,7 @@ interface CalendarData {
   client: { id: string; name: string; logo_url: string | null };
   ideas: SocialIdea[];
   attachments_by_idea: Record<string, { url: string; name: string; type: string }[]>;
+  material_links_by_idea: Record<string, { id: string; title: string; url: string }[]>;
   comments_by_idea: Record<string, SocialComment[]>;
   ecommerce_dates: EcommerceDate[];
   calendar_type: 'social' | 'ads';
@@ -861,6 +862,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           }}
           users={data.users || []}
           calendarType={calendarType}
+          publicMaterialLinks={data.material_links_by_idea?.[selectedIdea.id] || []}
+          publicAttachments={data.attachments_by_idea?.[selectedIdea.id] || []}
           publicComments={<PublicIdeaComments key={selectedIdea.id} idea={selectedIdea} shareToken={token} viewerAuthToken={viewer?.authToken} calendarType={calendarType} onChanged={fetchCalendar} />}
         />
       )}

@@ -5,16 +5,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, FolderOpen, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 
-type MaterialLink = { id: string; title: string; url: string };
+export type MaterialLink = { id: string; title: string; url: string };
 
 export function MaterialLinks({
   entityType,
   entityId,
   readOnly = false,
+  publicLinks,
 }: {
   entityType: 'task' | 'social_idea' | 'ads_idea';
   entityId: string;
   readOnly?: boolean;
+  publicLinks?: MaterialLink[];
 }) {
   const { user, token } = useAuthStore();
   const [links, setLinks] = useState<MaterialLink[]>([]);
@@ -34,9 +36,10 @@ export function MaterialLinks({
       .finally(() => setLoading(false));
   }, [entityType, entityId, token]);
 
-  useEffect(() => { if (token) load(); else { setLinks([]); setLoading(false); } }, [load, token]);
+  useEffect(() => { if (publicLinks !== undefined) return; if (token) load(); else { setLinks([]); setLoading(false); } }, [load, token, publicLinks]);
 
-  if (!token) return null;
+  if (!token && publicLinks === undefined) return null;
+  const visibleLinks = publicLinks ?? links;
 
   const add = async () => {
     if (!title.trim() || !url.trim()) return;
@@ -71,9 +74,9 @@ export function MaterialLinks({
         </div>
       )}
       <div className="flex flex-wrap gap-2">
-        {loading ? <ContentSkeleton />
-          : links.length === 0 ? <p className="text-xs text-muted-foreground">Sin material cargado.</p>
-          : links.map(f => (
+        {loading && publicLinks === undefined ? <ContentSkeleton />
+          : visibleLinks.length === 0 ? <p className="text-xs text-muted-foreground">Sin material cargado.</p>
+          : visibleLinks.map(f => (
             <span key={f.id} className="inline-flex items-center gap-2 rounded-xl border bg-background/60 px-3 py-2 text-sm">
               <a href={f.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium hover:text-primary">
                 <ExternalLink className="h-3.5 w-3.5" /> {f.title}
