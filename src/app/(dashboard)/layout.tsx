@@ -54,11 +54,6 @@ export default function DashboardLayout({
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
         <header className="min-h-16 shrink-0 bg-background flex flex-wrap items-center justify-between gap-3 px-4 py-2 md:px-8">
-          <Link href="/dashboard" aria-label="Merco Nexus" className="flex shrink-0 items-center gap-3">
-            <img src="/merco-light-mode.svg" alt="Merco" className="h-5 w-auto dark:hidden" />
-            <img src="/merco-dark-mode.svg" alt="Merco" className="hidden h-5 w-auto dark:block" />
-            <span className="border-l border-border pl-3 text-xs text-muted-foreground">Nexus</span>
-          </Link>
           <div className="ml-auto flex min-w-0 items-center gap-2">
             <GlobalSearch />
             <SuggestionsFloatingButtons />
