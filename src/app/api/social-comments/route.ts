@@ -1,3 +1,4 @@
+import { calendarHref } from '@/lib/calendar-routes';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createMentionNotifications } from '@/lib/mentions';
@@ -75,7 +76,7 @@ async function buildIdeaLink(ideaId: string) {
     .eq('id', ideaId)
     .maybeSingle();
   if (social) {
-    return `/calendarios?client=${social.client_id}&type=redes&month=${social.publish_date.slice(0, 7)}&idea=${ideaId}`;
+    return calendarHref(social.client_id, { month: social.publish_date.slice(0, 7), idea: ideaId });
   }
 
   const { data: ads } = await supabase
@@ -84,7 +85,7 @@ async function buildIdeaLink(ideaId: string) {
     .eq('id', ideaId)
     .maybeSingle();
   if (ads) {
-    return `/calendarios?client=${ads.client_id}&type=ads&month=${ads.publish_date.slice(0, 7)}&idea=${ideaId}`;
+    return calendarHref(ads.client_id, { month: ads.publish_date.slice(0, 7), idea: ideaId });
   }
 
   return '/calendarios';

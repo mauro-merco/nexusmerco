@@ -2,7 +2,6 @@
 import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -37,12 +36,14 @@ export function ClientWall({ clientId }: { clientId: string }) {
   }, [content, addMessage]);
 
   return (
-    <Card className="bg-card/50 backdrop-blur-xl border border-border/30">
-      <CardContent className="p-5 space-y-4">
-        <p className="text-sm font-bold flex items-center gap-2">
-          <MessageCircle className="h-4 w-4 text-primary" /> Muro del equipo
-        </p>
-        <p className="text-xs text-muted-foreground -mt-2">Solo visible para el equipo de Merco. Coordiná acá lo que haga falta sobre este cliente.</p>
+    <div className="space-y-4">
+        <div>
+          <h2 className="flex items-center gap-2.5 text-[15px] font-medium">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tint-blue text-tint-blue-foreground"><MessageCircle className="h-4 w-4" /></span>
+            Muro del equipo
+          </h2>
+          <p className="mt-1.5 text-xs text-muted-foreground">Solo visible para el equipo de Merco. Coordiná acá lo que haga falta sobre este cliente.</p>
+        </div>
 
         <div className="space-y-3 max-h-80 overflow-y-auto">
           {loading && (
@@ -74,20 +75,19 @@ export function ClientWall({ clientId }: { clientId: string }) {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 border-t border-border/30 pt-3">
+        <div className="flex items-center gap-2 rounded-full border border-border bg-surface-inset p-1 pl-1.5">
           <Input
             value={content}
             onChange={e => setContent(e.target.value)}
             placeholder="Escribí algo para el equipo..."
-            className="h-9 text-sm"
+            className="h-9 border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             disabled={sending}
           />
-          <Button size="sm" onClick={handleSend} disabled={sending || !content.trim()} className="h-9 w-9 p-0 shrink-0">
+          <Button size="sm" onClick={handleSend} disabled={sending || !content.trim()} className="bg-brand-gradient h-9 w-9 shrink-0 rounded-full border-0 p-0">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

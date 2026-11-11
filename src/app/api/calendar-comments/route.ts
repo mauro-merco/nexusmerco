@@ -1,3 +1,4 @@
+import { calendarHref } from '@/lib/calendar-routes';
 import { NextResponse } from 'next/server';
 import { getRequestUser, safeError } from '@/lib/api-security';
 import { createMentionNotifications } from '@/lib/mentions';
@@ -332,7 +333,7 @@ export async function POST(request: Request) {
     });
 
     await createMentionNotifications(supabase, content, access.userId, {
-      link: `/calendarios?client=${access.clientId}&type=${access.calendarType === 'ads' ? 'ads' : 'redes'}&month=${access.month}`,
+      link: calendarHref(access.clientId, { month: access.month }),
       entityLabel: 'un comentario del calendario',
     });
 

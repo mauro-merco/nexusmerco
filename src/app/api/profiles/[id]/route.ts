@@ -106,18 +106,19 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     // Public documents owned by this user
     const { data: docs } = await supabase
       .from('documents')
-      .select('id, title, content, updated_at')
+      .select('id, title, content, updated_at, kind, color, tags')
       .eq('owner_id', id)
       .eq('is_public', true)
+      .is('archived_at', null)
       .order('updated_at', { ascending: false });
 
-    // Public sticky notes
-    const { data: notes } = await supabase
-      .from('sticky_notes')
-      .select('id, title, content, color, category')
-      .eq('user_id', id)
-      .eq('is_public', true)
-      .order('updated_at', { ascending: false });
+    // Las notas adhesivas ahora son documentos con kind = 'nota'
+    const toText = (html: string | null) => (html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+    const allDocs = (docs || []) as { id: string; title: string; content: string | null; updated_at: string; kind?: string | null; color?: string | null; tags?: string[] | null }[];
+    const notes = allDocs.filter(d => d.kind === 'nota').map(d => ({
+      id: d.id, title: d.title, content: toText(d.content), color: d.color || '#FEF3C7', category: d.tags?.[0] || null,
+    }));
+    const plainDocs = allDocs.filter(d => d.kind !== 'nota').map(({ id: docId, title, content, updated_at }) => ({ id: docId, title, content, updated_at }));
 
     return NextResponse.json({
       data: {
@@ -131,8 +132,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         },
         tasks: allTasks,
         work_items: allWorkItems,
-        documents: docs || [],
-        notes: notes || [],
+        documents: plainDocs,
+        notes,
       },
     });
   } catch (e) {

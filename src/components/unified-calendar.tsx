@@ -2,8 +2,6 @@
 import { ContentSkeleton } from '@/components/content-skeleton';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuRadioGroup, DropdownMenuRadioItem,
@@ -34,7 +32,7 @@ import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import type { SocialIdea, IdeaStatus, PostType, EcommerceDate } from '@/lib/types';
 import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
-import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER, ideaName } from '@/lib/social-config';
 import { ChevronLeft, ChevronRight, Plus, Loader2, RefreshCw, Check, ChevronDown, Copy, Share2, Users, ExternalLink, LayoutGrid, List as ListIcon, ChevronRight as ChevronRightIcon, ShoppingBag, Trash2 } from 'lucide-react';
 
 const STATUS_ORDER = IDEA_STATUS_ORDER;
@@ -139,14 +137,21 @@ interface UnifiedCalendarProps {
   initialMonth?: string | null;
   initialIdeaId?: string | null;
   forceType?: 'redes' | 'ads' | 'tareas';
+  /** Vista inicial (mes / agenda), leída de la URL. */
+  initialView?: 'month' | 'agenda' | null;
+  /** Avisos para mantener la URL sincronizada (cada estado con link propio). */
+  onMonthChange?: (month: string) => void;
+  onViewChange?: (view: 'month' | 'agenda') => void;
+  onIdeaChange?: (ideaId: string | null) => void;
 }
 
-export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIdeaId }: UnifiedCalendarProps) {
+export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIdeaId, initialView, onMonthChange, onViewChange, onIdeaChange }: UnifiedCalendarProps) {
   const { user } = useAuthStore();
   const today = new Date();
   const [viewYear, setViewYear] = useState(initialMonth ? Number(initialMonth.split('-')[0]) : today.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialMonth ? Number(initialMonth.split('-')[1]) - 1 : today.getMonth());
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [viewMode, setViewModeState] = useState<ViewMode>(initialView === 'agenda' ? 'agenda' : 'month');
+  const setViewMode = (v: ViewMode) => { setViewModeState(v); onViewChange?.(v); };
   const isMobile = useIsMobile();
   const effectiveView: ViewMode = isMobile ? 'agenda' : viewMode;
   const [search, setSearch] = useState('');
@@ -218,6 +223,12 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
   }, [clientId, monthStr]);
 
   useEffect(() => { fetchShareToken(); }, [fetchShareToken]);
+  const onMonthChangeRef = useRef(onMonthChange);
+  onMonthChangeRef.current = onMonthChange;
+  useEffect(() => { onMonthChangeRef.current?.(monthStr); }, [monthStr]);
+  const onIdeaChangeRef = useRef(onIdeaChange);
+  onIdeaChangeRef.current = onIdeaChange;
+  useEffect(() => { if (selectedIdea?.id) onIdeaChangeRef.current?.(selectedIdea.id); }, [selectedIdea?.id]);
   useEffect(() => { if (!initialMonth) return; const [year, month] = initialMonth.split('-').map(Number); if (year && month) { setViewYear(year); setViewMonth(month - 1); } }, [initialMonth]);
   useEffect(() => {
     if (!initialIdeaId || dismissedIdeaId === initialIdeaId || selectedIdea?.id === initialIdeaId) return;
@@ -269,10 +280,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
   const closeSelectedIdea = useCallback(() => {
     if (selectedIdea) setDismissedIdeaId(selectedIdea.id);
     setSelectedIdea(null);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has('idea')) { url.searchParams.delete('idea'); window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`); }
-    }
+    onIdeaChangeRef.current?.(null);
   }, [selectedIdea]);
 
   const toggleType = (t: PostType) => {
@@ -312,32 +320,76 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
     <>
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
         <div className="space-y-4 min-w-0">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
-              <button type="button" onClick={goToday} className="text-lg font-bold min-w-[150px] text-center hover:text-primary transition-colors capitalize">{monthNames[viewMonth]} {viewYear}</button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-full border border-border bg-card p-1">
+              <button type="button" onClick={prevMonth} aria-label="Mes anterior" className="tm-press flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" onClick={goToday} title="Ir al mes actual" className="min-w-[150px] px-2 text-center text-[15px] font-semibold capitalize transition-colors hover:text-primary">{monthNames[viewMonth]} {viewYear}</button>
+              <button type="button" onClick={nextMonth} aria-label="Mes siguiente" className="tm-press flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronRight className="h-4 w-4" /></button>
             </div>
-            <div className="hidden md:flex items-center gap-1 bg-muted/40 rounded-xl p-1">
-              <button type="button" onClick={() => setViewMode('month')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', viewMode === 'month' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}><LayoutGrid className="h-3.5 w-3.5" /> Mes</button>
-              <button type="button" onClick={() => setViewMode('agenda')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', viewMode === 'agenda' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}><ListIcon className="h-3.5 w-3.5" /> Agenda</button>
+            <div className="hidden rounded-full border border-border bg-card p-1 md:flex">
+              {([['month', 'Mes', LayoutGrid], ['agenda', 'Agenda', ListIcon]] as const).map(([k, label, Icon]) => (
+                <button key={k} type="button" onClick={() => setViewMode(k)}
+                  className={cn('flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors', viewMode === k ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}>
+                  <Icon className="h-3.5 w-3.5" /> {label}
+                </button>
+              ))}
             </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button variant="secondary" size="sm" className="gap-1.5 rounded-lg" onClick={refreshCalendar} disabled={refreshing} aria-label={refreshing ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={refreshing}>
-                <RefreshCw aria-hidden="true" className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> Actualizar
-              </Button>
-              <Button onClick={() => setShowNewEcomDate(true)} variant="secondary" size="sm" className="gap-1.5 rounded-lg"><ShoppingBag className="h-3.5 w-3.5" /> Crear fecha ecommerce</Button>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <button type="button" onClick={refreshCalendar} disabled={refreshing} title="Actualizar" aria-label={refreshing ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={refreshing}
+                className="tm-press flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-60">
+                <RefreshCw aria-hidden="true" className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+              </button>
+              <button type="button" onClick={() => setShowNewEcomDate(true)}
+                className="tm-press flex h-10 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-sm font-medium hover:bg-muted">
+                <ShoppingBag className="h-4 w-4 text-violet-500" /> <span className="hidden sm:inline">Fecha ecommerce</span>
+              </button>
               <div className="relative" ref={shareBtnRef}>
-                <Button variant="secondary" size="sm" className="gap-1.5 rounded-lg" onClick={() => setShareOpen(o => !o)}><Share2 className="h-3.5 w-3.5" /> Compartir</Button>
-                {shareOpen && (<><div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} /><div className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-popover p-4 shadow-xl z-50 space-y-3"><p className="text-xs font-semibold text-muted-foreground">Link para el cliente</p>{shareConfig?.token ? (<><div className="flex gap-1.5"><Input value={shareUrl} readOnly className="h-8 text-xs rounded-lg" onFocus={(e) => e.currentTarget.select()} /><Button size="icon-sm" variant="secondary" className="rounded-lg shrink-0" onClick={async () => { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>{copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}</Button></div><div className="flex items-center gap-2"><div className="flex-1"><CalendarGuestAccessDialog clientId={clientId} calendarType="social" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} /></div><a href={`/c/${shareConfig.token}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"><ExternalLink className="h-3 w-3" /> Ver landing</a></div></>) : (<Button size="sm" variant="secondary" className="w-full gap-1.5 rounded-lg" disabled={shareLoading} onClick={fetchShareToken}>{shareLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} Generar link</Button>)}{shareError && <p className="text-xs text-destructive">{shareError}</p>}</div></>)}
+                <button type="button" onClick={() => setShareOpen(o => !o)}
+                  className={cn('tm-press flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors', shareOpen ? 'border-primary/40 bg-tint-blue text-tint-blue-foreground' : 'border-border bg-card hover:bg-muted')}>
+                  <Share2 className="h-4 w-4" /> Compartir
+                </button>
+                {shareOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
+                    <div className="tm-pop absolute right-0 top-full z-50 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] space-y-3 rounded-[1.4rem] border border-border bg-popover p-4 shadow-xl">
+                      <div>
+                        <p className="text-sm font-semibold">Landing para el cliente</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Link único de <span className="font-semibold capitalize text-foreground">{monthNames[viewMonth]} {viewYear}</span>. Muestra este mismo calendario y se actualiza solo con cada cambio.</p>
+                      </div>
+                      {shareConfig?.token ? (
+                        <>
+                          <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-1 pl-3.5 pr-1">
+                            <input value={shareUrl} readOnly className="min-w-0 flex-1 bg-transparent text-xs outline-none" onFocus={(e) => e.currentTarget.select()} />
+                            <button type="button" title="Copiar link" onClick={async () => { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                              className="tm-press flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-brand-gradient px-3 text-xs font-semibold">
+                              {copied ? <><Check className="h-3.5 w-3.5" /> Copiado</> : <><Copy className="h-3.5 w-3.5" /> Copiar</>}
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1"><CalendarGuestAccessDialog clientId={clientId} calendarType="social" month={monthStr} config={shareConfig} onConfigChange={setShareConfig} /></div>
+                            <a href={`/c/${shareConfig.token}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium hover:bg-muted"><ExternalLink className="h-3.5 w-3.5" /> Ver landing</a>
+                          </div>
+                        </>
+                      ) : (
+                        <button type="button" disabled={shareLoading} onClick={fetchShareToken} className="tm-press flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-brand-gradient text-sm font-semibold disabled:opacity-70">
+                          {shareLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />} Generar link del mes
+                        </button>
+                      )}
+                      {shareError && <p className="text-xs text-destructive">{shareError}</p>}
+                    </div>
+                  </>
+                )}
               </div>
-              <Button onClick={() => { setSelectedDate(null); setShowNewIdea(true); }} variant="default" className="tm-press gap-2 rounded-xl"><Plus className="h-4 w-4" /> Nueva Idea / Pieza</Button>
+              <button type="button" onClick={() => { setSelectedDate(null); setShowNewIdea(true); }}
+                className="tm-press bg-brand-gradient shadow-brand flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition hover:brightness-105">
+                <Plus className="h-4 w-4" /> Nueva idea / pieza
+              </button>
             </div>
           </div>
 
           {ecommerceDates.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {ecommerceDates.map(ed => <div key={ed.id} style={{ backgroundColor: ed.color + '18', color: ed.color }} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold"><ShoppingBag className="h-3 w-3" /><span>{ed.name}</span><span className="text-[10px] opacity-70">{ed.start_date} → {ed.end_date}</span><button type="button" onClick={() => deleteEcomDate(ed.id)} className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"><Trash2 className="h-3 w-3" /></button></div>)}
+              {ecommerceDates.map(ed => <div key={ed.id} style={{ backgroundColor: ed.color + '18', color: ed.color }} className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"><ShoppingBag className="h-3 w-3" /><span>{ed.name}</span><span className="text-[10px] opacity-70">{ed.start_date} → {ed.end_date}</span><button type="button" onClick={() => deleteEcomDate(ed.id)} className="ml-0.5 opacity-50 hover:opacity-100 transition-opacity"><Trash2 className="h-3 w-3" /></button></div>)}
             </div>
           )}
 
@@ -347,8 +399,8 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
 
           {isSearching ? null : effectiveView === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-              <div className="grid grid-cols-7 gap-1.5">
-                {dayNames.map(n => <div key={n} className="text-center text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide py-1">{n}</div>)}
+              <div className="grid grid-cols-7 gap-1.5 rounded-[1.6rem] border border-border bg-card p-2.5 md:p-3">
+                {dayNames.map(n => <div key={n} className="py-1 text-center text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">{n}</div>)}
                 {monthCells.map(cell => {
                   const isToday = cell.date === today.toISOString().split('T')[0];
                   const list = (ideasByDate.get(cell.date) || []) as any[];
@@ -363,8 +415,8 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-2xl bg-muted/25 p-4 space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Este mes</p>
+          <div className="space-y-2 rounded-[1.4rem] border border-border bg-card p-4">
+            <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">Este mes</p>
             <div className="flex items-baseline gap-1.5"><span className="text-2xl font-bold">{(allIdeas as any[]).filter(i => i.publish_date.startsWith(monthStr)).length}</span><span className="text-xs text-muted-foreground">ideas/piezas planificadas</span></div>
             <div className="space-y-1 pt-1">
               {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
@@ -389,7 +441,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
           open={!!selectedIdea}
           onOpenChange={(open) => { if (!open) closeSelectedIdea(); }}
           onIdeaUpdated={(updated) => { if (selectedIdeaType === 'ads') { patchAdsIdea(updated); setSelectedIdea(updated); } else { patchSocialIdea(updated); setSelectedIdea(updated); } }}
-          onIdeaDeleted={() => { window.dispatchEvent(new CustomEvent('calendar-idea-changed', { detail: { type: selectedIdeaType, id: selectedIdea!.id } })); setSelectedIdea(null); }}
+          onIdeaDeleted={() => { window.dispatchEvent(new CustomEvent('calendar-idea-changed', { detail: { type: selectedIdeaType, id: selectedIdea!.id } })); setSelectedIdea(null); onIdeaChangeRef.current?.(null); }}
           users={internalUsers}
           calendarType={selectedIdeaType}
         />

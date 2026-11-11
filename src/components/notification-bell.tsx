@@ -58,16 +58,15 @@ export function NotificationBell() {
       <Button
         variant="ghost"
         size="icon"
-        className={cn('group relative h-9 w-9 rounded-xl hover:bg-muted/50 transition-all', open && 'bg-muted/60')}
+        className={cn('group relative h-10 w-10 rounded-full border border-border bg-card hover:bg-muted transition-all', open && 'bg-muted')}
         onClick={() => setOpen(!open)}
         aria-label="Notificaciones"
       >
-        <span className="bg-gradient-tech pointer-events-none absolute -inset-1 rounded-xl opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-30" />
         <span key={ringing ? 'ring' : 'idle'} className={cn('relative', ringing && 'animate-[bell-ring_0.9s_ease-in-out]')}>
           <Bell className={cn('h-4.5 w-4.5 transition-colors', unreadCount > 0 ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground')} />
         </span>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-gradient-tech text-[9px] font-bold text-white flex items-center justify-center px-1 animate-[pulse-ring_1.5s_ease-out_infinite]">
+          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-brand-red text-[9px] font-bold text-white flex items-center justify-center px-1 animate-[pulse-ring_1.5s_ease-out_infinite]">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

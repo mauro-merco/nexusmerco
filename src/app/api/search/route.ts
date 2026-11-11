@@ -1,3 +1,4 @@
+import { calendarHref } from '@/lib/calendar-routes';
 import { NextResponse } from 'next/server';
 import { getAdminClient, getRequestUser, canAccessClient } from '@/lib/api-security';
 
@@ -68,8 +69,8 @@ export async function GET(request: Request) {
         db.from('ads_comments').select('id, idea_id, content, ads_ideas!inner(client_id, title, publish_date)').ilike('content', like).in('ads_ideas.client_id', clientIds).limit(10),
         db.from('calendar_comments').select('id, client_id, calendar_type, month, content').in('client_id', clientIds).ilike('content', like).limit(10),
       ]);
-      const calendarUrl = (clientId: string, date: string, ideaId: string) => `/calendarios?client=${clientId}&month=${date.slice(0, 7)}&idea=${ideaId}`;
-      const taskUrl = (id: string, clientId: string) => user.role === 'client' ? `/calendarios?client=${clientId}&type=tareas` : `/operations?task=${id}`;
+      const calendarUrl = (clientId: string, date: string, ideaId: string) => calendarHref(clientId, { month: date.slice(0, 7), idea: ideaId });
+      const taskUrl = (id: string, clientId: string) => user.role === 'client' ? calendarHref(clientId) : `/operations?task=${id}`;
       for (const t of tasksRes.data || []) add('task', t.id, t.title, clientMap.get(t.client_id)?.name || 'Tarea', taskUrl(t.id, t.client_id));
       for (const i of socialRes.data || []) {
         if (clientMap.get(i.client_id)?.social_calendar_enabled) add('social_idea', i.id, i.title, `Redes · ${clientMap.get(i.client_id)?.name}`, calendarUrl(i.client_id, i.publish_date, i.id));
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
         const client = clientMap.get(c.client_id);
         if (c.calendar_type === 'social' && !client?.social_calendar_enabled) continue;
         if (c.calendar_type === 'ads' && !client?.ads_calendar_enabled) continue;
-        add('calendar_comment', c.id, excerpt(c.content), `Comentario en calendario · ${client?.name}`, `/calendarios?client=${c.client_id}&month=${c.month}`);
+        add('calendar_comment', c.id, excerpt(c.content), `Comentario en calendario · ${client?.name}`, calendarHref(c.client_id, { month: c.month }));
       }
     }
     return NextResponse.json({ data: results });

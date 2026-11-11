@@ -22,6 +22,7 @@ import { Scroller, Menu, Collapse, Switch, Stepper } from '@/components/task-ui'
 import { Module, DepartmentMenu, DateTimeField, DescriptionEditor, STATUS_OPTIONS, PRIORITY_OPTIONS, TYPE_OPTIONS, isoIn } from '@/components/task-fields';
 import { departmentInfo } from '@/lib/department-config';
 import { MaterialLinks } from '@/components/material-links';
+import { DocumentPanel } from '@/components/document-panel';
 import { CommentReadEye } from '@/components/comment-read';
 import { useCommentReads, collectCommentIds, type CommentReader } from '@/lib/hooks/use-comment-reads';
 import {
@@ -265,9 +266,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Full-window task view */}
-      <DialogContent className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-dvh w-screen max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
+      <DialogContent showCloseButton={false} className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-dvh w-screen max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
         {/* ===== Header ===== */}
-        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3 pr-14">
+        <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3">
           <div className="min-w-[220px] flex-1">
             <div className="flex flex-wrap items-center gap-2">
             {editing ? (
@@ -358,6 +359,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                 </Button>
               </>
             )}
+            <DialogClose render={<Button variant="ghost" size="sm" className="tm-press h-9 w-9 rounded-lg p-0" title="Cerrar" />}>
+              <X className="h-4 w-4" /><span className="sr-only">Cerrar</span>
+            </DialogClose>
           </div>
         </div>
 
@@ -555,6 +559,10 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
 
             <Module icon={FolderOpen} title="Material de la tarea" tone="text-indigo-600" toneBg="bg-indigo-500/15">
               <MaterialLinks entityType="task" entityId={task.id} />
+            </Module>
+
+            <Module icon={FileText} title="Documentos" tone="text-sky-600" toneBg="bg-sky-500/15">
+              <DocumentPanel taskId={task.id} clientId={task.client_id} variant="grid" emptyText="Creá un documento desde acá o adjuntá uno que ya exista." />
             </Module>
 
             <Module icon={Paperclip} title={`Adjuntos (${attachments.length})`} tone="text-emerald-600" toneBg="bg-emerald-500/15">

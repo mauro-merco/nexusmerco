@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { MarkdownBody } from '@/lib/markdown';
 import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment, User as NexusUser } from '@/lib/types';
 import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
-import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, ideaName } from '@/lib/social-config';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
 import { format } from 'date-fns';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
@@ -55,6 +55,12 @@ interface Viewer {
 }
 
 const GUEST_COLORS = ['#6366f1', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#14b8a3'];
+
+/** Tipo real de cada idea: el link de redes también trae piezas de ADS (igual que el calendario interno). */
+function ideaCalendarType(idea: SocialIdea | null | undefined, fallback: 'social' | 'ads'): 'social' | 'ads' {
+  const t = (idea as { calendar_type?: string } | null | undefined)?.calendar_type;
+  return t === 'ads' || t === 'social' ? t : fallback;
+}
 
 function getStorageKey(token: string, type: string) {
   return `calendar_viewer_${token}_${type}`;
@@ -234,14 +240,14 @@ function PublicIdeaDot({ idea, onClick, isExtended }: { idea: SocialIdea; onClic
       {...attributes}
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      title={calendarPillTitle(idea, idea.eje_contenido || idea.title)}
+      title={calendarPillTitle(idea, ideaName(idea))}
       className={cn(
         'tm-lift tm-press flex w-full flex-col items-stretch rounded-lg px-2 py-1.5 text-[11px] font-medium transition-opacity text-left',
         idea.status === 'espera_cliente' ? 'border border-red-500/60 bg-red-500/20 text-red-700 dark:text-red-200 shadow-sm shadow-red-500/20' : isPublished ? 'bg-green-500/15 text-green-600' : [ptConfig.bgColorClass, ptConfig.colorClass],
         isDragging && 'opacity-50 shadow-lg',
       )}
     >
-      <CalendarPillBody idea={idea} label={idea.eje_contenido || idea.title} />
+      <CalendarPillBody idea={idea} label={ideaName(idea)} />
     </button>
   );
 }
@@ -492,10 +498,11 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     checkSession();
   }, [token]);
 
-  const fetchCalendar = useCallback(() => {
+  const fetchCalendar = useCallback((opts?: { silent?: boolean }) => {
     if (!token) return;
     if (!viewer?.authToken && viewer?.type === 'guest' && !viewer.email) return;
-    setFetchLoading(true);
+    const silent = !!opts?.silent;
+    if (!silent) setFetchLoading(true);
     setError(null);
     if (!viewMonth) {
       fetch(`/api/calendar-links/${token}?type=${calendarType}&meta=1`)
@@ -536,9 +543,20 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         }
         setData({ ...first, ideas: allIdeas, ecommerce_dates: allDates });
       })
-      .catch(e => setError(e.message))
-      .finally(() => setFetchLoading(false));
+      .catch(e => { if (!silent) setError(e.message); })
+      .finally(() => { if (!silent) setFetchLoading(false); });
   }, [token, viewMonth, calendarType, viewer]);
+
+  // Se mantiene al día solo: cada cambio en el calendario interno (nombres, estados,
+  // fechas, piezas nuevas) aparece acá sin que el cliente tenga que recargar.
+  useEffect(() => {
+    if (authMode !== 'authenticated' || !viewer || !viewMonth) return;
+    const refresh = () => { if (document.visibilityState === 'visible') fetchCalendar({ silent: true }); };
+    const id = window.setInterval(refresh, 20000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.clearInterval(id); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [authMode, viewer, viewMonth, fetchCalendar]);
 
   useEffect(() => { if (authMode === 'authenticated' && viewer) fetchCalendar(); }, [authMode, viewer, fetchCalendar]);
 
@@ -596,7 +614,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     await fetch(`/api/calendar-links/${token}/actions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(viewer.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {}) },
-      body: JSON.stringify({ idea_id: idea.id, action_type: 'date_move', publish_date: newDate, calendar_type: calendarType, guest_name: viewer.name, content: `${viewer.name} movió el contenido al ${newDate}` }),
+      body: JSON.stringify({ idea_id: idea.id, action_type: 'date_move', publish_date: newDate, calendar_type: ideaCalendarType(idea, calendarType), guest_name: viewer.name, content: `${viewer.name} movió el contenido al ${newDate}` }),
     });
     fetchCalendar();
   };
@@ -684,7 +702,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
             <div>
               <div className="flex items-center gap-2">
                 {isAds && <ShoppingBag className="h-4 w-4 text-violet-500" />}
-                <h1 className="text-xl md:text-2xl font-bold text-foreground">
+                <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-foreground">
                   {isAds ? 'Piezas para ADS' : 'Calendario de Redes'} · {data.client.name}
                 </h1>
               </div>
@@ -704,42 +722,43 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="secondary" size="sm" className="gap-1.5 text-xs h-8 rounded-lg" onClick={fetchCalendar} disabled={fetchLoading} aria-label={fetchLoading ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={fetchLoading}>
-              <RefreshCw aria-hidden="true" className={cn('h-3.5 w-3.5', fetchLoading && 'animate-spin')} /> Actualizar
-            </Button>
-            <div className="hidden md:flex items-center gap-1 bg-muted/40 rounded-xl p-1">
+            <button type="button" title="Actualizar" onClick={() => fetchCalendar()} disabled={fetchLoading} aria-label={fetchLoading ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={fetchLoading}
+              className="tm-press flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-60">
+              <RefreshCw aria-hidden="true" className={cn('h-4 w-4', fetchLoading && 'animate-spin')} />
+            </button>
+            <div className="hidden md:flex items-center rounded-full border border-border bg-card p-1">
               <button
                 type="button"
                 onClick={() => setViewMode('month')}
-                className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors', viewMode === 'month' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                className={cn('flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors', viewMode === 'month' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}
               >
                 <LayoutGrid className="h-3.5 w-3.5" /> Mes
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors', viewMode === 'list' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                className={cn('flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors', viewMode === 'list' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}
               >
                 <ListIcon className="h-3.5 w-3.5" /> Lista
               </button>
             </div>
-            <span className="rounded-xl bg-muted/40 px-3 py-2 text-sm font-semibold">{monthLabel}</span>
+            <span className="flex h-10 items-center rounded-full bg-brand-gradient px-4 text-sm font-semibold shadow-brand">{monthLabel}</span>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-lg hover:bg-accent"
+              className="h-10 w-10 rounded-full border border-border bg-card"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button variant="secondary" size="sm" className="gap-1.5 text-xs h-8 rounded-lg" onClick={handleLogout}>
+            <Button variant="outline" size="sm" className="h-10 gap-1.5 rounded-full px-4 text-xs" onClick={handleLogout}>
               <LogOut className="h-3.5 w-3.5" /> Salir
             </Button>
           </div>
         </div>
 
-        {isAds && data.ecommerce_dates.length > 0 && (
+        {data.ecommerce_dates.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {data.ecommerce_dates.map(ed => (
               <div key={ed.id} style={{ backgroundColor: ed.color + '18', color: ed.color }} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold">
@@ -776,7 +795,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
         {search.trim().length >= 2 ? null : (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-            <Card className="border-0 ring-0 shadow-none rounded-3xl bg-card">
+            <Card className="rounded-[1.6rem] border border-border bg-card shadow-none ring-0">
               <CardContent className="p-3 md:p-4">
                 {viewMonth && effectiveView === 'month' && (
                   <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -861,10 +880,10 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
             fetchCalendar();
           }}
           users={data.users || []}
-          calendarType={calendarType}
+          calendarType={ideaCalendarType(selectedIdea, calendarType)}
           publicMaterialLinks={data.material_links_by_idea?.[selectedIdea.id] || []}
           publicAttachments={data.attachments_by_idea?.[selectedIdea.id] || []}
-          publicComments={<PublicIdeaComments key={selectedIdea.id} idea={selectedIdea} shareToken={token} viewerAuthToken={viewer?.authToken} calendarType={calendarType} onChanged={fetchCalendar} />}
+          publicComments={<PublicIdeaComments key={selectedIdea.id} idea={selectedIdea} shareToken={token} viewerAuthToken={viewer?.authToken} calendarType={ideaCalendarType(selectedIdea, calendarType)} onChanged={() => fetchCalendar()} />}
         />
       )}
     </div>

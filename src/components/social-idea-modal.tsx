@@ -1,4 +1,5 @@
 'use client';
+import { calendarHref } from '@/lib/calendar-routes';
 import { ContentSkeleton } from '@/components/content-skeleton';
 /* eslint-disable react-hooks/set-state-in-effect */
 
@@ -14,7 +15,7 @@ import { TaskRolesPicker, rolesFromAssignees, rolesToList, totalPeople, type Tas
 import { useAuthStore } from '@/store/auth-store';
 import type { SocialIdea, PostType, IdeaStatus, User as NexusUser } from '@/lib/types';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
-import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER, ideaName } from '@/lib/social-config';
 import { MaterialLinks, type MaterialLink } from '@/components/material-links';
 import { MarkdownBody } from '@/lib/markdown';
 import { MoveIdeaDialog } from '@/components/move-idea-dialog';
@@ -22,7 +23,7 @@ import { Scroller, Menu, Collapse, Switch, type MenuOption } from '@/components/
 import { Module, DateTimeField, DescriptionEditor } from '@/components/task-fields';
 import {
   Loader2, Trash2, Link, Paperclip, Copy, AlertTriangle, Edit3, Calendar, Check, Zap, ChevronDown, MessageSquare,
-  PanelLeftClose, PanelLeftOpen, Shapes, CalendarDays, Hash, FileText, Users2, FolderOpen, ClipboardCopy, Minus,
+  PanelLeftClose, PanelLeftOpen, Shapes, CalendarDays, Hash, FileText, Users2, FolderOpen, ClipboardCopy, Minus, X,
 } from 'lucide-react';
 import { useMinimizedStore } from '@/store/minimized-store';
 
@@ -145,12 +146,8 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
   const copyIdeaLink = useCallback(async () => {
     if (typeof window === 'undefined') return;
-    const url = new URL(window.location.origin + '/calendarios');
-    url.searchParams.set('client', idea.client_id);
-    url.searchParams.set('type', calendarType === 'ads' ? 'ads' : 'redes');
-    url.searchParams.set('month', idea.publish_date.slice(0, 7));
-    url.searchParams.set('idea', idea.id);
-    await navigator.clipboard.writeText(url.toString());
+    const url = window.location.origin + calendarHref(idea.client_id, { month: idea.publish_date.slice(0, 7), idea: idea.id });
+    await navigator.clipboard.writeText(url);
     setCopiedLink(true); setTimeout(() => setCopiedLink(false), 1800);
   }, [calendarType, idea.client_id, idea.id, idea.publish_date]);
 
@@ -168,16 +165,16 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-dvh w-screen max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
+      <DialogContent showCloseButton={false} className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-dvh w-screen max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
         {/* Banner de estado */}
         <div className={cn('shrink-0 px-5 py-1.5 text-[11px] font-black uppercase tracking-widest transition-colors duration-300', banner.banner)}>{banner.label}</div>
 
         {/* Header */}
-          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3 pr-14">
+          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3">
             <div className="min-w-[220px] flex-1">
               {editing
                 ? <Input value={title} onChange={e => setTitle(e.target.value)} className="h-10 rounded-xl border-0 bg-background/70 text-lg font-bold" />
-                : <DialogTitle className="truncate text-lg font-bold">{idea.eje_contenido || idea.title}</DialogTitle>}
+                : <DialogTitle className="truncate text-lg font-bold">{ideaName(idea)}</DialogTitle>}
               <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
                 <span className="flex items-center gap-1 capitalize text-muted-foreground"><Calendar className="h-3 w-3" /> {dateStr}</span>
                 <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', pt.bgColorClass, pt.colorClass)}><PtIcon className="h-3 w-3" /> {pt.label}</span>
@@ -192,7 +189,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                 minimize({
                   id: idea.id,
                   type: 'idea',
-                  title: idea.eje_contenido || idea.title,
+                  title: ideaName(idea),
                   subtitle: (idea as any).client?.name || undefined,
                   clientId: (idea as any).client_id || null,
                   routeContext: isSocial ? 'social' : 'ads',
@@ -219,6 +216,9 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                 <Button size="sm" className="tm-press rounded-lg" onClick={handleSave} disabled={saving}>{saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios</Button>
               </>
             )}
+            <DialogClose render={<Button variant="ghost" size="sm" className="tm-press h-9 w-9 rounded-lg p-0" title="Cerrar" />}>
+              <X className="h-4 w-4" /><span className="sr-only">Cerrar</span>
+            </DialogClose>
           </div>
         </div>
 

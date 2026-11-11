@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
-import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER, ideaName } from '@/lib/social-config';
 import { MarkdownBody } from '@/lib/markdown';
 import { Users, Link as LinkIcon, Check, ChevronDown } from 'lucide-react';
 
@@ -56,7 +56,7 @@ export function SocialIdeaCard({ idea, attachments = [], onClick, onStatusChange
               <PtIcon className={cn('h-3 w-3 shrink-0', ptConfig.colorClass)} />
               <span className={cn('text-[10px] font-semibold', ptConfig.colorClass)}>{ptConfig.label}</span>
             </div>
-            <p className="text-sm font-semibold truncate">{idea.eje_contenido || idea.title}</p>
+            <p className="text-sm font-semibold truncate">{ideaName(idea)}</p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger

@@ -1,3 +1,4 @@
+import { calendarHref } from '@/lib/calendar-routes';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
@@ -61,7 +62,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       return NextResponse.json({ error: 'Sin acceso a este calendario' }, { status: 403 });
     }
     const userId = user.id;
-    if (link?.calendar_type && calendar_type !== link.calendar_type) {
+    // El link de redes también muestra las piezas de ADS del mismo cliente (igual que el calendario interno).
+    const typeAllowed = !link?.calendar_type || calendar_type === link.calendar_type || (link.calendar_type === 'social' && calendar_type === 'ads');
+    if (!typeAllowed) {
       return NextResponse.json({ error: 'Tipo de calendario inválido' }, { status: 400 });
     }
     if (link?.month && publish_date && !String(publish_date).startsWith(`${link.month}-`)) {
@@ -196,7 +199,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         type: 'calendar_comment',
         title: 'Nuevo comentario en calendario',
         message: `${guest_name || 'Alguien'} hizo un comentario en ${idea?.title || 'una idea'}`,
-        link: `/calendarios?client=${client.id}&type=${calendar_type === 'ads' ? 'ads' : 'redes'}&month=${String((idea as { publish_date?: string } | null)?.publish_date || '').slice(0, 7)}&idea=${idea_id}`,
+        link: calendarHref(client.id, { month: String((idea as { publish_date?: string } | null)?.publish_date || '').slice(0, 7), idea: idea_id }),
         read: false,
       })));
     }

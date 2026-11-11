@@ -51,104 +51,103 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     const canAccess = await hasCalendarAccess(request, supabase, link);
     if (!canAccess) return NextResponse.json({ error: 'Email no autorizado para este calendario' }, { status: 401 });
 
-    const table = type === 'ads' ? 'ads_ideas' : 'social_ideas';
-
-    // Fetch ideas
-    let query = supabase
-      .from(table)
-      .select('*')
-      .eq('client_id', client.id)
-      .order('publish_date', { ascending: true });
-
+    // El link de redes muestra exactamente lo mismo que el calendario interno de
+    // redes (/calendarios/<cliente>): ideas de redes + piezas de ADS + fechas
+    // ecommerce. El link de ADS sigue mostrando solo ADS.
+    const sources: ('social' | 'ads')[] = type === 'ads' ? ['ads'] : ['social', 'ads'];
+    let range: { start: string; end: string } | null = null;
     if (month) {
       const [y, m] = month.split('-').map(Number);
-      const start = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 10);
-      const end = new Date(Date.UTC(y, m + 1, 1)).toISOString().slice(0, 10);
-      query = query.gte('publish_date', start).lt('publish_date', end);
+      range = {
+        start: new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 10),
+        end: new Date(Date.UTC(y, m + 1, 1)).toISOString().slice(0, 10),
+      };
     }
 
-    const { data: ideas, error: ideasError } = await query;
-    if (ideasError) throw ideasError;
-    const enrichedIdeas = await enrichIdeasWithAssignees(
-      supabase,
-      type === 'ads' ? 'ads_idea_assignees' : 'social_idea_assignees',
-      ideas || [],
-    );
-    const publicIdeas = enrichedIdeas.map(idea => ({
-      ...idea,
-      assignees: idea.assignees.map(assignee => ({
-        id: assignee.id,
-        full_name: assignee.full_name,
-        avatar_url: assignee.avatar_url,
-        work_role: assignee.work_role,
-      })),
-    }));
-
-    // The shared calendar has its own guest authorization; dashboard-only
-    // /api/material-links cannot be called by visitors of this link.
+    const publicIdeas: Record<string, unknown>[] = [];
     const materialLinks: Record<string, { id: string; title: string; url: string }[]> = {};
-    if (ideas?.length) {
+    const attachments: Record<string, { url: string; name: string; type: string }[]> = {};
+    const comments: Record<string, unknown[]> = {};
+
+    for (const source of sources) {
+      const isAdsSource = source === 'ads';
+      let query = supabase
+        .from(isAdsSource ? 'ads_ideas' : 'social_ideas')
+        .select('*')
+        .eq('client_id', client.id)
+        .order('publish_date', { ascending: true });
+      if (range) query = query.gte('publish_date', range.start).lt('publish_date', range.end);
+
+      const { data: ideas, error: ideasError } = await query;
+      if (ideasError) {
+        // Si la tabla de ADS no existe en esta base, el calendario de redes sigue funcionando.
+        if (isAdsSource && type !== 'ads') continue;
+        throw ideasError;
+      }
+      if (!ideas?.length) continue;
+      const ids = ideas.map(idea => idea.id);
+
+      const enrichedIdeas = await enrichIdeasWithAssignees(
+        supabase,
+        isAdsSource ? 'ads_idea_assignees' : 'social_idea_assignees',
+        ideas,
+      );
+      for (const idea of enrichedIdeas) {
+        publicIdeas.push({
+          ...idea,
+          calendar_type: source,
+          assignees: idea.assignees.map(assignee => ({
+            id: assignee.id,
+            full_name: assignee.full_name,
+            avatar_url: assignee.avatar_url,
+            work_role: assignee.work_role,
+          })),
+        });
+      }
+
+      // The shared calendar has its own guest authorization; dashboard-only
+      // /api/material-links cannot be called by visitors of this link.
       const { data: links, error: linksError } = await supabase
         .from('material_links')
         .select('id, entity_id, title, url')
-        .eq('entity_type', type === 'ads' ? 'ads_idea' : 'social_idea')
-        .in('entity_id', ideas.map(idea => idea.id))
+        .eq('entity_type', isAdsSource ? 'ads_idea' : 'social_idea')
+        .in('entity_id', ids)
         .order('created_at', { ascending: true });
       if (linksError) throw linksError;
       for (const item of links || []) {
         (materialLinks[item.entity_id] ??= []).push({ id: item.id, title: item.title, url: item.url });
       }
-    }
 
-    // Fetch attachments (social only — ads doesn't have attachments yet)
-    let attachments: Record<string, { url: string; name: string; type: string }[]> = {};
-    if (type === 'social' && ideas && ideas.length > 0) {
-      const { data: atts } = await supabase
-        .from('social_attachments')
-        .select('*')
-        .in('idea_id', ideas.map((i) => i.id));
-
-      if (atts) {
-        for (const att of atts) {
-          if (!attachments[att.idea_id]) attachments[att.idea_id] = [];
-          attachments[att.idea_id].push({ url: att.url, name: att.name, type: att.type });
+      // Attachments (social only — ads doesn't have attachments yet)
+      if (!isAdsSource) {
+        const { data: atts } = await supabase.from('social_attachments').select('*').in('idea_id', ids);
+        for (const att of atts || []) {
+          (attachments[att.idea_id] ??= []).push({ url: att.url, name: att.name, type: att.type });
         }
       }
-    }
 
-    // Fetch comments with user information
-    let comments: Record<string, unknown[]> = {};
-    if (ideas && ideas.length > 0) {
-      const commentTable = type === 'ads' ? 'ads_comments' : 'social_comments';
+      // Comments with user information
       const { data: comms } = await supabase
-        .from(commentTable)
+        .from(isAdsSource ? 'ads_comments' : 'social_comments')
         .select('*')
-        .in('idea_id', ideas.map((i) => i.id))
+        .in('idea_id', ids)
         .order('created_at', { ascending: true });
-
-      if (comms) {
-        // Fetch user information for all comment authors
+      if (comms?.length) {
         const userIds = [...new Set(comms.map(c => c.user_id).filter(Boolean))];
-        const { data: users } = await supabase
-          .from('users')
-          .select('id, full_name, avatar_url, email')
-          .in('id', userIds);
-        
+        const { data: users } = userIds.length
+          ? await supabase.from('users').select('id, full_name, avatar_url, email').in('id', userIds)
+          : { data: [] as { id: string }[] };
         const usersMap = Object.fromEntries((users || []).map(u => [u.id, u]));
-
         for (const comm of comms) {
-          if (!comments[comm.idea_id]) comments[comm.idea_id] = [];
-          comments[comm.idea_id].push({
-            ...comm,
-            user: comm.user_id ? usersMap[comm.user_id] || null : null,
-          });
+          (comments[comm.idea_id] ??= []).push({ ...comm, user: comm.user_id ? usersMap[comm.user_id] || null : null });
         }
       }
     }
+    publicIdeas.sort((a, b) => String(a.publish_date).localeCompare(String(b.publish_date)));
 
-    // Fetch ecommerce dates for ADS calendar
+    // Fechas ecommerce (se ven en ambos calendarios, igual que en el interno)
     let ecommerceDates: unknown[] = [];
-    if (type === 'ads') {
+    {
       let edQuery = supabase
         .from('ecommerce_dates')
         .select('*')

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Popover } from '@/components/task-ui';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
-import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER, ideaName } from '@/lib/social-config';
 import { ChevronRight, ChevronDown, Check, List as ListIcon, MessageSquare, Plus } from 'lucide-react';
 
 /** true cuando el viewport es < 768px (mobile). SSR-safe. */
@@ -106,9 +106,9 @@ export function CalendarAgenda({ ideas, onIdeaClick, onStatusChange, onAdd, empt
                         idea.status === 'espera_cliente' && 'bg-red-500/10', idea.status === 'posteado' && 'opacity-75')}>
                       <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', pt.bgColorClass, pt.colorClass)}><Icon className="h-[18px] w-[18px]" /></span>
                       <div className="min-w-0 flex-1 space-y-1.5">
-                        <p className="line-clamp-2 text-[15px] font-semibold leading-snug">{idea.eje_contenido || idea.title}</p>
+                        <p className="line-clamp-2 text-[15px] font-semibold leading-snug">{ideaName(idea)}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {pt.label}{idea.eje_contenido && idea.title !== idea.eje_contenido ? ` · ${idea.title}` : ''}{people ? ` · ${people} asignado${people !== 1 ? 's' : ''}` : ''}
+                          {pt.label}{idea.eje_contenido && ideaName(idea) !== idea.eje_contenido ? ` · ${idea.eje_contenido}` : ''}{people ? ` · ${people} asignado${people !== 1 ? 's' : ''}` : ''}
                         </p>
                         <div className="flex flex-wrap items-center gap-2 pt-0.5">
                           <StatusChip idea={idea} onChange={onStatusChange} />

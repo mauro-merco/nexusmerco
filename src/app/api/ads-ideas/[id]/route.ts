@@ -1,3 +1,4 @@
+import { calendarHref } from '@/lib/calendar-routes';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { enrichIdeasWithAssignees, hasEveryWorkRole, normalizeWorkAssignees, syncIdeaAssignees } from '@/lib/idea-assignees-server';
@@ -101,7 +102,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
           type: 'calendar_piece_assigned',
           title: 'Te asignaron una pieza ADS',
           message: `Fuiste asignado en: ${data.title}`,
-          link: `/calendarios?client=${data.client_id}&type=ads&month=${String(data.publish_date).slice(0, 7)}&idea=${id}`,
+          link: calendarHref(data.client_id, { month: String(data.publish_date).slice(0, 7), idea: id }),
         })));
       }
     }

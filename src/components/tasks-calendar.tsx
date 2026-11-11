@@ -1,12 +1,11 @@
 'use client';
 import { ContentSkeleton } from '@/components/content-skeleton';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, parseISO,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, RefreshCw, Zap, ChevronRight as Chevron, CalendarX2 } from 'lucide-react';
 import type { Task } from '@/lib/types';
@@ -16,7 +15,7 @@ import { TaskDetailModal } from '@/components/task-detail-modal';
 import { useIsMobile } from '@/components/calendar-agenda';
 import '@/components/task-motion.css';
 
-interface TasksCalendarProps { clientId: string; clientName: string; initialMonth?: string | null; }
+interface TasksCalendarProps { clientId: string; clientName: string; initialMonth?: string | null; onMonthChange?: (month: string) => void; }
 
 type Ranged = { task: Task; start: string; end: string };
 const ymd = (d: Date) => format(d, 'yyyy-MM-dd');
@@ -33,7 +32,7 @@ function StatusPill({ task }: { task: Task }) {
   return <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', s.bgColorClass, s.colorClass)}><Icon className="h-3 w-3" />{s.label}</span>;
 }
 
-export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
+export function TasksCalendar({ clientId, initialMonth, onMonthChange }: TasksCalendarProps) {
   const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(() => {
     if (initialMonth) { try { return startOfMonth(parseISO(initialMonth + '-01')); } catch { /* */ } }
@@ -44,6 +43,10 @@ export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const onMonthChangeRef = useRef(onMonthChange);
+  onMonthChangeRef.current = onMonthChange;
+  const monthKey = format(currentMonth, 'yyyy-MM');
+  useEffect(() => { onMonthChangeRef.current?.(monthKey); }, [monthKey]);
   const [users, setUsers] = useState<{ id: string; full_name: string; email: string; avatar_url: string }[]>([]);
 
   useEffect(() => {
@@ -73,15 +76,18 @@ export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="icon" className="tm-press h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
-        <button type="button" onClick={() => setCurrentMonth(startOfMonth(new Date()))} className="min-w-[160px] text-center text-lg font-bold capitalize transition-colors hover:text-primary">
-          {format(currentMonth, 'MMMM yyyy', { locale: es })}
+        <div className="flex items-center rounded-full border border-border bg-card p-1">
+          <button type="button" aria-label="Mes anterior" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="tm-press flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" title="Ir al mes actual" onClick={() => setCurrentMonth(startOfMonth(new Date()))} className="min-w-[150px] px-2 text-center text-[15px] font-semibold capitalize transition-colors hover:text-primary">
+            {format(currentMonth, 'MMMM yyyy', { locale: es })}
+          </button>
+          <button type="button" aria-label="Mes siguiente" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="tm-press flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronRight className="h-4 w-4" /></button>
+        </div>
+        <span className="ml-auto rounded-full bg-tint-blue px-3 py-1.5 text-xs font-semibold text-tint-blue-foreground">{inMonth.length} tarea{inMonth.length !== 1 ? 's' : ''}</span>
+        <button type="button" title="Actualizar" onClick={() => { setRefreshing(true); setRefreshKey(key => key + 1); }} disabled={refreshing} aria-label={refreshing ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={refreshing}
+          className="tm-press flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-60">
+          <RefreshCw aria-hidden="true" className={cn('h-4 w-4', refreshing && 'animate-spin')} />
         </button>
-        <Button variant="ghost" size="icon" className="tm-press h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-4 w-4" /></Button>
-        <span className="ml-auto rounded-full bg-muted/40 px-3 py-1 text-xs font-semibold text-muted-foreground">{inMonth.length} tarea{inMonth.length !== 1 ? 's' : ''}</span>
-        <Button variant="secondary" size="sm" className="tm-press gap-1.5 rounded-lg" onClick={() => { setRefreshing(true); setRefreshKey(key => key + 1); }} disabled={refreshing} aria-label={refreshing ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={refreshing}>
-          <RefreshCw aria-hidden="true" className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> Actualizar
-        </Button>
       </div>
 
       {isMobile ? (
@@ -112,9 +118,9 @@ export function TasksCalendar({ clientId, initialMonth }: TasksCalendarProps) {
           </ul>
         )
       ) : (
-        <div className="tm-fade space-y-1.5">
+        <div className="tm-fade space-y-1.5 rounded-[1.6rem] border border-border bg-card p-2.5 md:p-3">
           <div className="grid grid-cols-7 gap-1.5">
-            {dayNames.map(n => <div key={n} className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">{n}</div>)}
+            {dayNames.map(n => <div key={n} className="py-1 text-center text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">{n}</div>)}
           </div>
           {weeks.map((week, wi) => {
             const wStart = ymd(week[0]); const wEnd = ymd(week[6]);

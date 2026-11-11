@@ -1,257 +1,106 @@
 'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ContentSkeleton } from '@/components/content-skeleton';
-
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useAuthStore } from '@/store/auth-store';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { useT } from '@/lib/use-t';
-import { useClients } from '@/lib/hooks/use-clients';
-import { UnifiedCalendar } from '@/components/unified-calendar';
-import { TasksCalendar } from '@/components/tasks-calendar';
 import { NoAccess } from '@/components/no-access';
+import { useAuthStore } from '@/store/auth-store';
+import { useClients } from '@/lib/hooks/use-clients';
 import { hasModuleAccess, getAllowedClientIds } from '@/lib/permissions';
-import { cn } from '@/lib/utils';
-import {
-  Building2, Search, Calendar, ArrowLeft, ChevronRight, ListTodo,
-} from 'lucide-react';
+import { calendarHref } from '@/lib/calendar-routes';
+import { Building2, Search, CalendarDays, ListTodo, ChevronRight, X } from 'lucide-react';
 
-type CalendarTab = 'unificado' | 'tareas';
-
-const CATEGORY_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
-function colorForClient(key: string) {
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  return CATEGORY_COLORS[hash % CATEGORY_COLORS.length];
-}
-
+/** /calendarios — listado de clientes con calendario. Cada cliente abre su propia URL. */
 export default function CalendariosPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const _ = useT();
   const { clients, loading } = useClients();
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<CalendarTab>('unificado');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    const client = searchParams.get('client');
-    const type = searchParams.get('type');
-    if (client) setSelectedClientId(client);
-    if (type === 'tareas') setActiveTab('tareas');
-    else if (type) setActiveTab('unificado');
-  }, [searchParams]);
+  const isClientUser = user?.role === 'client';
+  const legacyClient = searchParams.get('client');
 
-  // Check module access
+  // Links viejos (/calendarios?client=…&type=…&month=…&idea=…) → URL nueva de cada vista.
+  // Un usuario cliente va directo a su calendario.
+  useEffect(() => {
+    if (legacyClient) {
+      router.replace(calendarHref(legacyClient, {
+        view: searchParams.get('type') === 'tareas' ? 'tareas' : 'redes',
+        month: searchParams.get('month'),
+        idea: searchParams.get('idea'),
+      }));
+    } else if (isClientUser && user?.client_id) {
+      router.replace(calendarHref(user.client_id));
+    }
+  }, [legacyClient, isClientUser, user?.client_id, searchParams, router]);
+
+  const calendarClients = useMemo(() => {
+    const allowed = getAllowedClientIds(user);
+    return clients
+      .filter(c => (c.social_calendar_enabled || c.ads_calendar_enabled) && (allowed === null || allowed.includes(c.id)))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [clients, user]);
+  const filtered = calendarClients.filter(c => c.name.toLowerCase().includes(search.trim().toLowerCase()));
+
   if (!hasModuleAccess(user, 'calendarios')) {
     return <NoAccess message="No tienes permiso para acceder al calendario." />;
   }
+  if (loading || legacyClient || isClientUser) return <ContentSkeleton variant="cards" />;
 
-  const isClientUser = user?.role === 'client';
-  const urlMonth = searchParams.get('month');
-  const urlIdea = searchParams.get('idea');
-
-  const allowedClientIds = getAllowedClientIds(user);
-  const calendarClients = clients.filter(c => {
-    // Filter by calendar enabled
-    if (!c.social_calendar_enabled && !c.ads_calendar_enabled) return false;
-    // Filter by allowed clients
-    if (allowedClientIds === null) return true; // null = all clients
-    return allowedClientIds.includes(c.id);
-  });
-  const filteredClients = calendarClients.filter(
-    (c) => c.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  if (loading) {
-    return (
-      <ContentSkeleton variant="cards" />
-    );
-  }
-
-  // Client user: show their own calendar directly
-  if (isClientUser && user?.client_id) {
-    const client = clients.find(c => c.id === user.client_id);
-    const hasSocial = client?.social_calendar_enabled;
-    const hasAds = client?.ads_calendar_enabled;
-
-    if (!hasSocial && !hasAds) {
-      return (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-4">
-          <Calendar className="h-12 w-12 opacity-30" />
-          <p className="text-base font-medium">Calendario no disponible</p>
-          <p className="text-sm">El calendario no está habilitado para tu cuenta.</p>
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Calendario de clientes</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Elegí un cliente para ver su calendario de redes o sus tareas. Cada vista tiene su propio link.</p>
         </div>
-      );
-    }
+        <div className="relative min-w-0 md:w-80">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar clientes…"
+            className="h-10 w-full rounded-full border border-border bg-card pl-10 pr-9 text-sm outline-none focus:ring-2 focus:ring-primary/25" />
+          {search && <button type="button" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
+        </div>
+      </div>
 
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          {client?.logo_url ? (
-            <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage src={client.logo_url} alt={client.name} />
-              <AvatarFallback className="rounded-lg text-xs">{client.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center">
-              <Building2 className="h-4 w-4 text-primary" />
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-[1.6rem] border border-dashed border-border bg-card py-16 text-center">
+          <Building2 className="h-10 w-10 text-muted-foreground/40" />
+          <p className="text-sm font-medium">{search ? 'Ningún cliente coincide con la búsqueda' : 'No hay clientes con calendario habilitado'}</p>
+          {search && <button type="button" onClick={() => setSearch('')} className="text-xs text-primary hover:underline">Limpiar búsqueda</button>}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map(client => (
+            <div key={client.id} className="group relative flex flex-col gap-4 rounded-[1.4rem] border border-border bg-card p-4 transition-shadow hover:shadow-[0_6px_24px_rgba(20,20,43,.08)]">
+              <Link href={calendarHref(client.id)} className="flex items-center gap-3">
+                <span className="absolute inset-0 rounded-[1.4rem]" aria-hidden="true" />
+                <Avatar className="h-11 w-11 shrink-0 rounded-2xl">
+                  {client.logo_url && <AvatarImage src={client.logo_url} alt={client.name} className="object-contain" />}
+                  <AvatarFallback className="rounded-2xl bg-tint-blue text-base font-bold text-tint-blue-foreground">{client.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-semibold">{client.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{client.industry || 'Calendario de publicaciones'}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+              </Link>
+              <div className="relative flex flex-wrap gap-1.5">
+                <Link href={calendarHref(client.id)}
+                  className="tm-press inline-flex items-center gap-1.5 rounded-full bg-tint-blue px-3 py-1.5 text-xs font-semibold text-tint-blue-foreground hover:brightness-95">
+                  <CalendarDays className="h-3.5 w-3.5" /> Calendario de redes
+                </Link>
+                <Link href={calendarHref(client.id, { view: 'tareas' })}
+                  className="tm-press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground/80 hover:bg-muted">
+                  <ListTodo className="h-3.5 w-3.5" /> Tareas
+                </Link>
+              </div>
             </div>
-          )}
-          <div>
-            <p className="text-sm font-bold">{client?.name || 'Calendario'}</p>
-            <p className="text-xs text-muted-foreground">Calendario de clientes</p>
-          </div>
+          ))}
         </div>
-        <CalendarTabs active={activeTab} onChange={setActiveTab} />
-        {(activeTab === 'unificado') && <UnifiedCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} initialIdeaId={urlIdea} />}
-        {activeTab === 'tareas' && <TasksCalendar clientId={user.client_id} clientName={client?.name || 'Mi Calendario'} initialMonth={urlMonth} />}
-      </div>
-    );
-  }
-
-  // Admin/operador: show client selector
-  if (!selectedClientId) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Calendario de clientes</h1>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">
-            Seleccioná un cliente para ver su calendario de publicaciones
-          </p>
-        </div>
-
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar clientes..."
-            className="pl-9 rounded-xl"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClients.map((client) => {
-            const color = colorForClient(client.name);
-            return (
-              <Card
-                key={client.id}
-                className="group cursor-pointer border-0 ring-0 shadow-none transition-colors duration-200 hover:bg-muted/40 bg-card rounded-3xl"
-                onClick={() => setSelectedClientId(client.id)}
-              >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {client.logo_url ? (
-                        <Avatar className="h-10 w-10 rounded-2xl">
-                          <AvatarImage src={client.logo_url} alt={client.name} />
-                          <AvatarFallback className="rounded-2xl text-sm font-bold" style={{ background: `color-mix(in oklch, ${color} 18%, var(--card))`, color }}>
-                            {client.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div className="h-10 w-10 rounded-2xl flex items-center justify-center font-bold text-sm" style={{ background: `color-mix(in oklch, ${color} 18%, var(--card))`, color }}>
-                          {client.name.charAt(0)}
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm font-bold truncate max-w-[180px]">{client.name}</p>
-                        {client.industry && (
-                          <p className="text-xs text-muted-foreground truncate max-w-[180px]">{client.industry}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="rounded-full bg-emerald-500/10 p-2">
-                      <Calendar className="h-5 w-5 text-emerald-500" />
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all ml-auto mt-3" />
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {filteredClients.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-4">
-            <Building2 className="h-12 w-12 opacity-50" />
-            <p>No hay clientes con calendario habilitado</p>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Calendar view for admin/operador
-  const selectedClient = clients.find(c => c.id === selectedClientId);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => { setSelectedClientId(null); setActiveTab('unificado'); }} className="gap-1.5 text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-        <div className="h-5 w-px bg-border/50" />
-        {selectedClient?.logo_url ? (
-          <Avatar className="h-8 w-8 rounded-lg">
-            <AvatarImage src={selectedClient.logo_url} alt={selectedClient.name} />
-            <AvatarFallback className="rounded-lg text-xs">{selectedClient.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-        ) : (
-          <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center">
-            <Building2 className="h-4 w-4 text-primary" />
-          </div>
-        )}
-        <div>
-          <p className="text-sm font-bold">{selectedClient?.name}</p>
-          <p className="text-xs text-muted-foreground">Calendario de clientes</p>
-        </div>
-      </div>
-      <CalendarTabs active={activeTab} onChange={setActiveTab} />
-      {selectedClient && activeTab === 'unificado' && (
-        <UnifiedCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} initialIdeaId={urlIdea} />
       )}
-      {selectedClient && activeTab === 'tareas' && (
-        <TasksCalendar clientId={selectedClient.id} clientName={selectedClient.name} initialMonth={urlMonth} />
-      )}
-    </div>
-  );
-}
-
-function CalendarTabs({ active, onChange }: { active: CalendarTab; onChange: (t: CalendarTab) => void }) {
-  return (
-    <div className="flex gap-1 rounded-xl bg-muted/40 p-1 w-fit">
-      <button
-        type="button"
-        onClick={() => onChange('unificado')}
-        className={cn(
-          'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-          active === 'unificado'
-            ? 'bg-background text-foreground'
-            : 'text-muted-foreground hover:text-foreground',
-        )}
-      >
-        <Calendar className="h-4 w-4 text-emerald-500" />
-        Calendario
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('tareas')}
-        className={cn(
-          'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-          active === 'tareas'
-            ? 'bg-background text-foreground'
-            : 'text-muted-foreground hover:text-foreground',
-        )}
-      >
-        <ListTodo className="h-4 w-4 text-cyan-500" />
-        Tareas
-      </button>
     </div>
   );
 }

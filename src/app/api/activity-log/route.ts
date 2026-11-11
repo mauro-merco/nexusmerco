@@ -151,6 +151,7 @@ export async function GET(request: Request) {
         const { data } = await supabase
           .from('documents')
           .select('id, owner_id, title, created_at, updated_at')
+          .neq('kind', 'nota')
           .gte('created_at', fromISO)
           .limit(500);
         for (const d of data || []) {
@@ -204,12 +205,14 @@ export async function GET(request: Request) {
       })(),
       (async () => {
         const { data } = await supabase
-          .from('sticky_notes')
-          .select('id, user_id, title, created_at')
+          .from('documents')
+          .select('id, owner_id, title, created_at')
+          .eq('kind', 'nota')
           .gte('created_at', fromISO)
           .limit(500);
+        // Las notas adhesivas ahora viven en documents (kind = 'nota')
         for (const n of data || []) {
-          push('note_created', n.created_at, n.user_id, `Creó la nota “${n.title || 'Sin título'}”`);
+          push('note_created', n.created_at, n.owner_id, `Creó la nota “${n.title || 'Sin título'}”`);
         }
       })(),
     ]);

@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Popover, Collapse } from '@/components/task-ui';
 import type { SocialIdea, PostType } from '@/lib/types';
-import { POST_TYPE_CONFIG } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, ideaName } from '@/lib/social-config';
 import { FolderOpen, ChevronDown, MessageSquare } from 'lucide-react';
 
 /** Carpetas (mes + generales) en un acordeón: ocupan 0px hasta que se necesitan. */
@@ -13,10 +13,10 @@ export function CalendarFolders({ children }: { children: ReactNode }) {
   useEffect(() => { try { setOpen(localStorage.getItem('cal-folders-open') === '1'); } catch { /* */ } }, []);
   const toggle = () => setOpen(v => { try { localStorage.setItem('cal-folders-open', v ? '0' : '1'); } catch { /* */ } return !v; });
   return (
-    <div className="rounded-2xl bg-muted/25">
+    <div className="rounded-[1.4rem] border border-border bg-card">
       <button type="button" onClick={toggle} className="tm-press flex w-full items-center gap-2 px-4 py-2.5 text-left">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15"><FolderOpen className="h-3.5 w-3.5 text-indigo-600" /></span>
-        <span className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Carpetas</span>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-foreground/80">Carpetas</span>
         <span className="text-xs text-muted-foreground">del mes y generales</span>
         <ChevronDown className={cn('ml-auto h-4 w-4 text-muted-foreground transition-transform duration-300', open && 'rotate-180')} />
       </button>
@@ -34,7 +34,7 @@ export function CalendarTypeFilter({ ideas, active, onToggle }: { ideas: SocialI
         const n = ideas.filter(i => i.post_type === k).length;
         return (
           <button key={k} type="button" onClick={() => onToggle(k)}
-            className={cn('tm-press flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors', on ? cn(c.bgColorClass, c.colorClass) : 'bg-muted/30 text-muted-foreground/50 hover:bg-muted/50')}>
+            className={cn('tm-press flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors', on ? cn('border-transparent', c.bgColorClass, c.colorClass) : 'border-border bg-card text-muted-foreground/60 hover:text-foreground')}>
             <Icon className="h-3.5 w-3.5" /> {c.label}
             <span className="rounded-full bg-background/60 px-1.5 text-[10px] font-bold">{n}</span>
           </button>
@@ -57,7 +57,7 @@ export function DayOverflow({ ideas, onIdeaClick }: { ideas: SocialIdea[]; onIde
           return (
             <button key={i.id} type="button" onClick={() => { close(); onIdeaClick(i); }} className="tm-press flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left hover:bg-muted/60">
               <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg', c.bgColorClass, c.colorClass)}><Icon className="h-3.5 w-3.5" /></span>
-              <span className="line-clamp-2 flex-1 text-sm font-medium">{i.eje_contenido || i.title}</span>
+              <span className="line-clamp-2 flex-1 text-sm font-medium">{ideaName(i)}</span>
             </button>
           );
         })}
@@ -71,10 +71,10 @@ export function CalendarTabs({ className, first, second, labels = ['Comentarios 
   const [tab, setTab] = useState(0);
   return (
     <div className={className}>
-      <div className="mb-3 flex w-fit rounded-xl bg-muted/40 p-1">
+      <div className="mb-3 flex w-fit rounded-full border border-border bg-card p-1">
         {labels.map((l, i) => (
           <button key={l} type="button" onClick={() => setTab(i)}
-            className={cn('tm-press flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold', tab === i ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            className={cn('tm-press flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition-colors', tab === i ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}>
             <MessageSquare className="h-3.5 w-3.5" /> {l}
           </button>
         ))}

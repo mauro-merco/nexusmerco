@@ -104,21 +104,21 @@ export function GlobalSearch() {
 
   return (
     <>
-      <div className="search-glow hidden w-44 rounded-xl p-px sm:block lg:w-56">
+      <div className="hidden w-full max-w-[360px] sm:block">
         <button type="button" onClick={() => setOpen(true)}
-          className="relative flex h-9 w-full items-center gap-2 rounded-[11px] bg-background px-3 text-xs text-muted-foreground transition-colors hover:text-foreground">
-          <Search className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1 text-left">Buscar...</span>
-          <kbd className="hidden text-[10px] font-mono opacity-60 lg:inline">Ctrl K</kbd>
+          className="flex h-10 w-full items-center gap-2.5 rounded-full border border-border bg-card px-3.5 text-[13px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">Buscar clientes, tareas, documentos…</span>
+          <kbd className="hidden rounded-md border border-border px-1.5 py-0.5 text-[10px] font-sans font-semibold lg:inline">Ctrl K</kbd>
         </button>
       </div>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="search-glow flex h-9 w-9 items-center justify-center rounded-xl p-px text-muted-foreground sm:hidden"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground sm:hidden"
         aria-label="Buscar"
       >
-        <span className="relative flex h-full w-full items-center justify-center rounded-[11px] bg-background"><Search className="h-4 w-4" /></span>
+        <Search className="h-4 w-4" />
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen} title="Buscar" description="Buscá contenido en la plataforma" className="search-modal-glow top-[12vh] w-[calc(100%-2rem)] max-w-2xl translate-y-0 border-0 p-px sm:top-[15vh]">

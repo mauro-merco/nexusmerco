@@ -1,6 +1,6 @@
 'use client';
 
-import { POST_TYPE_CONFIG, STATUS_CONFIG } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, ideaName } from '@/lib/social-config';
 import type { SocialIdea } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Check } from 'lucide-react';
@@ -16,7 +16,7 @@ export function CalendarPillBody({ idea, label }: { idea: SocialIdea; label?: st
   const statusCfg = STATUS_CONFIG[idea.status];
   const isPublished = idea.status === 'posteado';
   const highlight = statusHighlight(idea.status);
-  const text = label ?? idea.title;
+  const text = label ?? ideaName(idea);
 
   return (
     <>
@@ -67,5 +67,5 @@ function statusHighlight(status: SocialIdea['status']) {
 /** Tooltip with the title and the status, for the pills that truncate. */
 export function calendarPillTitle(idea: SocialIdea, label?: string) {
   const statusCfg = STATUS_CONFIG[idea.status];
-  return `${label ?? idea.title} — ${statusCfg?.label || idea.status}`;
+  return `${label ?? ideaName(idea)} — ${statusCfg?.label || idea.status}`;
 }

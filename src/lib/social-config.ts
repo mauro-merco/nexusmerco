@@ -86,3 +86,12 @@ export const IDEA_STATUS_ORDER: IdeaStatus[] = [
   'programando',
   'posteado',
 ];
+
+/**
+ * Nombre visible de una idea/pieza. Es el título que se edita en el pop up, y se
+ * usa igual en el calendario interno, la agenda, la barra de minimizados y el
+ * calendario público: renombrar una idea se ve en todos lados.
+ */
+export function ideaName(idea: { title?: string | null; eje_contenido?: string | null }): string {
+  return idea.title?.trim() || idea.eje_contenido?.trim() || 'Sin título';
+}
