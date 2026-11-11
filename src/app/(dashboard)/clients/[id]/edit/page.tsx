@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { useClient, updateClient } from '@/lib/hooks/use-clients';
+import { useClient, updateClient, type ClientRecord } from '@/lib/hooks/use-clients';
 import { ArrowLeft, Loader2, AlertCircle, Check, BarChart3, Calendar, ShoppingBag, ArrowUpRight, Building2, Megaphone, LayoutGrid, Crown } from 'lucide-react';
 
 const CAMPAIGN_TYPES = [
@@ -40,6 +40,7 @@ export default function EditClientPage() {
   const [description, setDescription] = useState('');
   const [industry, setIndustry] = useState('');
   const [plan, setPlan] = useState('basic');
+  const [status, setStatus] = useState<ClientRecord['status'] | null>(null);
   const [campaignTypes, setCampaignTypes] = useState<string[]>([]);
   const [logoUrl, setLogoUrl] = useState('');
   const [analysisEnabled, setAnalysisEnabled] = useState(true);
@@ -55,6 +56,7 @@ export default function EditClientPage() {
       setDescription(client.description || '');
       setIndustry(client.industry || '');
       setPlan(client.plan || 'basic');
+      setStatus(client.status);
       setCampaignTypes(client.campaign_types || []);
       setLogoUrl(client.logo_url || '');
       setAnalysisEnabled(client.analysis_enabled ?? true);
@@ -78,6 +80,7 @@ export default function EditClientPage() {
         description,
         industry,
         plan,
+        ...(status !== null ? { status } : {}),
         campaign_types: campaignTypes,
         logo_url: logoUrl,
         analysis_enabled: analysisEnabled,
@@ -208,6 +211,21 @@ export default function EditClientPage() {
             </div>
           </section>
 
+          <fieldset className={sectionClass} disabled={!client}>
+            <legend className="sr-only">Estado del cliente</legend>
+            <p className={sectionTitle}>Estado del cliente</p>
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {(['active', 'onboarding', 'paused'] as const).map((value) => (
+                <label key={value} className="relative cursor-pointer">
+                  <input type="radio" name="status" value={value} checked={(status ?? client?.status) === value} onChange={() => setStatus(value)} className="peer sr-only" />
+                  <span className="flex min-h-11 items-center justify-center rounded-full border border-border bg-card px-4 text-sm font-medium transition-colors peer-checked:border-transparent peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2">
+                    {value === 'active' ? 'Activo' : value === 'onboarding' ? 'Onboarding' : 'Pausado'}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           {/* Campañas */}
           <section className={sectionClass}>
             <div className="flex items-center justify-between gap-3">
@@ -298,7 +316,7 @@ export default function EditClientPage() {
               </div>
               {description && <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <span className="rounded-full bg-tint-blue px-2.5 py-0.5 text-[11px] font-semibold text-tint-blue-foreground">{client?.status === 'onboarding' ? 'Onboarding' : client?.status === 'paused' ? 'Pausado' : 'Activo'}</span>
+                <span className="rounded-full bg-tint-blue px-2.5 py-0.5 text-[11px] font-semibold text-tint-blue-foreground">{(status ?? client?.status) === 'onboarding' ? 'Onboarding' : (status ?? client?.status) === 'paused' ? 'Pausado' : 'Activo'}</span>
                 {campaignTypes.slice(0, 3).map((t) => (
                   <span key={t} className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-medium">{CAMPAIGN_TYPES.find((c) => c.id === t)?.label || t}</span>
                 ))}

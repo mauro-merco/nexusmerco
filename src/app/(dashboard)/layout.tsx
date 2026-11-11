@@ -17,7 +17,6 @@ import { MinimizedDock } from '@/components/minimized-dock';
 import { useAuthStore } from '@/store/auth-store';
 import { initAuthSync } from '@/lib/auth-sync';
 import { BookOpenText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export default function DashboardLayout({
   children,
@@ -54,17 +53,20 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 shrink-0 bg-background flex items-center justify-between gap-3 px-4 md:px-8">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+        <header className="min-h-16 shrink-0 bg-background flex flex-wrap items-center justify-between gap-3 px-4 py-2 md:px-8">
+          <Link href="/dashboard" aria-label="Merco Nexus" className="flex shrink-0 items-center gap-3">
+            <img src="/merco-light-mode.svg" alt="Merco" className="h-5 w-auto dark:hidden" />
+            <img src="/merco-dark-mode.svg" alt="Merco" className="hidden h-5 w-auto dark:block" />
+            <span className="border-l border-border pl-3 text-xs text-muted-foreground">Nexus</span>
+          </Link>
+          <div className="ml-auto flex min-w-0 items-center gap-2">
             <GlobalSearch />
             <SuggestionsFloatingButtons />
-          </div>
-          <div className="flex items-center gap-2">
             {(user.role === 'admin' || user.role === 'operador') && (
-              <Button render={<Link href="/blog" />} nativeButton={false} variant="outline" size="sm" className="h-10 rounded-full border-border bg-card px-4 text-foreground hover:bg-muted">
+              <Link href="/blog" aria-label="Blog de Merco" className="flex h-10 shrink-0 items-center gap-1 rounded-full border border-violet-500/20 bg-violet-500/5 px-2.5 text-xs font-semibold text-violet-700 transition-colors hover:border-violet-500/40 hover:bg-violet-500/10 dark:text-violet-300 sm:px-3">
                 <BookOpenText className="h-4 w-4" />
                 <span className="hidden lg:inline">Blog de Merco</span>
-              </Button>
+              </Link>
             )}
             <MessagesBell />
             <NotificationBell />

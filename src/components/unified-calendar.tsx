@@ -26,7 +26,7 @@ import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
 import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
 import { EcommerceDateDialog } from '@/components/ecommerce-date-dialog';
-import { CalendarFolders, CalendarTypeFilter, CalendarTabs } from '@/components/calendar-parts';
+import { CalendarFolders, CalendarTypeFilter, CalendarTabs, CalendarMonthSummary, CALENDAR_PANEL, CALENDAR_COLUMNS, CALENDAR_TOOLBAR, CALENDAR_DAY } from '@/components/calendar-parts';
 import { Scroller } from '@/components/task-ui';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
@@ -105,13 +105,13 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
   const [y, m] = date.split('-').map(Number);
   const active = ecommerceDates.filter(ed => date >= ed.start_date && date <= ed.end_date);
   const count = ideas.length;
-  const minH = Math.max(110, 90 + count * 22);
+  const minH = Math.max(132, 90 + count * 22);
   const monthLabel = new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long' });
 
   return (
     <div ref={setNodeRef} onClick={() => onAddClick(date)}
       style={{ minHeight: minH, ...(active.length > 0 ? { backgroundColor: `${active[0].color}14` } : isCurrentMonth ? {} : { backgroundColor: 'rgba(148,163,184,0.10)' }) }}
-      className={cn('tm-fade rounded-2xl p-2 transition-all cursor-pointer flex flex-col group', !isCurrentMonth && 'grayscale opacity-70', isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : isCurrentMonth ? 'bg-muted/25 hover:bg-muted/40' : 'bg-muted/12 hover:bg-muted/25')}>
+      className={cn(CALENDAR_DAY, !isCurrentMonth && 'grayscale opacity-70', isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : isCurrentMonth ? 'bg-muted/25 hover:bg-muted/40' : 'bg-muted/12 hover:bg-muted/25')}>
       {active.length > 0 && (
         <div className="flex flex-col gap-1 mb-1.5">
           {active.map(ed => <div key={ed.id} style={{ backgroundColor: `${ed.color}38`, color: ed.color, boxShadow: `inset 0 0 0 1.5px ${ed.color}` }} className="truncate rounded-lg px-1.5 py-1 text-center text-[11px] font-black uppercase leading-tight tracking-wide">{ed.name}</div>)}
@@ -318,9 +318,9 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
 
   return (
     <>
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
+      <div className={CALENDAR_COLUMNS}>
         <div className="space-y-4 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className={CALENDAR_TOOLBAR}>
             <div className="flex items-center rounded-full border border-border bg-card p-1">
               <button type="button" onClick={prevMonth} aria-label="Mes anterior" className="tm-press flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
               <button type="button" onClick={goToday} title="Ir al mes actual" className="min-w-[150px] px-2 text-center text-[15px] font-semibold capitalize transition-colors hover:text-primary">{monthNames[viewMonth]} {viewYear}</button>
@@ -399,7 +399,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
 
           {isSearching ? null : effectiveView === 'month' ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-              <div className="grid grid-cols-7 gap-1.5 rounded-[1.6rem] border border-border bg-card p-2.5 md:p-3">
+              <div className={cn(CALENDAR_PANEL, 'grid grid-cols-7 gap-1.5 p-3 md:p-4')}>
                 {dayNames.map(n => <div key={n} className="py-1 text-center text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">{n}</div>)}
                 {monthCells.map(cell => {
                   const isToday = cell.date === today.toISOString().split('T')[0];
@@ -415,17 +415,7 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
         </div>
 
         <div className="space-y-4">
-          <div className="space-y-2 rounded-[1.4rem] border border-border bg-card p-4">
-            <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">Este mes</p>
-            <div className="flex items-baseline gap-1.5"><span className="text-2xl font-bold">{(allIdeas as any[]).filter(i => i.publish_date.startsWith(monthStr)).length}</span><span className="text-xs text-muted-foreground">ideas/piezas planificadas</span></div>
-            <div className="space-y-1 pt-1">
-              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-                const count = (allIdeas as any[]).filter(i => i.status === key && i.publish_date.startsWith(monthStr)).length;
-                if (count === 0) return null;
-                return <div key={key} className="flex items-center gap-1.5 text-xs"><span className={cn('w-1.5 h-1.5 rounded-full', cfg.dotColor)} /><span className="text-muted-foreground flex-1">{cfg.label}</span><span className="font-semibold">{count}</span></div>;
-              })}
-            </div>
-          </div>
+          <CalendarMonthSummary ideas={allIdeas} month={monthStr} />
           <Scroller className="h-auto max-h-[620px] rounded-2xl" innerClassName="h-auto max-h-[620px]"><CalendarRecentComments clientId={clientId} calendarType="social" month={monthStr} ideas={allIdeas as SocialIdea[]} onOpenIdea={(id) => { const idea = allIdeas.find((i: any) => i.id === id) as any; if (idea) { setSelectedIdea(idea); setSelectedIdeaType(idea._cal); } }} /></Scroller>
         </div>
       </div>

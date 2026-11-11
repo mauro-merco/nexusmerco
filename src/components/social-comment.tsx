@@ -72,7 +72,7 @@ function CommentItem({
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
             <span className={cn('font-semibold', isReply ? 'text-xs' : 'text-sm')}>{comment.user?.full_name || 'Usuario'}</span>
             <span className="text-[11px] text-muted-foreground">{timeAgo}</span>
           </div>
@@ -96,11 +96,11 @@ function CommentItem({
               </div>
             </div>
           ) : (
-            <MentionedText text={comment.content} className={cn('text-foreground/80 mt-1 leading-relaxed', isReply ? 'text-sm' : 'text-sm')} />
+            <MentionedText text={comment.content} className={cn('text-foreground/80 mt-1 leading-relaxed [overflow-wrap:anywhere]', isReply ? 'text-sm' : 'text-sm')} />
           )}
 
           {!isEditing && (
-            <div className="flex items-center gap-1 mt-1.5">
+            <div className="flex flex-wrap items-center gap-1 mt-1.5">
               <CommentReadEye
                 readers={readers[comment.id]}
                 currentUserId={currentUserId}
@@ -215,8 +215,8 @@ export function SocialComment({ comments, loading = false, onAddComment, onDelet
   const replyComment = replyTo ? comments.find(c => c.id === replyTo) : null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
-      <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-4">
+      <div className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto [overflow-wrap:anywhere]">
         {loading && comments.length === 0 ? <ContentSkeleton variant="comments" label="Cargando comentarios" /> : comments.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             <p>No hay comentarios todavía</p>

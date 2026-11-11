@@ -62,7 +62,7 @@ export default function SettingsPage() {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pt-8">
+    <div className="w-full min-w-0 space-y-6 pt-8">
       <div>
         <h1 className="text-lg font-bold">Configuración</h1>
         <p className="text-sm text-muted-foreground">Gestioná tu perfil y los usuarios de la plataforma.</p>

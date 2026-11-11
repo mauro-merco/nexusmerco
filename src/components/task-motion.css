@@ -27,6 +27,29 @@
 .tm-noscroll { scrollbar-width: none; -ms-overflow-style: none; }
 .tm-noscroll::-webkit-scrollbar { display: none; }
 
+/* Keep full-window idea/task panels inside the viewport, including phone cutouts. */
+.tm-work-modal {
+  min-width: 0;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tm-work-header { position: relative; padding-right: 4rem; }
+.tm-work-header [data-slot='dialog-close'] {
+  position: absolute;
+  top: .75rem;
+  right: 1rem;
+}
+.tm-work-header > div,
+.tm-work-header > div > div,
+.tm-work-body > * { min-width: 0; max-width: 100%; }
+.tm-work-body { overflow-wrap: anywhere; }
+.tm-work-body img,
+.tm-work-body video { max-width: 100%; }
+.tm-work-body pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tm-work-footer { padding-bottom: .75rem; }
+
 @media (prefers-reduced-motion: reduce) {
   [class*='tm-'], .tm-stagger > * { animation: none !important; transition: none !important; }
 }

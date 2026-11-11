@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { NoAccess } from '@/components/no-access';
 import { cn } from '@/lib/utils';
 import {
-  BookOpenText, CalendarClock, Clock3, ExternalLink, Eye, Image as ImageIcon,
+  ArrowUpRight, ChevronRight, BookOpenText, CalendarClock, Clock3, ExternalLink, Eye, Image as ImageIcon,
   Loader2, Pencil, Plus, RefreshCw, Rocket, Search, Send, WandSparkles,
 } from 'lucide-react';
 
@@ -26,7 +26,7 @@ type BlogPost = {
   canonicalLink?: string;
   status: string;
   author?: string;
-  categories?: string[];
+  categories?: Array<string | { _id: string; label: string }>;
   tags?: string[];
   publishedAt?: string;
   scheduledAt?: string;
@@ -126,6 +126,7 @@ export default function BlogPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -190,7 +191,7 @@ export default function BlogPage() {
       setImageUrl(detail.imageUrl || '');
       setImageAltText(detail.imageAltText || '');
       setAuthor(typeof detail.author === 'string' ? detail.author : '');
-      setCategories(Array.isArray(detail.categories) ? detail.categories : []);
+      setCategories(Array.isArray(detail.categories) ? detail.categories.map(category => typeof category === 'string' ? category : category._id) : []);
       setTags(Array.isArray(detail.tags) ? detail.tags : []);
       setScheduledAt(detail.status === 'SCHEDULED' ? toLocalDateTime(detail.scheduledAt) : '');
       setSuccess('');
@@ -270,33 +271,60 @@ export default function BlogPage() {
   };
 
   const canPublish = resolvedTitle.length > 0 && contentLength(content) > 0;
+  const posts = data?.posts || [];
+  const visiblePosts = posts.filter(post => statusFilter === 'ALL' || post.status === statusFilter);
+  const cardClass = 'min-w-0 rounded-[1.6rem] border border-border bg-card shadow-[0_4px_24px_rgba(17,24,39,0.025)]';
 
   if (editorOpen) {
     return (
-      <div className="mx-auto max-w-7xl space-y-5 pb-10">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <button type="button" onClick={() => setEditorOpen(false)} className="mb-1 text-xs font-medium text-muted-foreground hover:text-foreground">← Volver al blog</button>
-            <h1 className="text-2xl font-bold text-gradient-tech">{editingId ? 'Editar nota' : 'Nueva nota para Merco Blog'}</h1>
+      <div className="w-full min-w-0 space-y-6 pb-10 pt-2 md:pt-5">
+        <nav aria-label="Ruta de navegación" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <a href="/dashboard" className="hover:text-primary">Centro de Control</a><ChevronRight className="size-3" />
+          <button type="button" onClick={() => setEditorOpen(false)} className="hover:text-primary">Blog</button><ChevronRight className="size-3" />
+          <span className="text-foreground">{editingId ? 'Editar nota' : 'Nueva nota'}</span>
+        </nav>
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-tint-blue px-3 py-1.5 text-xs font-medium text-tint-blue-foreground"><Pencil className="size-3.5" /> Espacio de escritura</span>
+            <h1 className="text-4xl font-medium tracking-tight md:text-5xl">{editingId ? 'Editar nota' : 'Nueva nota'}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Dale forma a tu idea. Prepará el contenido, la portada y su publicación.</p>
           </div>
-          <Button variant="cta" disabled={saving || !canPublish} onClick={publish}>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <Button variant="outline" className="h-11 rounded-full bg-card px-5" onClick={() => setEditorOpen(false)}>Volver al blog</Button>
+          <Button className="h-auto min-h-11 max-w-full whitespace-normal rounded-full bg-foreground px-5 py-3 text-background hover:bg-foreground/90" disabled={saving || !canPublish} onClick={publish}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : scheduledAt ? <CalendarClock className="h-4 w-4" /> : <Rocket className="h-4 w-4" />}
             {scheduledAt ? 'Programar publicación' : editingId ? 'Actualizar publicación' : 'Publicar ahora'}
           </Button>
+          </div>
         </header>
+
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.5fr)]">
+          <section className={cn(cardClass, 'relative isolate overflow-hidden p-5 md:p-6')}>
+            <div aria-hidden="true" className="pointer-events-none absolute -right-14 -top-16 -z-10 size-64 rounded-full opacity-60 blur-[8px]" style={{ background: 'radial-gradient(circle at 35% 35%, #AECBFA 0%, #4285F4 38%, #1A73E8 62%, transparent 72%)' }} />
+            <p className="text-xs font-medium text-muted-foreground">MERCO BLOG / COMPOSICIÓN</p>
+            <h2 className="mt-5 max-w-[75%] text-2xl font-light tracking-tight md:text-3xl">Una idea clara.<br />Una nota con tu voz.</h2>
+            <p className="mt-4 w-fit max-w-full rounded-full bg-surface-inset px-4 py-2 text-xs text-muted-foreground">Escribí primero. El SEO se completa al publicar.</p>
+          </section>
+          <section aria-label="Resumen de la nota" className="bg-brand-sky-gradient min-w-0 rounded-[1.6rem] p-5 md:p-6">
+            <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-medium">Tu nota, de un vistazo</h2><BookOpenText className="size-5 shrink-0 opacity-60" /></div>
+            <p className="mt-4 text-4xl font-light tracking-tight">{contentWordCount(content)} <span className="text-sm font-normal">palabras</span></p>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-white/40 px-3 py-2">{Math.max(1, Math.ceil(contentWordCount(content) / 220))} min de lectura</span><span className="rounded-full bg-white/40 px-3 py-2">{scheduledAt ? 'Publicación programada' : 'Publicación inmediata'}</span></div>
+          </section>
+        </div>
 
         {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>}
         {success && <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600">{success}</div>}
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
-          <section className="space-y-4 rounded-2xl border bg-card p-4 md:p-6">
-            <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Título de la nota" className="h-auto border-0 bg-transparent px-0 text-3xl font-bold shadow-none focus-visible:ring-0" />
-            <DocumentEditor initialContent={content} onChange={setContent} onGenerateImage={generateInlineImage} />
+        <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <section aria-labelledby="note-content" className={cn(cardClass, 'space-y-5 p-4 md:p-8')}>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4"><h2 id="note-content" className="flex items-center gap-2 text-sm font-medium"><Pencil className="size-4 text-brand-blue" /> Contenido de la nota</h2><span className="rounded-full bg-tint-blue px-3 py-1 text-xs text-tint-blue-foreground">Editor enriquecido + Imagen IA</span></div>
+            <div className="space-y-2"><Label htmlFor="note-title" className="text-xs text-muted-foreground">Título</Label><Input id="note-title" value={title} onChange={event => setTitle(event.target.value)} placeholder="La próxima gran idea empieza acá" className="h-auto min-w-0 rounded-none border-0 border-b bg-transparent px-0 py-3 text-xl font-medium shadow-none focus-visible:ring-0 md:text-3xl" /></div>
+            <div className="min-w-0 overflow-x-auto"><DocumentEditor initialContent={content} onChange={setContent} onGenerateImage={generateInlineImage} compact /></div>
           </section>
 
-          <aside className="space-y-4">
-            <div className="space-y-3 rounded-2xl border bg-card p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold"><ImageIcon className="h-4 w-4 text-blue-500" /> Portada</p>
+          <aside className="min-w-0 space-y-5">
+            <div className={cn(cardClass, 'space-y-4 p-5')}>
+              <p className="flex items-center gap-2 text-sm font-medium"><span className="flex size-8 items-center justify-center rounded-full bg-tint-blue"><ImageIcon className="h-4 w-4 text-tint-blue-foreground" /></span> Portada e imágenes</p>
               <div className="space-y-1.5">
                 <Label className="text-xs">Estilo de las imágenes</Label>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -309,7 +337,7 @@ export default function BlogPage() {
                       className={cn(
                         'rounded-lg border px-2 py-2 text-left text-[11px] font-medium transition-colors',
                         imageStyle === style.id
-                          ? 'border-violet-500/50 bg-violet-500/15 text-violet-700 dark:text-violet-200'
+                          ? 'border-foreground bg-foreground text-background'
                           : 'border-border text-muted-foreground hover:bg-muted/50'
                       )}
                     >
@@ -324,24 +352,24 @@ export default function BlogPage() {
               ) : (
                 <div className="flex aspect-video items-center justify-center rounded-xl border border-dashed bg-muted/30"><ImageIcon className="h-8 w-8 text-muted-foreground/40" /></div>
               )}
-              <Button variant="outline" className="w-full rounded-xl border-violet-500/40 text-violet-600 dark:text-violet-300" disabled={generatingCover} onClick={generateCover}>
+              <Button variant="outline" className="h-auto min-h-10 w-full whitespace-normal rounded-full text-primary" disabled={generatingCover} onClick={generateCover}>
                 {generatingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}
                 {generatingCover ? 'Generando portada...' : imageUrl ? 'Regenerar portada con IA' : 'Generar portada con IA'}
               </Button>
-              <Input value={imageUrl} onChange={event => setImageUrl(event.target.value)} placeholder="O pegá la URL de una portada" className="rounded-xl text-xs" />
+                <div className="space-y-1.5"><Label htmlFor="note-cover" className="text-xs">URL de portada</Label><Input id="note-cover" value={imageUrl} onChange={event => setImageUrl(event.target.value)} placeholder="O pegá la URL de una portada" className="min-w-0 rounded-xl text-xs" /></div>
             </div>
 
-            <div className="space-y-3 rounded-2xl border bg-card p-4">
-              <p className="text-sm font-semibold">Publicación</p>
+            <div className={cn(cardClass, 'space-y-4 p-5')}>
+              <p className="flex items-center gap-2 text-sm font-medium"><span className="flex size-8 items-center justify-center rounded-full bg-tint-blue"><CalendarClock className="size-4 text-tint-blue-foreground" /></span> Publicación</p>
               <div className="space-y-1.5">
-                <Label className="text-xs">Fecha y hora (opcional)</Label>
-                <Input type="datetime-local" value={scheduledAt} min={toLocalDateTime(new Date().toISOString())} onChange={event => setScheduledAt(event.target.value)} className="rounded-xl" />
+                <Label htmlFor="note-schedule" className="text-xs">Fecha y hora (opcional)</Label>
+                <Input id="note-schedule" type="datetime-local" value={scheduledAt} min={toLocalDateTime(new Date().toISOString())} onChange={event => setScheduledAt(event.target.value)} className="w-full min-w-0 max-w-full rounded-xl" />
                 <p className="text-[11px] text-muted-foreground">Sin fecha, se publica inmediatamente.</p>
               </div>
             </div>
 
-            <div className="space-y-3 rounded-2xl border bg-card p-4">
-              <p className="text-sm font-semibold">SEO automático</p>
+            <div className={cn(cardClass, 'space-y-4 p-5 [&_p]:break-words')}>
+              <p className="flex items-center gap-2 text-sm font-medium"><span className="flex size-8 items-center justify-center rounded-full bg-tint-blue"><Search className="size-4 text-tint-blue-foreground" /></span> SEO automático</p>
               <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
                 El título SEO, la descripción, las etiquetas, el texto alternativo y Open Graph se completan al publicar.
               </div>
@@ -354,53 +382,94 @@ export default function BlogPage() {
             </div>
           </aside>
         </div>
+        <footer className="sticky bottom-0 z-10 flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-[1.6rem] border border-border bg-card p-4 shadow-sm">
+          <p className="text-xs text-muted-foreground">{canPublish ? 'Revisá la portada y los ajustes antes de publicar.' : 'Agregá un título o contenido para preparar la publicación.'}</p>
+          <Button className="h-auto min-h-11 w-full whitespace-normal rounded-full bg-foreground px-5 py-3 text-background hover:bg-foreground/90 sm:w-auto" disabled={saving || !canPublish} onClick={publish}>
+            {saving ? <Loader2 className="size-4 animate-spin" /> : scheduledAt ? <CalendarClock className="size-4" /> : <Rocket className="size-4" />}
+            {scheduledAt ? 'Programar publicación' : editingId ? 'Actualizar publicación' : 'Publicar ahora'}
+          </Button>
+        </footer>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border bg-gradient-to-br from-blue-500/10 via-violet-500/10 to-fuchsia-500/10 p-6">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-300"><BookOpenText className="h-4 w-4" /> {data?.blog.name || 'Merco Blog'}</div>
-          <h1 className="text-3xl font-black text-gradient-tech">BLOG DE MERCO</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Creá, editá y publicá notas directamente en Ventry.</p>
+    <div className="w-full min-w-0 space-y-7 pb-10 pt-2 md:pt-5">
+      <nav aria-label="Ruta de navegación" className="flex items-center gap-2 text-xs text-muted-foreground"><a href="/dashboard" className="hover:text-primary">Centro de Control</a><ChevronRight className="size-3" /><span className="text-foreground">Blog</span></nav>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300"><BookOpenText className="size-3.5" /> Espacio editorial</span>
+          <h1 className="text-4xl font-medium tracking-tight md:text-5xl">Blog de Merco</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Ideas que se convierten en contenido. Todo tu blog, en un lugar.</p>
         </div>
-        <Button variant="cta" onClick={openNew}><Plus className="h-4 w-4" /> Nueva nota</Button>
+        <Button className="bg-brand-gradient h-11 rounded-full px-5" onClick={openNew}><Plus className="h-4 w-4" /> Nueva nota</Button>
       </header>
+
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[1.5fr_1fr]">
+        <section className={cn(cardClass, 'relative isolate flex min-h-64 flex-col overflow-hidden p-6 md:p-8')}>
+          <div aria-hidden="true" className="pointer-events-none absolute -right-14 -top-16 -z-10 size-72 rounded-full opacity-60 blur-[8px]" style={{ background: 'radial-gradient(circle at 35% 35%, #AECBFA 0%, #4285F4 38%, #1A73E8 62%, transparent 72%)' }} />
+          <p className="max-w-[65%] break-words text-sm font-medium">{data?.blog.name || 'Merco Blog'}</p>
+          <h2 className="mt-8 max-w-sm text-3xl font-light leading-tight tracking-tight md:text-4xl">Tu próxima idea<br />merece una buena nota.</h2>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-surface-inset p-3 pl-4">
+            <p className="text-xs text-muted-foreground">Escribí, prepará la portada y elegí cuándo publicar.</p>
+            <button type="button" onClick={openNew} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-medium text-background">Empezar a escribir <ArrowUpRight className="size-3.5" /></button>
+          </div>
+        </section>
+        <section className="bg-brand-sky-gradient flex min-w-0 flex-col rounded-[1.6rem] p-6 md:p-8" aria-label="Resumen editorial">
+          <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-medium">Resumen editorial</h2><BookOpenText className="size-5 opacity-60" /></div>
+          <div className="my-5"><p className="text-6xl font-light tracking-tight">{data ? posts.length : '—'}</p><p className="mt-1 text-xs">notas en la lista cargada</p></div>
+          <div className="mt-auto grid grid-cols-3 gap-2">
+            {['PUBLISHED', 'DRAFT', 'SCHEDULED'].map(status => <div key={status} className="min-w-0 rounded-2xl bg-white/40 p-2.5"><p className="text-2xl font-light">{data ? posts.filter(post => post.status === status).length : '—'}</p><p className="mt-1 break-words text-[11px]">{status === 'PUBLISHED' ? 'Publicadas' : status === 'DRAFT' ? 'Borradores' : 'Programadas'}</p></div>)}
+          </div>
+        </section>
+      </div>
 
       {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>}
       {success && <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600">{success}</div>}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') load(); }} placeholder="Buscar notas..." className="rounded-xl pl-9" /></div>
-        <Button variant="outline" className="rounded-xl" onClick={load} disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Actualizar</Button>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-medium tracking-tight">Biblioteca de notas</h2><span className="text-xs text-muted-foreground">{loading ? 'Cargando notas...' : `${visiblePosts.length} notas visibles`}</span></div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex max-w-full flex-wrap gap-1 rounded-[1.4rem] border bg-card p-1" role="group" aria-label="Filtrar por estado">
+            {['ALL', ...Object.keys(STATUS_LABEL)].map(status => <button key={status} type="button" aria-pressed={statusFilter === status} onClick={() => setStatusFilter(status)} className={cn('rounded-full px-3 py-2 text-xs font-medium transition-colors', statusFilter === status ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted')}>{status === 'ALL' ? 'Todas' : STATUS_LABEL[status]}</button>)}
+          </div>
+          <form onSubmit={event => { event.preventDefault(); load(); }} className="flex min-w-0 flex-1 basis-72 gap-2">
+            <div className="relative min-w-0 flex-1"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Buscar notas" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar notas..." className="h-11 rounded-full bg-card pl-10" /></div>
+            <Button type="submit" variant="outline" className="h-11 shrink-0 rounded-full bg-card px-4" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}<span className="hidden sm:inline">Actualizar</span><span className="sr-only sm:hidden">Actualizar</span></Button>
+          </form>
+        </div>
       </div>
 
       {loading ? (
         <ContentSkeleton variant="cards" />
-      ) : data?.posts.length ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.posts.map(post => (
-            <article key={post._id} className="group overflow-hidden rounded-2xl border bg-card transition-colors hover:border-violet-500/35">
-              {post.imageUrl ? <img src={post.imageUrl} alt={post.imageAltText || ''} className="aspect-[16/8] w-full object-cover" /> : <div className="flex aspect-[16/8] items-center justify-center bg-gradient-to-br from-blue-500/10 to-violet-500/15"><BookOpenText className="h-9 w-9 text-violet-500/40" /></div>}
-              <div className="space-y-3 p-4">
-                <div className="flex items-center justify-between gap-2"><Badge variant="outline" className={cn('text-[10px]', STATUS_STYLE[post.status] || STATUS_STYLE.DRAFT)}>{STATUS_LABEL[post.status] || post.status}</Badge><span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="h-3 w-3" /> {formatDate(post.updatedAt || post.publishedAt)}</span></div>
-                <div><h2 className="line-clamp-2 font-bold leading-snug">{post.title}</h2>{post.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{post.description}</p>}</div>
+      ) : visiblePosts.length ? (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {visiblePosts.map(post => (
+            <article key={post._id} className={cn(cardClass, 'group relative flex flex-col p-3 transition-colors hover:border-brand-sky')}>
+              <div className="card-notch"><button type="button" aria-label={`Editar ${post.title}`} disabled={loadingPost} onClick={() => openEdit(post)} className="flex size-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:text-primary disabled:opacity-50">{loadingPost ? <Loader2 className="size-4 animate-spin" /> : <Pencil className="size-4" />}</button></div>
+              {post.imageUrl ? <img loading="lazy" src={post.imageUrl} alt={post.imageAltText || ''} className="aspect-[16/9] w-full rounded-[1.1rem] object-cover" /> : <div className="flex aspect-[16/9] items-center justify-center rounded-[1.1rem] bg-surface-inset"><BookOpenText className="h-10 w-10 text-brand-blue/35" /></div>}
+              <div className="flex flex-1 flex-col gap-4 p-3 pt-5">
+                <div className="flex flex-wrap items-center justify-between gap-2"><Badge variant="outline" className={cn('rounded-full px-2.5 text-[10px]', STATUS_STYLE[post.status] || STATUS_STYLE.DRAFT)}>{STATUS_LABEL[post.status] || post.status}</Badge><span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="h-3 w-3" /> {formatDate(post.status === 'SCHEDULED' ? post.scheduledAt : post.updatedAt || post.publishedAt)}</span></div>
+                <div className="min-w-0"><h3 className="line-clamp-2 break-words text-xl font-medium leading-snug tracking-tight">{post.title}</h3>{post.description && <p className="mt-2 line-clamp-2 break-words text-sm leading-relaxed text-muted-foreground">{post.description}</p>}</div>
+                {!!post.categories?.length && <div className="flex flex-wrap gap-1.5">{post.categories.map(category => {
+                  const id = typeof category === 'string' ? category : category._id;
+                  const label = typeof category === 'string' ? data?.categories.find(item => item._id === id)?.label || category : category.label;
+                  return <span key={id} className="max-w-full break-words rounded-full bg-tint-blue px-2.5 py-1 text-[10px] text-tint-blue-foreground">{label}</span>;
+                })}</div>}
                 <p className="truncate text-[11px] text-muted-foreground">/{post.urlSlug || 'sin-slug'}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" className="rounded-xl" disabled={loadingPost} onClick={() => openEdit(post)}>{loadingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />} Editar</Button>
+                <div className="mt-auto flex flex-wrap gap-2 border-t pt-4">
+                  <Button variant="outline" className="flex-1 rounded-full" disabled={loadingPost} onClick={() => openEdit(post)}>{loadingPost ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />} Editar</Button>
                   {post.status === 'PUBLISHED' && post.urlSlug ? (
                     <a
                       href={`${CANONICAL_BASE}/${post.urlSlug}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                      className="inline-flex h-9 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-foreground px-3 text-sm font-medium text-background transition-opacity hover:opacity-80"
                     >
                       <Eye className="h-4 w-4" /> Abrir nota
                     </a>
                   ) : (
-                    <Button variant="outline" className="rounded-xl" disabled title="Disponible cuando la nota esté publicada"><Eye className="h-4 w-4" /> Abrir nota</Button>
+                    <Button variant="outline" className="flex-1 rounded-full" disabled title="Disponible cuando la nota esté publicada"><Eye className="h-4 w-4" /> Abrir nota</Button>
                   )}
                 </div>
               </div>
@@ -408,10 +477,10 @@ export default function BlogPage() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center rounded-3xl border border-dashed py-20 text-center"><Send className="mb-3 h-10 w-10 text-violet-500/35" /><p className="font-semibold">No encontramos notas</p><p className="text-sm text-muted-foreground">Creá la primera publicación desde el dashboard.</p></div>
+        <div className={cn(cardClass, 'flex flex-col items-center px-6 py-16 text-center')}><span className="mb-5 flex size-16 items-center justify-center rounded-full bg-tint-blue"><Send className="size-6 text-primary" /></span><p className="text-xl font-medium">No encontramos notas</p><p className="mt-2 max-w-sm text-sm text-muted-foreground">{posts.length || search ? 'Probá con otra búsqueda o elegí otro estado para ver más notas.' : 'Tu biblioteca empieza con una idea. Creá la primera publicación de Merco.'}</p><Button onClick={openNew} className="bg-brand-gradient mt-5 rounded-full px-5"><Plus className="size-4" /> Nueva nota</Button></div>
       )}
 
-      <footer className="flex items-center justify-between text-xs text-muted-foreground">
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t pt-5 text-xs text-muted-foreground">
         <span>{data?.total || 0} notas en Ventry</span>
         <a href="https://app.ventrycrm.com/v2/location/pT2rb1c149juOb2ih9Ad/marketing/blog" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-foreground">Abrir Ventry <ExternalLink className="h-3 w-3" /></a>
       </footer>

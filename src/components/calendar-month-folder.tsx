@@ -4,20 +4,35 @@ import { useEffect, useState } from 'react';
 import { FolderOpen, ExternalLink, Save, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 
-export function CalendarMonthFolder({ clientId, calendarType, month }: { clientId: string; calendarType: 'social' | 'ads'; month: string }) {
+export function CalendarMonthFolder({ clientId, calendarType, month, shareToken, viewerAuthToken }: { clientId: string; calendarType: 'social' | 'ads'; month: string; shareToken?: string; viewerAuthToken?: string }) {
   const { user, token } = useAuthStore();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
-  const canEdit = user?.role === 'admin' || user?.role === 'operador';
+  const [error, setError] = useState('');
+  const canEdit = !shareToken && (user?.role === 'admin' || user?.role === 'operador');
 
   useEffect(() => {
-    fetch(`/api/calendar-month-folders?client_id=${clientId}&calendar_type=${calendarType}&month=${month}`)
-      .then(r => r.json())
-      .then(json => { setUrl(json.data?.folder_url || ''); setTitle(json.data?.title || ''); })
-      .catch(() => undefined);
-  }, [clientId, calendarType, month]);
+    const controller = new AbortController();
+    setUrl(''); setTitle(''); setError('');
+    const load = async () => {
+      try {
+        const authToken = shareToken ? viewerAuthToken : token;
+        if (shareToken && !authToken) throw new Error('Inicia sesion para ver la carpeta');
+        const endpoint = shareToken ? `/api/calendar-links/${encodeURIComponent(shareToken)}/folders?type=${calendarType}&month=${encodeURIComponent(month)}` : `/api/calendar-month-folders?client_id=${clientId}&calendar_type=${calendarType}&month=${month}`;
+        const res = await fetch(endpoint, { signal: controller.signal, cache: 'no-store', headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'No se pudo cargar la carpeta');
+        setUrl(json.data?.folder_url || ''); setTitle(json.data?.title || '');
+      } catch (e) {
+        if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'No se pudo cargar la carpeta');
+      }
+    };
+    void load();
+    return () => controller.abort();
+  }, [clientId, calendarType, month, shareToken, viewerAuthToken, token]);
 
+  if (error) return <p role="alert" className="mb-4 text-sm text-destructive">Carpeta del mes: {error}</p>;
   const save = async () => {
     setSaving(true);
     try {

@@ -46,9 +46,9 @@ export function Scroller({ children, axis = 'y', className, innerClassName, hint
   const pill = 'absolute z-20 flex items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm backdrop-blur transition-all duration-200 hover:text-foreground tm-press';
 
   return (
-    <div className={cn('relative h-full min-h-0', className)}>
+    <div className={cn('relative h-full min-h-0 min-w-0', className)}>
       <div ref={ref} onScroll={update}
-        className={cn('tm-noscroll h-full', axis === 'y' ? 'overflow-y-auto' : 'overflow-x-auto', innerClassName)}>
+        className={cn('tm-noscroll h-full min-w-0', axis === 'y' ? 'overflow-y-auto overflow-x-hidden [overflow-wrap:anywhere]' : 'overflow-x-auto', innerClassName)}>
         {children}
       </div>
       {axis === 'y' ? (

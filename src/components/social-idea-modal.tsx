@@ -165,13 +165,13 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-dvh w-screen max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
+      <DialogContent showCloseButton={false} className="tm-work-modal flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-dvh w-full max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
         {/* Banner de estado */}
         <div className={cn('shrink-0 px-5 py-1.5 text-[11px] font-black uppercase tracking-widest transition-colors duration-300', banner.banner)}>{banner.label}</div>
 
         {/* Header */}
-          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3">
-            <div className="min-w-[220px] flex-1">
+          <div className="tm-work-header flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3">
+            <div className="min-w-0 basis-[220px] flex-1">
               {editing
                 ? <Input value={title} onChange={e => setTitle(e.target.value)} className="h-10 rounded-xl border-0 bg-background/70 text-lg font-bold" />
                 : <DialogTitle className="truncate text-lg font-bold">{ideaName(idea)}</DialogTitle>}
@@ -180,7 +180,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                 <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', pt.bgColorClass, pt.colorClass)}><PtIcon className="h-3 w-3" /> {pt.label}</span>
               </DialogDescription>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -224,7 +224,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
         {/* Body */}
         <div style={{ ['--cols' as string]: cols }}
-          className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 transition-[grid-template-columns] duration-300 ease-out lg:overflow-hidden lg:[grid-template-columns:var(--cols)]">
+          className="tm-work-body tm-noscroll grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-4 overflow-x-hidden overflow-y-auto p-4 transition-[grid-template-columns] duration-300 ease-out lg:overflow-hidden lg:[grid-template-columns:var(--cols)]">
 
           {/* DETALLE */}
           <aside className="flex min-h-0 flex-col overflow-hidden">
@@ -369,12 +369,12 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
           {/* COMENTARIOS */}
           {isSocial && (
-            <div className="flex h-[60vh] min-h-0 flex-col overflow-hidden rounded-2xl bg-muted/25 p-4 lg:h-auto">
+            <div className="flex h-[60vh] min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-muted/25 p-4 lg:h-auto">
               <p className="mb-3 flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground/80">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/15"><MessageSquare className="h-3.5 w-3.5 text-sky-600" /></span>
                 {publicComments ? 'Comentarios' : `Comentarios (${comments.length})`}
               </p>
-              <div className="min-h-0 flex-1">
+               <div className="min-h-0 min-w-0 flex-1">
                 {publicComments || <SocialComment ideaId={idea.id} comments={comments} loading={loadingComments} onAddComment={addComment} onDeleteComment={deleteComment} onUpdateComment={updateComment} currentUserId={user?.id} />}
               </div>
             </div>
@@ -382,7 +382,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-between bg-muted/20 px-5 py-3">
+        <div className="tm-work-footer flex shrink-0 flex-wrap items-center justify-between gap-2 bg-muted/20 px-5 py-3">
           {confirmDelete ? (
             <div className="tm-pop flex items-center gap-2">
               <span className="text-xs text-muted-foreground">¿Seguro?</span>

@@ -65,7 +65,7 @@ export function CalendarClientView({ clientId, view }: { clientId: string; view:
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="w-full min-w-0 space-y-6 py-6 md:py-10">
       {/* Encabezado */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-center gap-3">
@@ -80,7 +80,7 @@ export function CalendarClientView({ clientId, view }: { clientId: string; view:
             <AvatarFallback className="rounded-2xl bg-tint-blue text-base font-bold text-tint-blue-foreground">{client.name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-semibold tracking-tight md:text-3xl">{client.name}</h1>
+            <h1 className="truncate text-3xl font-medium tracking-tight md:text-4xl">{client.name}</h1>
             <p className="text-sm text-muted-foreground">{view === 'tareas' ? 'Tareas del cliente en el calendario · uso interno' : 'Calendario de publicaciones en redes'}</p>
           </div>
         </div>
@@ -93,11 +93,11 @@ export function CalendarClientView({ clientId, view }: { clientId: string; view:
               return (
                 <Link key={t.key} href={calendarHref(clientId, { view: t.key, month })} scroll={false}
                   className={cn('flex shrink-0 flex-1 items-center gap-2 rounded-full px-4 py-1.5 transition-colors md:flex-none',
-                    on ? 'bg-brand-gradient shadow-brand' : 'text-foreground/75 hover:bg-muted hover:text-foreground')}>
+                    on ? 'bg-foreground text-background' : 'text-foreground/75 hover:bg-muted hover:text-foreground')}>
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="flex flex-col leading-tight">
                     <span className="whitespace-nowrap text-[13px] font-semibold">{t.label}</span>
-                    <span className={cn('flex items-center gap-1 whitespace-nowrap text-[10.5px]', on ? 'text-white/80' : 'text-muted-foreground')}><HintIcon className="h-2.5 w-2.5" />{t.hint}</span>
+                    <span className={cn('flex items-center gap-1 whitespace-nowrap text-[10.5px]', on ? 'text-background/80' : 'text-muted-foreground')}><HintIcon className="h-2.5 w-2.5" />{t.hint}</span>
                   </span>
                 </Link>
               );

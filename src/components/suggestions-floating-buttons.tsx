@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Lightbulb, Bug, ChevronDown, ArrowUpRight } from 'lucide-react';
+import { Lightbulb, Bug, ChevronDown, ArrowUpRight, BookOpen, Palette } from 'lucide-react';
 import { SuggestionComposeDialog } from '@/components/suggestion-compose-dialog';
 import { useSuggestions } from '@/lib/hooks/use-suggestions';
 import type { SuggestionType } from '@/lib/types';
@@ -39,13 +39,20 @@ export function SuggestionsFloatingButtons() {
   return (
     <>
       <div ref={menuRef} className="relative z-40 shrink-0">
-        <button type="button" onClick={() => setMenuOpen(value => !value)} aria-expanded={menuOpen} aria-haspopup="menu" aria-label="Sugerencias y bugs"
-          className="flex h-10 items-center gap-1 rounded-full border border-border bg-card px-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary sm:px-3">
-          <Lightbulb className="h-4 w-4" />
-          <span className="hidden lg:inline">Sugerencias</span>
+        <button type="button" onClick={() => setMenuOpen(value => !value)} aria-expanded={menuOpen} aria-haspopup="menu" aria-label="Recursos, sugerencias y bugs"
+          className="flex h-10 items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/5 px-2.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-500/40 hover:bg-blue-500/10 dark:text-blue-300 sm:px-3">
+          <BookOpen className="h-4 w-4" />
+          <span className="hidden lg:inline">Recursos</span>
           <ChevronDown className={`h-3 w-3 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
         </button>
-        {menuOpen && <div role="menu" className="absolute left-0 top-full z-50 mt-2 w-48 rounded-xl border bg-popover p-1.5 shadow-xl">
+        {menuOpen && <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-1.5 shadow-xl">
+          <Link href="/recursos" role="menuitem" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium hover:bg-muted">
+            <BookOpen className="h-4 w-4 text-primary" /> Centro de recursos
+          </Link>
+          <Link href="/recursos/media-kit" role="menuitem" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium hover:bg-muted">
+            <Palette className="h-4 w-4 text-primary" /> Media Kit / Branding
+          </Link>
+          <div className="my-1 border-t" />
           <button type="button" role="menuitem" onClick={() => open('suggestion')} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-violet-600 hover:bg-violet-500/10 dark:text-violet-400">
             <Lightbulb className="h-4 w-4" /> Enviar sugerencia
           </button>

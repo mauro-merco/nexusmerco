@@ -48,7 +48,7 @@ export function PublicIdeaComments({ idea, shareToken, viewerAuthToken, calendar
     return undefined;
   }
 
-  return <div className="flex h-full min-h-0 flex-col gap-2">
+  return <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
     {loading && <ContentSkeleton variant="comments" label="Cargando comentarios" />}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <SocialComment ideaId={idea.id} comments={data.data} currentUserId={data.user_id}

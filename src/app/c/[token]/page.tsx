@@ -14,7 +14,7 @@ import { getSupabase } from '@/lib/supabase';
 import { CalendarComments } from '@/components/calendar-comments';
 import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
 import { CalendarRecentComments } from '@/components/calendar-recent-comments';
-import { CalendarFolders, DayOverflow } from '@/components/calendar-parts';
+import { CalendarFolders, DayOverflow, CalendarTabs, CalendarTypeFilter, CalendarMonthSummary, CALENDAR_PANEL, CALENDAR_COLUMNS, CALENDAR_TOOLBAR, CALENDAR_DAY } from '@/components/calendar-parts';
 import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
 import { CalendarSearch } from '@/components/calendar-search';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
@@ -22,7 +22,7 @@ import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
 import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import { MarkdownBody } from '@/lib/markdown';
-import type { SocialIdea, IdeaStatus, EcommerceDate, SocialComment, User as NexusUser } from '@/lib/types';
+import type { SocialIdea, IdeaStatus, PostType, EcommerceDate, SocialComment, User as NexusUser } from '@/lib/types';
 import { CalendarPillBody, calendarPillTitle } from '@/components/calendar-pill-body';
 import { POST_TYPE_CONFIG, STATUS_CONFIG, ideaName } from '@/lib/social-config';
 import { TASK_ROLE_CONFIG, TASK_ROLES } from '@/lib/task-config';
@@ -138,7 +138,12 @@ function AuthGate({ token, client, calendarType, onEnter }: {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative">
+    <div className="relative flex min-h-dvh flex-col bg-background px-4 py-6 md:px-8">
+      <header className="flex items-center gap-3 pr-12">
+        <img src="/merco-light-mode.svg" alt="Merco" className="h-6 w-auto dark:hidden" />
+        <img src="/merco-dark-mode.svg" alt="Merco" className="hidden h-6 w-auto dark:block" />
+        <span className="border-l border-border pl-3 text-xs text-muted-foreground">Nexus / Calendarios</span>
+      </header>
       <Button
         variant="ghost"
         size="icon"
@@ -148,28 +153,34 @@ function AuthGate({ token, client, calendarType, onEnter }: {
       >
         {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </Button>
-      <div className="w-full max-w-md space-y-6">
+      <main className="my-auto grid w-full max-w-5xl self-center gap-8 py-12 lg:grid-cols-2 lg:items-center lg:gap-16">
+        <section className="min-w-0 space-y-5">
+          <span className="inline-flex rounded-full bg-tint-blue px-3 py-1.5 text-xs font-medium text-tint-blue-foreground">{calLabel}</span>
+          <h1 className="text-4xl font-light leading-tight tracking-tight md:text-5xl">Un mismo calendario.<br />Todo el contenido a la vista.</h1>
+          <p className="max-w-md text-sm leading-relaxed text-muted-foreground">Revisá las publicaciones, consultá el material y compartí tus comentarios con el equipo desde este espacio.</p>
+        </section>
+        <section className="min-w-0 space-y-6 rounded-[1.6rem] border border-border bg-card p-6 md:p-8" aria-label="Acceso al calendario">
         {client.logo_url ? (
-          <img src={client.logo_url} alt={client.name} className="h-12 mx-auto object-contain" />
+          <img src={client.logo_url} alt={client.name} className="h-14 max-w-full object-contain object-left" />
         ) : (
-          <div className="h-12 w-12 rounded-2xl bg-accent flex items-center justify-center mx-auto">
+          <div className="h-12 w-12 rounded-full bg-tint-blue flex items-center justify-center">
             <span className="text-xl font-bold text-primary">{client.name.charAt(0)}</span>
           </div>
         )}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">{calLabel} · {client.name}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Accedé para ver y comentar el calendario</p>
+        <div>
+          <h2 className="break-words text-2xl font-medium tracking-tight">{client.name}</h2>
+          <p className="text-sm text-muted-foreground mt-2">Ingresá con tu cuenta para ver y comentar el calendario.</p>
         </div>
 
-        <div className="flex rounded-xl bg-muted/40 p-1">
+        <div className="flex rounded-full bg-background p-1" role="group" aria-label="Tipo de acceso">
           <button type="button" onClick={() => { setTab('login'); setLoginError(''); setGuestError(''); }}
-            className={cn('flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
-              tab === 'login' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            aria-pressed={tab === 'login'} className={cn('flex-1 flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-medium transition-colors',
+              tab === 'login' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}>
             <LogIn className="h-4 w-4" /> Como Merco
           </button>
           <button type="button" onClick={() => { setTab('guest'); setLoginError(''); setGuestError(''); }}
-            className={cn('flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
-              tab === 'guest' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            aria-pressed={tab === 'guest'} className={cn('flex-1 flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-medium transition-colors',
+              tab === 'guest' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}>
             <User className="h-4 w-4" /> Como invitado
           </button>
         </div>
@@ -177,22 +188,22 @@ function AuthGate({ token, client, calendarType, onEnter }: {
         {tab === 'login' ? (
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium">Email</label>
-              <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" type="email" className="h-11 rounded-xl bg-muted/35 border-0" autoFocus />
+              <label htmlFor="calendar-email" className="text-sm font-medium">Email</label>
+              <Input id="calendar-email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" type="email" className="h-12 rounded-xl bg-background text-base" autoFocus />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Contraseña</label>
+              <label htmlFor="calendar-password" className="text-sm font-medium">Contraseña</label>
               <div className="relative">
-                <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-                  type={showPassword ? 'text' : 'password'} className="h-11 rounded-xl bg-muted/35 border-0 pr-10" />
-                <button type="button" onClick={() => setShowPassword(v => !v)}
+                <Input id="calendar-password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
+                  type={showPassword ? 'text' : 'password'} className="h-12 rounded-xl bg-background pr-12 text-base" />
+                <button type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPassword} onClick={() => setShowPassword(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
-            {loginError && <p className="text-xs text-destructive">{loginError}</p>}
-            <Button type="submit" variant="default" className="w-full gap-2 h-11 rounded-xl" disabled={loginLoading}>
+            {loginError && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{loginError}</p>}
+            <Button type="submit" variant="default" className="w-full gap-2 h-12 rounded-full bg-foreground text-background hover:bg-foreground/90" disabled={loginLoading}>
               {loginLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
               Ingresar
             </Button>
@@ -200,27 +211,29 @@ function AuthGate({ token, client, calendarType, onEnter }: {
         ) : (
           <form onSubmit={handleGuest} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium">Email</label>
-              <Input value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="tu@email.com" type="email" className="h-11 rounded-xl bg-muted/35 border-0" autoFocus />
+              <label htmlFor="calendar-guest-email" className="text-sm font-medium">Email de invitado</label>
+              <Input id="calendar-guest-email" autoComplete="username" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="tu@email.com" type="email" className="h-12 rounded-xl bg-background text-base" autoFocus />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Contraseña</label>
+              <label htmlFor="calendar-guest-password" className="text-sm font-medium">Contraseña</label>
               <div className="relative">
-                <Input value={guestPassword} onChange={e => setGuestPassword(e.target.value)} placeholder="••••••••"
-                  type={showGuestPassword ? 'text' : 'password'} className="h-11 rounded-xl bg-muted/35 border-0 pr-10" />
-                <button type="button" onClick={() => setShowGuestPassword(v => !v)}
+                <Input id="calendar-guest-password" autoComplete="current-password" value={guestPassword} onChange={e => setGuestPassword(e.target.value)} placeholder="••••••••"
+                  type={showGuestPassword ? 'text' : 'password'} className="h-12 rounded-xl bg-background pr-12 text-base" />
+                <button type="button" aria-label={showGuestPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showGuestPassword} onClick={() => setShowGuestPassword(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showGuestPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {guestError && <p className="text-xs text-destructive">{guestError}</p>}
+              {guestError && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{guestError}</p>}
             </div>
-            <Button type="submit" variant="default" className="w-full gap-2 h-11 rounded-xl" disabled={guestLoading}>
+            <Button type="submit" variant="default" className="w-full gap-2 h-12 rounded-full bg-foreground text-background hover:bg-foreground/90" disabled={guestLoading}>
               {guestLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <User className="h-4 w-4" />} Entrar al calendario
             </Button>
           </form>
         )}
-      </div>
+        <p className="border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">{tab === 'guest' ? 'Usá el email y la contraseña de tu cuenta invitada.' : 'Usá tu cuenta de Merco.'} Si no podés ingresar, contactá al equipo que te compartió el enlace para revisar tu acceso.</p>
+        </section>
+      </main>
     </div>
   );
 }
@@ -265,9 +278,9 @@ function CalendarDay({ dateStr, day, ideas, isToday, isCurrentMonth, ecommerceDa
     <div
       ref={setNodeRef}
       onClick={() => onAddClick(dateStr)}
-      style={{ minHeight: Math.max(132, 90 + ideas.length * 22), ...(active.length > 0 ? { backgroundColor: `${active[0].color}1f` } : isCurrentMonth ? {} : { backgroundColor: 'rgba(148,163,184,0.10)' }) }}
+      style={{ minHeight: Math.max(132, 90 + ideas.length * 22), ...(active.length > 0 ? { backgroundColor: `${active[0].color}14` } : isCurrentMonth ? {} : { backgroundColor: 'rgba(148,163,184,0.10)' }) }}
       className={cn(
-        'tm-fade min-h-[132px] rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group',
+        CALENDAR_DAY,
         !isCurrentMonth && 'grayscale opacity-70',
         isOver ? 'bg-primary/15' : isToday ? 'bg-primary/8' : isCurrentMonth ? 'bg-muted/25 hover:bg-muted/45' : 'bg-muted/12 hover:bg-muted/25',
       )}
@@ -450,6 +463,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const isMobile = useIsMobile();
   const effectiveView: 'month' | 'list' = isMobile ? 'list' : viewMode;
   const [search, setSearch] = useState('');
+  const [activeTypes, setActiveTypes] = useState<Set<PostType>>(new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]));
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
   const [initialIdeaId, setInitialIdeaId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
@@ -689,20 +703,39 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="w-full max-w-[1800px] mx-auto px-2.5 py-4 sm:px-4 md:px-5">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div className="flex items-center gap-3">
+      <header className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-8">
+        <div className="flex shrink-0 items-center gap-3">
+          <img src="/merco-light-mode.svg" alt="Merco" className="h-6 w-auto dark:hidden" />
+          <img src="/merco-dark-mode.svg" alt="Merco" className="hidden h-6 w-auto dark:block" />
+          <span className="border-l border-border pl-3 text-xs text-muted-foreground">Nexus</span>
+        </div>
+        <nav aria-label="Acciones del calendario" className="ml-auto flex items-center gap-2">
+          <button type="button" title="Actualizar" onClick={() => fetchCalendar()} disabled={fetchLoading} aria-label={fetchLoading ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={fetchLoading}
+            className="tm-press flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-60">
+            <RefreshCw aria-hidden="true" className={cn('h-4 w-4', fetchLoading && 'animate-spin')} />
+          </button>
+          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-border bg-card" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}>
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+          <Button variant="outline" size="sm" className="h-10 gap-1.5 rounded-full px-4 text-xs" onClick={handleLogout}>
+            <LogOut className="h-3.5 w-3.5" /> Salir
+          </Button>
+        </nav>
+      </header>
+      <div className="w-full min-w-0 space-y-6 px-4 py-6 md:px-8 md:py-10">
+        <div className="flex min-w-0 items-center justify-between flex-wrap gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             {data.client.logo_url ? (
-              <img src={data.client.logo_url} alt={data.client.name} className="h-10 object-contain" />
+              <img src={data.client.logo_url} alt={data.client.name} className="h-10 max-w-24 shrink-0 object-contain" />
             ) : (
               <div className="h-10 w-10 rounded-2xl bg-accent flex items-center justify-center">
                 <span className="text-xl font-bold text-primary">{data.client.name.charAt(0)}</span>
               </div>
             )}
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 {isAds && <ShoppingBag className="h-4 w-4 text-violet-500" />}
-                <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-foreground">
+                  <h1 className="break-words text-3xl md:text-4xl font-medium tracking-tight text-foreground">
                   {isAds ? 'Piezas para ADS' : 'Calendario de Redes'} · {data.client.name}
                 </h1>
               </div>
@@ -721,11 +754,11 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" title="Actualizar" onClick={() => fetchCalendar()} disabled={fetchLoading} aria-label={fetchLoading ? 'Actualizando calendario' : 'Actualizar calendario'} aria-busy={fetchLoading}
-              className="tm-press flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-60">
-              <RefreshCw aria-hidden="true" className={cn('h-4 w-4', fetchLoading && 'animate-spin')} />
-            </button>
+        </div>
+
+        <div className={CALENDAR_COLUMNS}>
+        <div className="min-w-0 space-y-4">
+          <div className={CALENDAR_TOOLBAR}>
             <div className="hidden md:flex items-center rounded-full border border-border bg-card p-1">
               <button
                 type="button"
@@ -739,25 +772,11 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
                 onClick={() => setViewMode('list')}
                 className={cn('flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors', viewMode === 'list' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}
               >
-                <ListIcon className="h-3.5 w-3.5" /> Lista
+                  <ListIcon className="h-3.5 w-3.5" /> Agenda
               </button>
             </div>
-            <span className="flex h-10 items-center rounded-full bg-brand-gradient px-4 text-sm font-semibold shadow-brand">{monthLabel}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full border border-border bg-card"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-            >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <Button variant="outline" size="sm" className="h-10 gap-1.5 rounded-full px-4 text-xs" onClick={handleLogout}>
-              <LogOut className="h-3.5 w-3.5" /> Salir
-            </Button>
+            <span className="flex h-10 items-center rounded-full border border-border px-4 text-sm font-medium">{monthLabel}</span>
           </div>
-        </div>
-
         {data.ecommerce_dates.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {data.ecommerce_dates.map(ed => (
@@ -770,18 +789,6 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           </div>
         )}
 
-        <div className="flex items-center gap-4 text-xs mb-4 flex-wrap">
-          {Object.entries(POST_TYPE_CONFIG).map(([, cfg]) => {
-            const Icon = cfg.icon;
-            return (
-              <span key={cfg.label} className={cn('flex items-center gap-1.5 font-medium', cfg.colorClass)}>
-                <span className={cn('w-2 h-2 rounded-full', cfg.dotColor)} />
-                <Icon className="h-3.5 w-3.5" /> {cfg.label}
-              </span>
-            );
-          })}
-        </div>
-
         <CalendarSearch
           className="mb-4"
           value={search}
@@ -790,25 +797,28 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           onSelect={setSelectedIdea}
         />
 
-        {viewMonth && <CalendarFolders><CalendarMonthFolder clientId={data.client.id} calendarType={data.calendar_type} month={viewMonth} /><CalendarGeneralFolders clientId={data.client.id} /></CalendarFolders>}
-
+        {viewMonth && <CalendarFolders><CalendarMonthFolder clientId={data.client.id} calendarType={data.calendar_type} month={viewMonth} shareToken={token} viewerAuthToken={viewer?.authToken} /><CalendarGeneralFolders clientId={data.client.id} calendarType={data.calendar_type} shareToken={token} viewerAuthToken={viewer?.authToken} /></CalendarFolders>}
+        <CalendarTypeFilter ideas={data.ideas.filter(idea => idea.publish_date.startsWith(`${viewMonth}-`))} active={activeTypes} onToggle={type => setActiveTypes(current => { const next = new Set(current); if (next.has(type)) next.delete(type); else next.add(type); return next; })} />
 
         {search.trim().length >= 2 ? null : (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-            <Card className="rounded-[1.6rem] border border-border bg-card shadow-none ring-0">
+            <Card className={cn(CALENDAR_PANEL, 'gap-0 py-0 ring-0')}>
               <CardContent className="p-3 md:p-4">
                 {viewMonth && effectiveView === 'month' && (
                   <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                    <CalendarGrid monthStr={viewMonth} ideas={data.ideas} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={handleAddNewIdea} />
+                    <CalendarGrid monthStr={viewMonth} ideas={data.ideas.filter(idea => activeTypes.has(idea.post_type))} ecommerceDates={data.ecommerce_dates} onIdeaClick={setSelectedIdea} onAddClick={handleAddNewIdea} />
                     <DragOverlay>{activeIdea ? <PublicIdeaDot idea={activeIdea} onClick={() => {}} /> : null}</DragOverlay>
                   </DndContext>
                 )}
                 {viewMonth && effectiveView === 'list' && (
-                  <CalendarAgenda ideas={data.ideas.filter(i => i.publish_date.startsWith(viewMonth))} onIdeaClick={setSelectedIdea} emptyLabel="No hay contenido planificado este mes." />
+                  <CalendarAgenda ideas={data.ideas.filter(i => i.publish_date.startsWith(viewMonth) && activeTypes.has(i.post_type))} onIdeaClick={setSelectedIdea} emptyLabel="No hay contenido planificado con estos filtros." />
                 )}
               </CardContent>
             </Card>
-            <CalendarRecentComments
+        )}
+        </div>
+        <aside className="min-w-0 space-y-4">
+          <CalendarMonthSummary ideas={data.ideas} month={viewMonth} />
+          <CalendarRecentComments
               clientId={data.client.id}
               calendarType={calendarType}
               month={viewMonth}
@@ -821,8 +831,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
                 if (idea) setSelectedIdea(idea);
               }}
             />
-          </div>
-        )}
+        </aside>
+        </div>
 
         <div className="flex flex-wrap gap-3 mt-4 text-[11px]">
           {Object.entries(STATUS_CONFIG).map(([, cfg]) => (
@@ -832,8 +842,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           ))}
         </div>
 
-        <CalendarComments
-          className="mt-5"
+        <CalendarTabs first={<CalendarComments
+          className="mt-0"
           clientId={data.client.id}
           calendarType={calendarType}
           month={viewMonth}
@@ -843,10 +853,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           mentionUsers={data.users || []}
           currentUserEmail={viewer?.email}
           title="Comentarios del mes"
-        />
-
-        <CalendarIdeaComments
-          className="mt-5"
+        />} second={<CalendarIdeaComments
+          className="mt-0"
           clientId={data.client.id}
           calendarType={calendarType}
           month={viewMonth}
@@ -860,7 +868,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
             if (idea) setSelectedIdea(idea);
           }}
           title="Comentarios de las ideas"
-        />
+        />} />
       </div>
 
       {selectedIdea && data && (

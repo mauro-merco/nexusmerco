@@ -4,8 +4,29 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Popover, Collapse } from '@/components/task-ui';
 import type { SocialIdea, PostType } from '@/lib/types';
-import { POST_TYPE_CONFIG, ideaName } from '@/lib/social-config';
+import { POST_TYPE_CONFIG, STATUS_CONFIG, ideaName } from '@/lib/social-config';
 import { FolderOpen, ChevronDown, MessageSquare } from 'lucide-react';
+
+export const CALENDAR_PANEL = 'min-w-0 rounded-[1.6rem] border border-border bg-card shadow-none';
+export const CALENDAR_COLUMNS = 'grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]';
+export const CALENDAR_TOOLBAR = 'flex min-w-0 flex-wrap items-center gap-2 rounded-[1.6rem] border border-border bg-card p-3 md:p-4';
+export const CALENDAR_DAY = 'tm-fade min-w-0 rounded-2xl p-2 transition-colors cursor-pointer flex flex-col group';
+
+export function CalendarMonthSummary({ ideas, month }: { ideas: SocialIdea[]; month: string }) {
+  const monthly = ideas.filter(idea => idea.publish_date.startsWith(`${month}-`));
+  return (
+    <section className={cn(CALENDAR_PANEL, 'space-y-4 p-5')} aria-label="Resumen del mes">
+      <p className="text-sm font-medium text-muted-foreground">Este mes</p>
+      <div><p className="text-4xl font-light tracking-tight">{monthly.length}</p><p className="mt-1 text-xs text-muted-foreground">ideas / piezas planificadas</p></div>
+      <div className="space-y-2 border-t border-border pt-4">
+        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+          const count = monthly.filter(idea => idea.status === key).length;
+          return count ? <div key={key} className="flex items-center gap-2 text-xs"><span className={cn('h-2 w-2 shrink-0 rounded-full', cfg.dotColor)} /><span className="flex-1 text-muted-foreground">{cfg.label}</span><span className="font-medium tabular-nums">{count}</span></div> : null;
+        })}
+      </div>
+    </section>
+  );
+}
 
 /** Carpetas (mes + generales) en un acordeón: ocupan 0px hasta que se necesitan. */
 export function CalendarFolders({ children }: { children: ReactNode }) {
@@ -13,9 +34,9 @@ export function CalendarFolders({ children }: { children: ReactNode }) {
   useEffect(() => { try { setOpen(localStorage.getItem('cal-folders-open') === '1'); } catch { /* */ } }, []);
   const toggle = () => setOpen(v => { try { localStorage.setItem('cal-folders-open', v ? '0' : '1'); } catch { /* */ } return !v; });
   return (
-    <div className="rounded-[1.4rem] border border-border bg-card">
+    <div className={CALENDAR_PANEL}>
       <button type="button" onClick={toggle} className="tm-press flex w-full items-center gap-2 px-4 py-2.5 text-left">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15"><FolderOpen className="h-3.5 w-3.5 text-indigo-600" /></span>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tint-blue text-tint-blue-foreground"><FolderOpen className="h-4 w-4" /></span>
         <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-foreground/80">Carpetas</span>
         <span className="text-xs text-muted-foreground">del mes y generales</span>
         <ChevronDown className={cn('ml-auto h-4 w-4 text-muted-foreground transition-transform duration-300', open && 'rotate-180')} />
@@ -71,7 +92,7 @@ export function CalendarTabs({ className, first, second, labels = ['Comentarios 
   const [tab, setTab] = useState(0);
   return (
     <div className={className}>
-      <div className="mb-3 flex w-fit rounded-full border border-border bg-card p-1">
+      <div className="mb-4 flex w-fit max-w-full flex-wrap gap-1 rounded-[1.4rem] border border-border bg-card p-1">
         {labels.map((l, i) => (
           <button key={l} type="button" onClick={() => setTab(i)}
             className={cn('tm-press flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition-colors', tab === i ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}>

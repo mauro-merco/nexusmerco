@@ -6,14 +6,31 @@ import { useAuthStore } from '@/store/auth-store';
 
 type Folder = { id: string; title: string; folder_url: string };
 
-export function CalendarGeneralFolders({ clientId }: { clientId: string }) {
+export function CalendarGeneralFolders({ clientId, shareToken, viewerAuthToken, calendarType = 'social' }: { clientId: string; shareToken?: string; viewerAuthToken?: string; calendarType?: 'social' | 'ads' }) {
   const { user, token } = useAuthStore();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
-  const canEdit = user?.role === 'admin' || user?.role === 'operador';
-  const load = () => fetch(`/api/calendar-general-folders?client_id=${clientId}`).then(r => r.json()).then(j => setFolders(j.data || [])).catch(() => setFolders([]));
-  useEffect(() => { load(); }, [clientId]);
+  const [error, setError] = useState('');
+  const canEdit = !shareToken && (user?.role === 'admin' || user?.role === 'operador');
+  const endpoint = shareToken ? `/api/calendar-links/${encodeURIComponent(shareToken)}/folders?kind=general&type=${calendarType}` : `/api/calendar-general-folders?client_id=${clientId}`;
+  const authToken = shareToken ? viewerAuthToken : token;
+  const load = async (signal?: AbortSignal) => {
+    setError('');
+    try {
+      if (shareToken && !authToken) throw new Error('Inicia sesion para ver las carpetas');
+      const res = await fetch(endpoint, { signal, cache: 'no-store', headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'No se pudieron cargar las carpetas');
+      setFolders(json.data || []);
+    } catch (e) {
+      if (signal?.aborted) return;
+      setFolders([]);
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las carpetas');
+    }
+  };
+  useEffect(() => { const controller = new AbortController(); setFolders([]); void load(controller.signal); return () => controller.abort(); }, [endpoint, authToken]);
+  if (error) return <p role="alert" className="mb-4 text-sm text-destructive">Carpetas generales: {error}</p>;
   const add = async () => {
     if (!title.trim() || !url.trim()) return;
     await fetch('/api/calendar-general-folders', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ client_id: clientId, title, folder_url: url }) });

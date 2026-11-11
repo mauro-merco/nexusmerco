@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,7 @@ import {
   Building2, BarChart3, Plus,
   LayoutDashboard, Search, Megaphone, Globe, Activity, Share2,
   ArrowLeft, HelpCircle, ChevronRight, Calendar, Settings, Pencil, Trash2, Loader2, ShoppingBag, KanbanSquare,
-  LayoutGrid, List, ArrowUpRight,
+  LayoutGrid, List, ArrowUpRight, BookOpenText,
 } from 'lucide-react';
 
 const TAB_TOOLTIPS: Record<string, string> = {
@@ -514,6 +515,29 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {isAdminOrTeam && (
+        <Link
+          href="/blog"
+          className="group flex flex-col gap-4 rounded-[1.6rem] border border-border bg-card bg-gradient-to-r from-violet-500/5 via-transparent to-blue-500/5 p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center md:px-6"
+        >
+          <span className="flex items-center gap-4 sm:flex-1">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-tint-blue text-tint-blue-foreground">
+              <BookOpenText aria-hidden="true" className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[17px] font-medium tracking-tight">Blog de Merco</span>
+              <span className="mt-1 block text-[13px] leading-relaxed text-muted-foreground">Ideas y aprendizajes para compartir y seguir creciendo en equipo.</span>
+            </span>
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-3 self-start rounded-full border border-border bg-card py-2 pl-4 pr-2 text-[13px] font-semibold sm:self-auto">
+            Abrir blog
+            <span className="bg-brand-gradient flex h-8 w-8 items-center justify-center rounded-full">
+              <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+            </span>
+          </span>
+        </Link>
+      )}
 
       {/* Loading state */}
       {loading ? (
