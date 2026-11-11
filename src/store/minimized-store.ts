@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type MinimizedItemType = 'task' | 'idea';
+export type MinimizedItemType = 'task' | 'idea' | 'doc';
 
 export interface MinimizedItem {
   id: string;

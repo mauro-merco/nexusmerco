@@ -6,9 +6,11 @@ import { useSocialIdeas } from '@/lib/hooks/use-social-ideas';
 import { useAdsIdeas } from '@/lib/hooks/use-ads-ideas';
 import { TaskDetailModal } from '@/components/task-detail-modal';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
+import { DocumentModal } from '@/components/document-modal';
 import { useState } from 'react';
-import { X, CheckSquare, Lightbulb } from 'lucide-react';
+import { X, CheckSquare, Lightbulb, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ideaName } from '@/lib/social-config';
 import type { Task, SocialIdea } from '@/lib/types';
 
 export function MinimizedDock() {
@@ -20,7 +22,9 @@ export function MinimizedDock() {
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const [openIdea, setOpenIdea] = useState<{ idea: SocialIdea; type: 'social' | 'ads' } | null>(null);
 
-  if (items.length === 0 && !openTask && !openIdea) return null;
+  const [openDocId, setOpenDocId] = useState<string | null>(null);
+
+  if (items.length === 0 && !openTask && !openIdea && !openDocId) return null;
 
   const handleRestore = (item: (typeof items)[number]) => {
     if (item.type === 'task') {
@@ -34,6 +38,12 @@ export function MinimizedDock() {
         remove(item.id);
         return;
       }
+    }
+    if (item.type === 'doc') {
+      remove(item.id);
+      setOpenDocId(null);
+      setTimeout(() => setOpenDocId(item.id), 10);
+      return;
     }
     if (item.type === 'idea') {
       const i = (item as any).idea || (item.ideaCalendarType === 'ads' ? adsIdeas : socialIdeas).find((x) => x.id === item.id);
@@ -61,8 +71,8 @@ export function MinimizedDock() {
               title={item.title}
             >
             <div role="button" tabIndex={0} onMouseDown={(e) => { e.preventDefault(); }} onClick={() => handleRestore(item)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRestore(item); } }} className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer">
-              <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', item.type === 'task' ? 'bg-blue-500/15 text-blue-600' : 'bg-pink-500/15 text-pink-600')}>
-                {item.type === 'task' ? <CheckSquare className="h-3.5 w-3.5" /> : <Lightbulb className="h-3.5 w-3.5" />}
+              <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', item.type === 'task' ? 'bg-blue-500/15 text-blue-600' : item.type === 'doc' ? 'bg-violet-500/15 text-violet-600' : 'bg-pink-500/15 text-pink-600')}>
+                {item.type === 'task' ? <CheckSquare className="h-3.5 w-3.5" /> : item.type === 'doc' ? <FileText className="h-3.5 w-3.5" /> : <Lightbulb className="h-3.5 w-3.5" />}
               </span>
               <div className="min-w-0 text-left">
                 <p className="text-xs font-medium truncate">{item.title}</p>
@@ -97,7 +107,7 @@ export function MinimizedDock() {
           key={`idea-${openIdea.idea.id}`}
           idea={openIdea.idea}
           open
-          onOpenChange={(o) => { if (!o) { const cur = openIdea; setOpenIdea(null); minimize({ id: cur.idea.id, type: 'idea', title: cur.idea.eje_contenido || cur.idea.title, subtitle: (cur.idea as any).client?.name || undefined, clientId: (cur.idea as any).client_id || null, routeContext: cur.type === 'ads' ? 'ads' : 'social', ideaCalendarType: cur.type, idea: JSON.parse(JSON.stringify(cur.idea)) } as any); } }}
+          onOpenChange={(o) => { if (!o) { const cur = openIdea; setOpenIdea(null); minimize({ id: cur.idea.id, type: 'idea', title: ideaName(cur.idea), subtitle: (cur.idea as any).client?.name || undefined, clientId: (cur.idea as any).client_id || null, routeContext: cur.type === 'ads' ? 'ads' : 'social', ideaCalendarType: cur.type, idea: JSON.parse(JSON.stringify(cur.idea)) } as any); } }}
           onIdeaUpdated={(i: any) => {
             if (openIdea.type === 'ads') void updateAdsIdea(i.id, i);
             else void updateSocialIdea(i.id, i);
@@ -112,6 +122,14 @@ export function MinimizedDock() {
           }}
           users={[]}
           calendarType={openIdea.type}
+        />
+      )}
+      {openDocId && (
+        <DocumentModal
+          key={`doc-${openDocId}`}
+          documentId={openDocId}
+          onOpenChange={(o) => { if (!o) setOpenDocId(null); }}
+          onDeleted={(id) => { setOpenDocId(null); remove(id); }}
         />
       )}
     </>
