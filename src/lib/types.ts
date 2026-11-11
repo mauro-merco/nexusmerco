@@ -337,6 +337,17 @@ export interface Reminder {
   created_at: string;
 }
 
+export type DocumentKind = 'documento' | 'nota' | 'reunion' | 'brief';
+export type DocumentStatus = 'borrador' | 'en_revision' | 'aprobado' | 'final';
+
+export interface DocumentLinkedTask {
+  id: string;
+  title: string;
+  status: string;
+  client_id: string | null;
+  due_date?: string | null;
+}
+
 export interface NexusDocument {
   id: string;
   owner_id: string;
@@ -344,13 +355,40 @@ export interface NexusDocument {
   client?: Client | null;
   title: string;
   content: string;
+  excerpt?: string;
   is_public?: boolean;
+  kind?: DocumentKind;
+  status?: DocumentStatus;
+  tags?: string[];
+  color?: string | null;
+  icon?: string | null;
+  archived_at?: string | null;
+  last_edited_by?: string | null;
+  last_editor?: User | null;
+  linked_tasks?: DocumentLinkedTask[];
+  comment_count?: number;
+  is_favorite?: boolean;
+  last_viewed_at?: string | null;
   created_at: string;
   updated_at: string;
   owner?: User | null;
   shared_users?: User[];
   is_shared_with_me?: boolean;
+  is_client_doc?: boolean;
   can_edit?: boolean;
+}
+
+export interface DocumentComment {
+  id: string;
+  document_id: string;
+  user_id: string;
+  parent_id: string | null;
+  content: string;
+  resolved: boolean;
+  created_at: string;
+  updated_at: string;
+  user?: Pick<User, 'id' | 'full_name' | 'avatar_url' | 'email'> | null;
+  replies?: DocumentComment[];
 }
 
 export interface ClientWallMessage {

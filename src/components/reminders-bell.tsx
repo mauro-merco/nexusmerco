@@ -50,11 +50,10 @@ export function RemindersBell() {
       <Button
         variant="ghost"
         size="icon"
-        className={cn('group relative h-9 w-9 rounded-xl hover:bg-muted/50 transition-all', open && 'bg-muted/60')}
+        className={cn('group relative h-10 w-10 rounded-full border border-border bg-card hover:bg-muted transition-all', open && 'bg-muted')}
         onClick={() => setOpen(!open)}
         aria-label="Recordatorios"
       >
-        <span className="bg-gradient-tech pointer-events-none absolute -inset-1 rounded-xl opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-30" />
         <AlarmClock className={cn('relative h-4.5 w-4.5 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110', pendingCount > 0 ? 'text-amber-400' : 'text-muted-foreground group-hover:text-foreground')} />
         {pendingCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-amber-500 text-[9px] font-bold text-white flex items-center justify-center px-1">

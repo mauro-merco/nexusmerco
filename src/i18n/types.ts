@@ -4,7 +4,7 @@ export type TranslationKey =
   | 'nav.dashboard' | 'nav.dataCenter' | 'nav.wizard' | 'nav.operations' | 'nav.clients'
   | 'nav.analysis' | 'nav.integrations' | 'nav.insights' | 'nav.calendar'
   | 'nav.documents' | 'nav.messages' | 'nav.salas' | 'nav.suggestions' | 'nav.development' | 'nav.settings' | 'nav.logout'
-  | 'nav.apps'
+  | 'nav.apps' | 'nav.groupMain' | 'nav.groupOps' | 'nav.groupResources'
   | 'nav.lightMode' | 'nav.darkMode' | 'nav.english' | 'nav.spanish'
   | 'login.welcome' | 'login.subtitle' | 'login.devMode'
   | 'login.loginAdmin' | 'login.loginTeam' | 'login.loginClient'

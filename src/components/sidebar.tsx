@@ -22,8 +22,8 @@ import {
   Lightbulb,
   FileCode,
   MessagesSquare,
-  ChevronLeft,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -54,6 +54,13 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const STORAGE_KEY = 'nexus-sidebar-collapsed';
 
+// Visual grouping only: same items, same permissions, same navigation.
+const NAV_GROUPS: { key: string; hrefs: string[] }[] = [
+  { key: 'groupMain', hrefs: ['/dashboard', '/datos', '/calendarios'] },
+  { key: 'groupOps', hrefs: ['/operations', '/team', '/salas'] },
+  { key: 'groupResources', hrefs: ['/documentos', '/sugerencias', '/desarrollo'] },
+];
+
 function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolean; onToggle: () => void; onNavigate: (href: string, label: string) => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
@@ -63,16 +70,32 @@ function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolea
     (item) => hasModuleAccess(user, item.moduleId)
   );
 
+  const grouped = NAV_GROUPS.map((g) => ({
+    key: g.key,
+    items: visibleItems.filter((item) => g.hrefs.includes(item.href)),
+  }));
+  const ungrouped = visibleItems.filter((item) => !NAV_GROUPS.some((g) => g.hrefs.includes(item.href)));
+  if (ungrouped.length) grouped[grouped.length - 1].items.push(...ungrouped);
+
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+
+  const itemClass = (active: boolean) =>
+    cn(
+      'group w-full flex items-center gap-3 rounded-full px-3.5 h-10 text-[13px] font-medium transition-colors',
+      collapsed && 'justify-center px-0',
+      active
+        ? 'bg-brand-gradient shadow-brand font-semibold'
+        : 'text-sidebar-foreground/80 hover:bg-muted hover:text-foreground'
+    );
 
   return (
     <div
       className={cn(
-        'hidden md:flex flex-col shrink-0 h-screen bg-card border-r border-border/60 transition-[width] duration-200',
-        collapsed ? 'w-[72px]' : 'w-[224px]'
+        'hidden md:flex flex-col shrink-0 h-screen bg-sidebar border-r border-sidebar-border transition-[width] duration-200',
+        collapsed ? 'w-[76px]' : 'w-[240px]'
       )}
     >
-      <div className={cn('flex items-center gap-2.5 h-12 shrink-0 px-3', collapsed && 'justify-center px-0')}>
+      <div className={cn('flex items-center justify-between gap-2 h-16 shrink-0 px-5', collapsed && 'justify-center px-0')}>
         <button
           type="button"
           onClick={() => onNavigate('/dashboard', _('nav.dashboard'))}
@@ -83,81 +106,109 @@ function DesktopSidebar({ collapsed, onToggle, onNavigate }: { collapsed: boolea
             <img src="/merco-iso.svg" alt="Merco" className="h-[19px] w-auto" />
           ) : (
             <>
-              <img src="/merco-light-mode.svg" alt="Merco Nexus" className="h-[18px] w-auto dark:hidden" />
-              <img src="/merco-dark-mode.svg" alt="Merco Nexus" className="hidden h-[18px] w-auto dark:block" />
+              <img src="/merco-light-mode.svg" alt="Merco Nexus" className="h-[17px] w-auto dark:hidden" />
+              <img src="/merco-dark-mode.svg" alt="Merco Nexus" className="hidden h-[17px] w-auto dark:block" />
             </>
           )}
         </button>
-      </div>
-
-      <div className="sidebar-scroll flex-1 overflow-y-auto px-2.5 py-2 space-y-0.5">
-        {visibleItems.map((item) => {
-          const Icon = iconMap[item.icon];
-          const active = isActive(item.href);
-          return (
-            <button
-              key={item.href}
-              type="button"
-              title={collapsed ? _(`nav.${item.label}`) : undefined}
-              onClick={() => onNavigate(item.href, _(`nav.${item.label}`))}
-              className={cn(
-                'group w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors',
-                collapsed && 'justify-center px-0 h-11',
-                active ? 'bg-accent text-accent-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
-              {!collapsed && <span className="truncate">{_(`nav.${item.label}`)}</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="px-2.5 pb-2">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-          className={cn('w-full flex items-center rounded-xl h-9 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors', collapsed ? 'justify-center' : 'justify-end px-2')}
-        >
-          {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
-        </button>
-      </div>
-
-      <div className={cn('flex items-center gap-2 border-t border-border/60 px-2.5 py-2.5', collapsed && 'flex-col')}>
-        {!collapsed && user && (
-          <>
-            {user.avatar_url ? (
-              <img src={user.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover border border-border shrink-0" />
-            ) : (
-              <div className="bg-gradient-tech flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white">
-                {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold truncate">{user.full_name}</p>
-              <p className="text-[9.5px] text-muted-foreground truncate">{user.role === 'admin' ? 'Admin' : user.role === 'operador' ? 'Operador' : 'Cliente'}</p>
-            </div>
-          </>
-        )}
-        <div className={cn('flex items-center gap-1', collapsed && 'flex-col gap-1.5 mt-1')}>
-          <LangToggle collapsed />
-          <ThemeToggle collapsed />
+        {!collapsed && (
           <button
             type="button"
-            onClick={() => onNavigate('/settings', _('nav.settings'))}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
-            aria-label={_('nav.settings')}
+            onClick={onToggle}
+            aria-label="Colapsar menú"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            <Settings className="h-3.5 w-3.5" />
+            <PanelLeftClose className="h-[17px] w-[17px]" />
           </button>
+        )}
+      </div>
+
+      <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 pb-2">
+        {grouped.map((group, gi) =>
+          group.items.length === 0 ? null : (
+            <div key={group.key} className={cn(gi > 0 && 'mt-4')}>
+              {collapsed ? (
+                gi > 0 && <div className="mx-3 mb-3 h-px bg-sidebar-border" />
+              ) : (
+                <p className="px-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+                  {_(`nav.${group.key}`)}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const Icon = iconMap[item.icon];
+                  const active = isActive(item.href);
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      title={collapsed ? _(`nav.${item.label}`) : undefined}
+                      aria-current={active ? 'page' : undefined}
+                      onClick={() => onNavigate(item.href, _(`nav.${item.label}`))}
+                      className={itemClass(active)}
+                    >
+                      <Icon className="h-[18px] w-[18px] shrink-0" />
+                      {!collapsed && <span className="truncate">{_(`nav.${item.label}`)}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )
+        )}
+      </nav>
+
+      <div className="px-3 pb-2 space-y-0.5">
+        {collapsed && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label="Expandir menú"
+            className="w-full flex items-center justify-center rounded-full h-10 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <PanelLeftOpen className="h-[17px] w-[17px]" />
+          </button>
+        )}
+        <div className={cn('flex items-center gap-1', collapsed && 'flex-col')}>
+          <button
+            type="button"
+            title={collapsed ? _('nav.settings') : undefined}
+            onClick={() => onNavigate('/settings', _('nav.settings'))}
+            className={cn(itemClass(isActive('/settings')), 'flex-1')}
+          >
+            <Settings className="h-[18px] w-[18px] shrink-0" />
+            {!collapsed && <span className="truncate">{_('nav.settings')}</span>}
+          </button>
+          <LangToggle collapsed />
+          <ThemeToggle collapsed />
+        </div>
+      </div>
+
+      <div className={cn('flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3', collapsed && 'flex-col px-2 gap-1.5')}>
+        {user && (
+          user.avatar_url ? (
+            <img src={user.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
+          ) : (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-[12px] font-bold">
+              {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+            </div>
+          )
+        )}
+        {!collapsed && user && (
+          <div className="min-w-0 flex-1">
+            <p className="text-[12.5px] font-semibold truncate">{user.full_name}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{user.role === 'admin' ? 'Admin' : user.role === 'operador' ? 'Operador' : 'Cliente'}</p>
+          </div>
+        )}
+        <div className="flex items-center">
           <button
             type="button"
             onClick={logout}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
             aria-label={_('nav.logout')}
+            title={_('nav.logout')}
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>

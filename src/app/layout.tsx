@@ -1,6 +1,14 @@
 import type { Metadata } from 'next';
+import { DM_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers';
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-dm-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Nexus Marketing OS',
@@ -15,7 +23,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className="h-full antialiased"
+      className={`${dmSans.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full" suppressHydrationWarning>

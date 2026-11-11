@@ -45,7 +45,7 @@ export function MessagesBell() {
       <Button
         variant="ghost"
         size="icon"
-        className={cn('relative h-9 w-9 rounded-xl hover:bg-muted/50 transition-colors', open && 'bg-muted/60')}
+        className={cn('relative h-10 w-10 rounded-full border border-border bg-card hover:bg-muted transition-colors', open && 'bg-muted')}
         onClick={() => setOpen(!open)}
         aria-label="Mensajes"
       >

@@ -40,7 +40,7 @@ export function SuggestionsFloatingButtons() {
     <>
       <div ref={menuRef} className="relative z-40 shrink-0">
         <button type="button" onClick={() => setMenuOpen(value => !value)} aria-expanded={menuOpen} aria-haspopup="menu" aria-label="Sugerencias y bugs"
-          className="flex h-9 items-center gap-1 rounded-xl border border-border bg-card px-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary sm:px-3">
+          className="flex h-10 items-center gap-1 rounded-full border border-border bg-card px-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary sm:px-3">
           <Lightbulb className="h-4 w-4" />
           <span className="hidden lg:inline">Sugerencias</span>
           <ChevronDown className={`h-3 w-3 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />

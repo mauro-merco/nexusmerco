@@ -54,16 +54,16 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-14 shrink-0 bg-background flex items-center justify-between px-4 gap-2">
-          <div className="flex min-w-0 flex-1 items-center justify-center gap-2 px-1 sm:px-2">
-            <SuggestionsFloatingButtons />
+        <header className="h-16 shrink-0 bg-background flex items-center justify-between gap-3 px-4 md:px-8">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <GlobalSearch />
+            <SuggestionsFloatingButtons />
           </div>
           <div className="flex items-center gap-2">
             {(user.role === 'admin' || user.role === 'operador') && (
-              <Button render={<Link href="/blog" />} nativeButton={false} variant="outline" size="sm" className="h-9 rounded-xl border-violet-500/30 bg-violet-500/10 text-violet-700 hover:bg-violet-500/20 dark:text-violet-200">
+              <Button render={<Link href="/blog" />} nativeButton={false} variant="outline" size="sm" className="h-10 rounded-full border-border bg-card px-4 text-foreground hover:bg-muted">
                 <BookOpenText className="h-4 w-4" />
-                <span className="hidden lg:inline">BLOG DE MERCO</span>
+                <span className="hidden lg:inline">Blog de Merco</span>
               </Button>
             )}
             <MessagesBell />
@@ -73,7 +73,7 @@ export default function DashboardLayout({
           </div>
         </header>
         {/* Main content */}
-        <main className="min-h-0 flex-1 overflow-y-auto bg-background p-4 pb-20 md:pb-4">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-background px-4 pt-2 pb-20 md:px-8 md:pb-8">
           {children}
         </main>
       </div>
