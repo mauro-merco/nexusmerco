@@ -75,11 +75,11 @@ export function DevelopmentLogPanel() {
   const sortedDates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
 
   return (
-    <Card className="border-0 shadow-sm">
+    <Card className="min-w-0 rounded-[1.6rem] border bg-card shadow-none">
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <CardTitle className="text-gradient-tech">Reporte de Desarrollo</CardTitle>
+            <CardTitle className="text-xl font-medium tracking-tight">Reporte de desarrollo</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Registro de commits, implementaciones y cambios de código
             </p>
@@ -87,6 +87,7 @@ export function DevelopmentLogPanel() {
           <div className="flex items-center gap-2 flex-wrap">
             <select
               value={days}
+              aria-label="Período del reporte"
               onChange={(e) => setDays(Number(e.target.value))}
               className="h-9 rounded-lg border bg-background px-3 text-sm"
             >
@@ -99,6 +100,7 @@ export function DevelopmentLogPanel() {
 
             <select
               value={categoryFilter || ''}
+              aria-label="Categoría de desarrollo"
               onChange={(e) => setCategoryFilter(e.target.value || null)}
               className="h-9 rounded-lg border bg-background px-3 text-sm"
             >
@@ -110,6 +112,7 @@ export function DevelopmentLogPanel() {
 
             <select
               value={deployedFilter || ''}
+              aria-label="Estado de despliegue"
               onChange={(e) => setDeployedFilter(e.target.value || null)}
               className="h-9 rounded-lg border bg-background px-3 text-sm"
             >
@@ -118,7 +121,7 @@ export function DevelopmentLogPanel() {
               <option value="false">Pendiente</option>
             </select>
 
-            <Button size="sm" variant="outline" onClick={fetchLogs} className="gap-2">
+            <Button size="sm" variant="outline" onClick={fetchLogs} className="h-10 gap-2 rounded-full">
               Actualizar
             </Button>
           </div>
@@ -154,12 +157,12 @@ export function DevelopmentLogPanel() {
                       <div
                         key={log.id}
                         className={cn(
-                          'group relative rounded-xl border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md',
-                          log.priority === 'critical' && 'border-red-500/50 bg-red-500/5 shadow-lg shadow-red-500/10'
+                          'group relative rounded-2xl border bg-card p-4 transition-colors hover:border-primary/30',
+                          log.priority === 'critical' && 'border-red-500/50 bg-red-500/5'
                         )}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', cfg.bg)}>
+                          <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', cfg.bg)}>
                             <Icon className={cn('h-5 w-5', cfg.color)} />
                           </div>
 

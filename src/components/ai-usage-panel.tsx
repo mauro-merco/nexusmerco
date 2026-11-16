@@ -85,11 +85,11 @@ export function AiUsagePanel() {
   const overview = data?.overview;
 
   return (
-    <div className="space-y-4 mt-4">
+    <div className="min-w-0 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Sparkles className="h-4 w-4" />
-          <span>Consumo del asistente IA (opencode local)</span>
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-tint-blue text-tint-blue-foreground"><Sparkles className="h-5 w-5" /></span>
+          <div><h2 className="text-xl font-medium tracking-tight">Uso del asistente IA</h2><p className="mt-1 text-xs text-muted-foreground">Consumo registrado por opencode local</p></div>
         </div>
         <div className="flex items-center gap-1">
           {PERIODS.map((p) => (
@@ -97,7 +97,8 @@ export function AiUsagePanel() {
               key={p.value}
               size="sm"
               variant={period === p.value ? 'default' : 'outline'}
-              className="h-7 px-3 text-xs"
+              aria-pressed={period === p.value}
+              className={cn('h-10 rounded-full px-4 text-xs shadow-none', period === p.value && 'bg-[#172B4D] text-white hover:bg-[#172B4D]/90')}
               onClick={() => setPeriod(p.value)}
             >
               {p.label}
@@ -113,7 +114,7 @@ export function AiUsagePanel() {
       {error && <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
 
       {!loading && !error && data && !data.available && (
-        <div className="rounded-xl border p-6 text-center text-sm text-muted-foreground space-y-2">
+        <div className="rounded-[1.6rem] border bg-card p-8 text-center text-sm text-muted-foreground space-y-2">
           <Sparkles className="h-6 w-6 mx-auto opacity-40" />
           <p>No se encontró la base de datos local de opencode en este servidor.</p>
           <p className="text-xs text-muted-foreground/70">
@@ -150,7 +151,7 @@ export function AiUsagePanel() {
             />
           </div>
 
-          <div className="rounded-xl border p-4 space-y-1.5">
+          <div className="rounded-[1.6rem] border bg-card p-5 space-y-3 md:p-6">
             <p className="text-xs font-semibold text-muted-foreground">Tokens consumidos</p>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
               <span>Entrada <strong>{fmtCompact(overview.inputTokens)}</strong></span>
@@ -161,7 +162,7 @@ export function AiUsagePanel() {
           </div>
 
           {data.models && data.models.length > 0 && (
-            <div className="rounded-xl border overflow-hidden">
+            <div className="min-w-0 rounded-[1.6rem] border bg-card overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30 text-left text-xs text-muted-foreground">
@@ -225,12 +226,12 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border p-4 space-y-2">
+    <div className="min-w-0 rounded-[1.6rem] border bg-card p-5 space-y-4 md:p-6">
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {icon}
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tint-blue text-tint-blue-foreground">{icon}</span>
         <span>{label}</span>
       </div>
-      <p className="text-xl font-bold leading-none">{value}</p>
+      <p className="break-words text-2xl font-normal tracking-tight leading-tight">{value}</p>
       {sub && <p className="text-xs text-muted-foreground/70">{sub}</p>}
     </div>
   );

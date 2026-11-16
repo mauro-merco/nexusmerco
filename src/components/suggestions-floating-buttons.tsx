@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Lightbulb, Bug, ChevronDown, ArrowUpRight, BookOpen, Palette } from 'lucide-react';
+import { Lightbulb, Bug, ChevronDown, ArrowUpRight, BookOpen, Palette, Route } from 'lucide-react';
+import { useAuthStore } from '@/store/auth-store';
 import { SuggestionComposeDialog } from '@/components/suggestion-compose-dialog';
 import { useSuggestions } from '@/lib/hooks/use-suggestions';
 import type { SuggestionType } from '@/lib/types';
 
 export function SuggestionsFloatingButtons() {
+  const user = useAuthStore(state => state.user);
   const { create } = useSuggestions();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -52,6 +54,9 @@ export function SuggestionsFloatingButtons() {
           <Link href="/recursos/media-kit" role="menuitem" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium hover:bg-muted">
             <Palette className="h-4 w-4 text-primary" /> Media Kit / Branding
           </Link>
+          {(user?.role === 'admin' || user?.role === 'operador') && <Link href="/hoja-de-ruta" role="menuitem" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium hover:bg-muted">
+            <Route className="h-4 w-4 text-primary" /> Hoja de ruta
+          </Link>}
           <div className="my-1 border-t" />
           <button type="button" role="menuitem" onClick={() => open('suggestion')} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-violet-600 hover:bg-violet-500/10 dark:text-violet-400">
             <Lightbulb className="h-4 w-4" /> Enviar sugerencia

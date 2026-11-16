@@ -15,7 +15,7 @@ import { ALL_MODULES, DEFAULT_MODULES } from '@/lib/types';
 import { AiUsagePanel } from '@/components/ai-usage-panel';
 import { DevelopmentLogPanel } from '@/components/development-log-panel';
 import {
-  Loader2, Check, Plus, Trash2, Users, UserCog, Shield, Eye, EyeOff, X,
+  Loader2, Check, Plus, Trash2, Users, UserCog, Shield, Eye, EyeOff, X, Sparkles, FileCode, Settings, ChevronRight,
 } from 'lucide-react';
 
 interface ManagedUser {
@@ -41,6 +41,7 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   documentos: 'Documentos',
   mensajes: 'Mensajes',
   salas: 'Salas',
+  roadmap: 'Hoja de ruta (equipo interno)',
   sugerencias: 'Sugerencias',
   desarrollo: 'Reporte diario',
 };
@@ -62,18 +63,26 @@ export default function SettingsPage() {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="w-full min-w-0 space-y-6 pt-8">
-      <div>
-        <h1 className="text-lg font-bold">Configuración</h1>
-        <p className="text-sm text-muted-foreground">Gestioná tu perfil y los usuarios de la plataforma.</p>
+    <div className="settings-page w-full min-w-0 space-y-7 pb-4 pt-4">
+      <div className="space-y-4">
+        <nav aria-label="Ruta de navegación" className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Mi espacio</span><ChevronRight className="h-3 w-3" /><span className="text-foreground">Configuración</span>
+        </nav>
+        <div className="flex items-start gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-tint-blue text-tint-blue-foreground"><Settings className="h-5 w-5" /></span>
+          <div>
+            <h1 className="text-3xl font-normal tracking-tight md:text-4xl">Configuración</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Tu perfil, la seguridad de tu cuenta y las herramientas de tu espacio.</p>
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue={isAdmin ? 'users' : 'profile'}>
-        <TabsList>
-          <TabsTrigger value="profile">Mi perfil</TabsTrigger>
-          {isAdmin && <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>}
-          <TabsTrigger value="ai">Uso IA</TabsTrigger>
-          {(isAdmin || user?.role === 'operador') && <TabsTrigger value="dev">Desarrollo</TabsTrigger>}
+      <Tabs defaultValue={isAdmin ? 'users' : 'profile'} className="min-w-0 space-y-6">
+        <TabsList role="tablist" aria-label="Secciones de configuración" className="h-auto w-full flex-wrap justify-start gap-2 rounded-[1.6rem] border bg-card p-2">
+          <TabsTrigger value="profile"><UserCog className="mr-2 h-4 w-4" />Mi perfil</TabsTrigger>
+          {isAdmin && <TabsTrigger value="users"><Users className="mr-2 h-4 w-4" />Gestión de usuarios</TabsTrigger>}
+          <TabsTrigger value="ai"><Sparkles className="mr-2 h-4 w-4" />Uso IA</TabsTrigger>
+          {(isAdmin || user?.role === 'operador') && <TabsTrigger value="dev"><FileCode className="mr-2 h-4 w-4" />Desarrollo</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="profile">
@@ -164,34 +173,38 @@ function ProfileTab() {
   };
 
   return (
-    <div className="max-w-lg space-y-6 mt-4">
-      <div className="rounded-xl border p-4 space-y-4">
-        <div className="space-y-1.5">
-          <Label>Nombre completo</Label>
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre y apellido" />
+    <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="rounded-[1.6rem] border bg-card p-5 space-y-5 md:p-7">
+        <div className="border-b pb-5">
+          <h2 className="text-xl font-medium tracking-tight">Información personal</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Elegí cómo te ve el equipo y qué compartís en tu perfil.</p>
         </div>
         <div className="space-y-1.5">
-          <Label>Email</Label>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" />
+          <Label htmlFor="profile-name">Nombre completo</Label>
+          <Input id="profile-name" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre y apellido" />
         </div>
         <div className="space-y-1.5">
-          <Label>Profesión o cargo</Label>
-          <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Ej: Performance Media Buyer" />
+          <Label htmlFor="profile-email">Email</Label>
+          <Input id="profile-email" autoComplete="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" />
         </div>
         <div className="space-y-1.5">
-          <Label>Bio</Label>
-          <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Contá un poco sobre vos..." className="min-h-[80px] resize-none" />
+          <Label htmlFor="profile-headline">Profesión o cargo</Label>
+          <Input id="profile-headline" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Ej: Performance Media Buyer" />
         </div>
-        <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-bio">Bio</Label>
+          <Textarea id="profile-bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Contá un poco sobre vos..." className="min-h-[120px] resize-y" />
+        </div>
+        <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-border bg-surface-inset p-4">
           <div className="space-y-0.5">
-            <span className="text-xs font-medium">Perfil público</span>
-            <p className="text-[10px] text-muted-foreground">Mostrar mis tareas, documentos y notas públicas en mi perfil</p>
+            <span className="text-sm font-medium">Perfil público</span>
+            <p className="text-xs text-muted-foreground">Mostrar mis tareas, documentos y notas públicas en mi perfil</p>
           </div>
           <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="h-4 w-4 accent-primary" />
         </label>
         {error && <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
-        <div className="flex items-center gap-2 pt-2">
-          <Button onClick={handleSave} variant="cta" disabled={saving || !fullName.trim()}>
+        <div className="flex flex-wrap items-center gap-4 border-t pt-5">
+          <Button onClick={handleSave} className="rounded-full px-5" disabled={saving || !fullName.trim()}>
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> :
              saved ? <Check className="h-3.5 w-3.5 mr-1" /> : null}
             {saved ? 'Guardado' : 'Guardar'}
@@ -314,10 +327,12 @@ function TwoFactorAuthSection() {
   const isEnabled = user?.totp_enabled;
 
   return (
-    <div className="rounded-xl border p-4 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="rounded-[1.6rem] border bg-card p-5 space-y-5 md:p-7">
+      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-tint-blue text-tint-blue-foreground"><Shield className="h-5 w-5" /></div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold">Autenticación en dos pasos (2FA)</h3>
+          <h2 className="text-xl font-medium tracking-tight">Seguridad de la cuenta</h2>
+          <p className="mt-2 text-sm font-medium">Autenticación en dos pasos (2FA)</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {isEnabled
               ? '2FA está activo. Usás Google Authenticator para iniciar sesión.'
@@ -434,8 +449,8 @@ function UsersTab() {
   const clientUsers = users.filter(u => u.role === 'client');
 
   const renderSection = (title: string, icon: React.ReactNode, list: ManagedUser[], emptyMsg: string) => (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground border-b pb-2">
+    <div className="min-w-0 space-y-3 rounded-[1.6rem] border bg-card p-4 md:p-6">
+      <div className="flex items-center gap-2 text-sm font-semibold border-b pb-4 mb-4">
         {icon}
         <span>{title}</span>
         <span className="ml-auto font-normal text-xs">{list.length} usuario{list.length !== 1 ? 's' : ''}</span>
@@ -459,13 +474,13 @@ function UsersTab() {
   );
 
   return (
-    <div className="space-y-6 mt-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="h-4 w-4" />
-          <span>{users.length} usuario{users.length !== 1 ? 's' : ''} en total</span>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-medium tracking-tight">Personas y accesos</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{loading ? 'Cargando usuarios...' : `${users.length} usuarios en total`} · Administrá roles, módulos y clientes permitidos.</p>
         </div>
-        <Button size="sm" variant="cta" className="gap-2" onClick={() => setShowCreate(true)}>
+        <Button className="gap-2 rounded-full px-5" onClick={() => setShowCreate(true)}>
           <Plus className="h-3.5 w-3.5" /> Crear usuario
         </Button>
       </div>
@@ -550,18 +565,18 @@ function UserRow({
 
   if (isEditing) {
     return (
-      <div className="rounded-xl border p-4 space-y-3 bg-muted/20">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <div className="rounded-2xl border border-primary/25 p-4 space-y-5 bg-surface-inset md:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 break-all">
             <UserCog className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-semibold">{u.full_name}</span>
             <span className="text-xs text-muted-foreground">{u.email}</span>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs" onClick={handleSave} disabled={saving}>
+            <Button aria-label="Guardar permisos" variant="ghost" size="sm" className="h-10 px-3 text-xs" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs" onClick={onCancelEdit}>
+            <Button aria-label="Cancelar edición" variant="ghost" size="sm" className="h-10 px-3 text-xs" onClick={onCancelEdit}>
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -663,22 +678,22 @@ function UserRow({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border p-3 hover:bg-muted/30 transition-colors group">
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-transparent bg-surface-inset/60 p-3 transition-colors hover:border-border hover:bg-surface-inset group md:p-4">
       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0 text-xs font-semibold">
         {u.full_name?.charAt(0) || '?'}
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-[6rem]">
         <p className="text-sm font-medium truncate">{u.full_name}</p>
         <p className="text-xs text-muted-foreground truncate">{u.email}</p>
       </div>
       <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold shrink-0', ROLE_COLORS[u.role])}>
         {ROLE_LABELS[u.role]}
       </span>
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}>
+      <div className="flex items-center gap-1 shrink-0">
+        <Button aria-label={`Editar permisos de ${u.full_name}`} title="Editar permisos" variant="ghost" size="sm" className="h-10 w-10 rounded-full p-0" onClick={onEdit}>
           <UserCog className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
+        <Button aria-label={`Eliminar a ${u.full_name}`} title="Eliminar usuario" variant="ghost" size="sm" className="h-10 w-10 rounded-full p-0 text-destructive hover:text-destructive"
           onClick={() => onDelete(u.id)}>
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -774,10 +789,10 @@ function CreateUserDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => onOpenChange(false)}>
-      <div className="bg-background rounded-xl border shadow-xl w-full max-w-md p-6 space-y-4 mx-4" onClick={e => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="create-user-title" className="settings-page bg-card rounded-[1.6rem] border w-full max-w-lg max-h-[90dvh] overflow-y-auto p-5 md:p-7 space-y-5 mx-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold">Crear usuario</h2>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onOpenChange(false)}>
+          <h2 id="create-user-title" className="text-2xl font-normal tracking-tight">Crear usuario</h2>
+          <Button aria-label="Cerrar" variant="ghost" size="sm" className="h-10 w-10 rounded-full p-0" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4" />
           </Button>
         </div>

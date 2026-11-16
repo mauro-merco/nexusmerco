@@ -204,6 +204,27 @@
 }
 
 @layer components {
+  .settings-page [role="tab"] {
+    min-height: 2.75rem;
+    border-radius: 999px;
+    padding-inline: 1.1rem;
+    transition-property: color, background-color;
+  }
+  .settings-page [role="tab"][data-selected] {
+    background: #172B4D;
+    color: #fff;
+    box-shadow: none;
+  }
+  .settings-page input:not([type="checkbox"]),
+  .settings-page textarea,
+  .settings-page select {
+    border-radius: 0.9rem;
+    box-shadow: none;
+  }
+  .settings-page input:not([type="checkbox"]),
+  .settings-page select {
+    min-height: 2.75rem;
+  }
   .bg-brand-gradient { background-image: var(--brand-gradient); color: #fff; }
   .bg-brand-sky-gradient { background-image: var(--brand-sky-gradient); color: #0B1B33; }
   .text-brand-gradient {

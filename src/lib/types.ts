@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'operador' | 'client';
 
-export const ALL_MODULES = ['dashboard', 'datos', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'salas', 'sugerencias', 'desarrollo'] as const;
+export const ALL_MODULES = ['dashboard', 'datos', 'wizard', 'tareas', 'equipo', 'analysis', 'integrations', 'insights', 'calendarios', 'documentos', 'mensajes', 'salas', 'sugerencias', 'desarrollo', 'roadmap'] as const;
 export type ModuleId = typeof ALL_MODULES[number];
 
 export const DEFAULT_MODULES: Record<UserRole, ModuleId[]> = {

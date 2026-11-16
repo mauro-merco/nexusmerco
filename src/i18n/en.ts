@@ -14,6 +14,7 @@ export const en = {
     messages: 'Messages',
     salas: 'Rooms',
     suggestions: 'Suggestions',
+    roadmap: 'Roadmap',
     development: 'Daily Report',
     groupMain: 'Main',
     groupOps: 'Operations',
