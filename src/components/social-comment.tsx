@@ -107,7 +107,7 @@ function CommentItem({
                 onToggle={() => onToggleRead(comment.id)}
                 pending={readPendingId === comment.id}
               />
-              <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+              <div className="tm-work-comment-actions flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 {!isReply && (
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1"
                     onClick={() => onReply(comment.id)}>
@@ -215,8 +215,8 @@ export function SocialComment({ comments, loading = false, onAddComment, onDelet
   const replyComment = replyTo ? comments.find(c => c.id === replyTo) : null;
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col gap-4">
-      <div className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto [overflow-wrap:anywhere]">
+    <div className="tm-work-comments flex h-full min-h-0 min-w-0 flex-col gap-4">
+      <div className="tm-work-comment-list no-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto [overflow-wrap:anywhere]">
         {loading && comments.length === 0 ? <ContentSkeleton variant="comments" label="Cargando comentarios" /> : comments.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             <p>No hay comentarios todavía</p>

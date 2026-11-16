@@ -55,11 +55,12 @@ interface SocialIdeaModalProps {
   publicMaterialLinks?: MaterialLink[];
   publicAttachments?: { url: string; name: string; type: string }[];
   publicDelete?: () => Promise<void>;
+  publicStatusChange?: (status: IdeaStatus) => Promise<SocialIdea>;
 }
 
 const fieldCls = 'w-full rounded-xl bg-background/70 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30';
 
-export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social', publicComments, publicMaterialLinks, publicAttachments, publicDelete }: SocialIdeaModalProps) {
+export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social', publicComments, publicMaterialLinks, publicAttachments, publicDelete, publicStatusChange }: SocialIdeaModalProps) {
   const { user } = useAuthStore();
   const isSocial = calendarType === 'social';
   const endpoint = calendarType === 'ads' ? '/api/ads-ideas' : '/api/social-ideas';
@@ -122,15 +123,22 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
   }, [idea.id, endpoint, title, description, brief, copyText, ejeContenido, roles, postType, status, publishDate, needsMaterial, materialNote, onIdeaUpdated]);
 
   const handleQuickStatusChange = useCallback(async (newStatus: IdeaStatus) => {
-    if (newStatus === idea.status) return;
+    if (changingStatus || saving || newStatus === idea.status) return;
     setChangingStatus(true);
+    setSaveError(null);
     try {
+      if (publicStatusChange) {
+        const updated = await publicStatusChange(newStatus);
+        setStatus(updated.status); onIdeaUpdated(updated);
+        return;
+      }
+      if (publicAttachments !== undefined) throw new Error('No se pudo cambiar el estado desde este calendario');
       const res = await fetch(`${endpoint}/${idea.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Error al cambiar estado');
       setStatus(newStatus); onIdeaUpdated(json.data);
-    } catch { /* se revierte al reabrir */ } finally { setChangingStatus(false); }
-  }, [idea.id, idea.status, endpoint, onIdeaUpdated]);
+    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Error al cambiar estado'); } finally { setChangingStatus(false); }
+  }, [idea.id, idea.status, endpoint, onIdeaUpdated, publicStatusChange, publicAttachments, changingStatus, saving]);
 
   const handleAddAttachment = useCallback(async () => {
     if (!newAttachUrl.trim()) return;
@@ -212,7 +220,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
             >
               <Minus className="h-3.5 w-3.5" /> Minimizar
             </Button>
-              <div className="w-[230px]"><Menu value={status} options={IDEA_STATUS_OPTIONS} onChange={k => handleQuickStatusChange(k as IdeaStatus)} loading={changingStatus} disabled={changingStatus} /></div>
+              <div className="w-[230px]"><Menu value={status} options={IDEA_STATUS_OPTIONS} onChange={k => handleQuickStatusChange(k as IdeaStatus)} loading={changingStatus} disabled={changingStatus || saving} /></div>
             {isSocial && !editing && (
               <Button variant="ghost" size="sm" className="tm-press gap-1 rounded-lg text-cyan-600 dark:text-cyan-400" onClick={() => setShowMoveDialog(true)} title="Mover a calendario ADS"><Zap className="h-3.5 w-3.5" /> Mover a ADS</Button>
             )}
@@ -224,7 +232,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
             ) : (
               <>
                 <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
-                <Button size="sm" className="tm-press rounded-lg" onClick={handleSave} disabled={saving}>{saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios</Button>
+                <Button size="sm" className="tm-press rounded-lg" onClick={handleSave} disabled={saving || changingStatus}>{saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios</Button>
               </>
             )}
             <DialogClose render={<Button variant="ghost" size="sm" className="tm-press h-9 w-9 rounded-lg p-0" title="Cerrar" />}>
@@ -304,7 +312,10 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
             {editing ? (
               <>
-                <DescriptionEditor key={contentTab} className="min-h-[460px] flex-1" value={tabValue} onChange={setTabValue}
+                <div className="space-y-4 lg:hidden">
+                  {CONTENT_TABS.map(t => <DescriptionEditor key={t.key} value={tabValues[t.key][0]} onChange={tabValues[t.key][1]} placeholder={t.ph} title={t.label} />)}
+                </div>
+                <DescriptionEditor key={contentTab} className="hidden min-h-[460px] flex-1 lg:flex" value={tabValue} onChange={setTabValue}
                   placeholder={CONTENT_TABS.find(t => t.key === contentTab)!.ph}
                   title={
                     <div className="flex rounded-xl bg-background/70 p-0.5">
@@ -324,7 +335,8 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                     {(!roles.lead.length || !roles.executor.length || !roles.reviewer.length) && <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-500">Falta asignar</span>}
                     <ChevronDown className={cn('ml-auto h-4 w-4 text-muted-foreground transition-transform duration-300', teamOpen && 'rotate-180')} />
                   </button>
-                  <Collapse open={teamOpen}><div className="px-4 pb-4"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div></Collapse>
+                  <div className="px-4 pb-4 lg:hidden"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div>
+                  <div className="hidden lg:block"><Collapse open={teamOpen}><div className="px-4 pb-4"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div></Collapse></div>
                 </section>
               </>
             ) : (
@@ -380,7 +392,7 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
           {/* COMENTARIOS */}
           {isSocial && (
-            <div className="flex h-[60vh] min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-muted/25 p-4 lg:h-auto">
+            <div className="tm-work-comment-panel flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-muted/25 p-4">
               <p className="mb-3 flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground/80">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/15"><MessageSquare className="h-3.5 w-3.5 text-sky-600" /></span>
                 {publicComments ? 'Comentarios' : `Comentarios (${comments.length})`}

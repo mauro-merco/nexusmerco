@@ -1,7 +1,7 @@
 'use client';
 import { PageSkeleton } from '@/components/content-skeleton';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Send, MessageCircle, Loader2, RefreshCw, ShoppingBag, LogIn, User, Eye, EyeOff, LogOut, Plus, Copy, Sun, Moon, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -466,6 +466,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [search, setSearch] = useState('');
   const [activeTypes, setActiveTypes] = useState<Set<PostType>>(new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]));
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
+  const calendarRevision = useRef(0);
   const [newIdeaDate, setNewIdeaDate] = useState<string | null>(null);
   const [initialIdeaId, setInitialIdeaId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
@@ -519,6 +520,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     if (!token) return;
     if (!viewer?.authToken && viewer?.type === 'guest' && !viewer.email) return;
     const silent = !!opts?.silent;
+    const revision = calendarRevision.current;
     if (!silent) setFetchLoading(true);
     setError(null);
     if (!viewMonth) {
@@ -549,6 +551,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
       }).then(r=>r.json());
     }))
       .then(results => {
+        if (revision !== calendarRevision.current) return;
         const first = results.find(r=>r.client) || results[0];
         if (!first?.client) throw new Error(first?.error || 'Calendario no encontrado');
         const allIdeas: SocialIdea[] = [];
@@ -869,11 +872,24 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           open={!!selectedIdea}
           onOpenChange={(open) => { if (!open) closeSelectedIdea(); }}
           onIdeaUpdated={(updatedIdea) => {
-            setData({
-              ...data,
-              ideas: data.ideas.map(i => i.id === updatedIdea.id ? updatedIdea : i),
+            calendarRevision.current += 1;
+            setSelectedIdea(current => current?.id === updatedIdea.id ? { ...current, ...updatedIdea } : current);
+            setData(current => current ? {
+              ...current,
+              ideas: current.ideas.map(i => i.id === updatedIdea.id ? { ...i, ...updatedIdea } : i),
+            } : current);
+            fetchCalendar({ silent: true });
+          }}
+          publicStatusChange={async (status) => {
+            if (!viewer?.authToken) throw new Error('Iniciá sesión para cambiar el estado');
+            const res = await fetch(`/api/calendar-links/${token}/actions`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${viewer.authToken}` },
+              body: JSON.stringify({ action_type: 'status_change', idea_id: selectedIdea.id, status, calendar_type: ideaCalendarType(selectedIdea, data.calendar_type) }),
             });
-            fetchCalendar();
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'No se pudo cambiar el estado');
+            return { ...selectedIdea, status: json.data.status };
           }}
           onIdeaDeleted={() => {
             setData(current => current ? { ...current, ideas: current.ideas.filter(i => i.id !== selectedIdea.id) } : current);

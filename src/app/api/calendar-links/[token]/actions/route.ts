@@ -138,12 +138,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     }
 
     // Handle different action types
-    if (action_type === 'status_change' && status) {
-      const { error } = await supabase
+    if (action_type === 'status_change') {
+      if (typeof status !== 'string' || !IDEA_STATUS_ORDER.some(value => value === status)) {
+        return NextResponse.json({ error: 'Estado inválido' }, { status: 400 });
+      }
+      const { data: updatedIdea, error } = await supabase
         .from(ideasTable)
         .update({ status })
         .eq('id', idea_id)
-        .eq('client_id', client.id);
+        .eq('client_id', client.id)
+        .select('id, status')
+        .single();
 
       if (error) throw error;
 
@@ -160,7 +165,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
       await logActivity(supabase, { clientId: client.id, area, entityType, entityId: idea_id, entityTitle: targetIdea?.title || '', action: 'status_changed', detail: 'Cambió el estado', fromValue: targetIdea?.status || '', toValue: status, actorId: userId });
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, data: updatedIdea });
     }
 
     if (action_type === 'date_move' && publish_date) {

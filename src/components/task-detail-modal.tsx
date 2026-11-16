@@ -529,7 +529,8 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                     )}
                     <ChevronDown className={cn('ml-auto h-4 w-4 text-muted-foreground transition-transform duration-300', teamOpen && 'rotate-180')} />
                   </button>
-                  <Collapse open={teamOpen}><div className="px-4 pb-4"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div></Collapse>
+                  <div className="px-4 pb-4 lg:hidden"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div>
+                  <div className="hidden lg:block"><Collapse open={teamOpen}><div className="px-4 pb-4"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div></Collapse></div>
                 </section>
               </>
             ) : (
@@ -592,7 +593,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
           </Scroller>
 
           {/* COMENTARIOS */}
-          <div className="flex h-[60vh] min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-muted/25 p-4 lg:h-auto">
+          <div className="tm-work-comment-panel flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-muted/25 p-4">
             <p className="mb-3 flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground/80">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/15"><MessageSquare className="h-3.5 w-3.5 text-sky-600" /></span>
               Comentarios ({comments.length})
@@ -714,7 +715,7 @@ function TaskCommentItem({
           {!isEditing && (
             <div className="mt-1.5 flex items-center gap-1">
               <CommentReadEye readers={readers[comment.id]} currentUserId={currentUserId} onToggle={() => onToggleRead(comment.id)} pending={readPendingId === comment.id} />
-              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="tm-work-comment-actions flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 {!isReply && <Button variant="ghost" size="sm" className="h-6 gap-1 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => onReply(comment.id)}><Reply className="h-3 w-3" /> Responder</Button>}
                 {isOwn && (
                   <>

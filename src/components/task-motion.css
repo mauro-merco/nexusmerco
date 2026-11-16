@@ -50,6 +50,76 @@
 .tm-work-body pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
 .tm-work-footer { padding-bottom: .75rem; }
 
+/* Mobile has one document scroll; desktop keeps independent panel scrolls. */
+@media (width < 64rem) {
+  .tm-work-modal {
+    max-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 1rem;
+  }
+  .tm-work-modal .tm-work-header,
+  .tm-work-modal .tm-work-body,
+  .tm-work-modal .tm-work-footer { flex: none; }
+  .tm-work-modal .tm-work-body {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+  .tm-work-modal .tm-work-body > aside,
+  .tm-work-modal .tm-work-body > aside > div {
+    flex: none;
+    overflow: visible;
+  }
+  .tm-work-modal [data-work-scroller='y'],
+  .tm-work-modal [data-work-scroller='y'] > div,
+  .tm-work-modal .tm-work-comment-panel,
+  .tm-work-modal .tm-work-comments,
+  .tm-work-modal .tm-work-comment-list {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    flex: none;
+    overflow: visible;
+  }
+  .tm-work-modal [data-work-scroller='y'] > div { padding-bottom: 0; }
+  .tm-work-modal [data-work-scroller='y'] > button { display: none; }
+  .tm-work-modal .tm-work-header { padding-left: 1rem; }
+  .tm-work-modal .tm-work-header > div { flex-basis: 100%; }
+  .tm-work-modal [data-slot='dialog-title'] {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow: visible;
+  }
+  .tm-work-modal .tm-work-header .w-\[230px\] { width: 100%; }
+  .tm-work-modal .tm-work-header .w-80 {
+    position: fixed;
+    left: max(1rem, env(safe-area-inset-left, 0px));
+    right: max(1rem, env(safe-area-inset-right, 0px));
+    top: calc(3.5rem + env(safe-area-inset-top, 0px));
+    width: auto;
+    max-height: calc(100dvh - 5rem);
+    overflow-y: auto;
+  }
+  .tm-work-modal .tm-work-body .grid { grid-template-columns: minmax(0, 1fr); }
+  .tm-work-modal .tm-work-body .min-w-\[220px\] { min-width: 0; }
+  .tm-work-modal .tm-work-body .min-h-\[460px\] { min-height: 0; }
+  .tm-work-modal .tm-work-body .min-h-\[340px\] {
+    min-height: 10rem;
+    flex: none;
+    overflow: visible;
+  }
+  .tm-work-modal .tm-work-body section > header { flex-wrap: wrap; }
+  .tm-work-modal .tm-work-body section > button { flex-wrap: wrap; }
+  .tm-work-modal .tm-work-footer > div { min-width: 0; flex-wrap: wrap; }
+  .tm-work-modal input,
+  .tm-work-modal textarea,
+  .tm-work-modal [contenteditable='true'] { min-width: 0; font-size: 16px; }
+  .tm-work-modal .tm-work-comment-actions { opacity: 1; flex-wrap: wrap; }
+  .tm-work-modal .tm-work-body .ml-12 { margin-left: .75rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   [class*='tm-'], .tm-stagger > * { animation: none !important; transition: none !important; }
 }
