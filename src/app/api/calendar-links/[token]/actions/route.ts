@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
 import { logActivity } from '@/lib/activity-events';
+import { isCalendarType, resolveCalendarLink, resolveCalendarViewer } from '@/lib/calendar-access-server';
+import { POST_TYPE_CONFIG, IDEA_STATUS_ORDER } from '@/lib/social-config';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -43,37 +45,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   try {
     const { token } = await params;
     const body = await request.json();
-    const { idea_id, content, guest_name, action_type, status, publish_date, calendar_type, title, description, post_type, links } = body;
+     const { idea_id, content, action_type, status, publish_date, calendar_type, title, description, post_type, links } = body;
+     if (!isCalendarType(calendar_type)) return NextResponse.json({ error: 'Tipo de calendario inválido' }, { status: 400 });
     const ideasTable = calendar_type === 'ads' ? 'ads_ideas' : 'social_ideas';
     const commentsTable = calendar_type === 'ads' ? 'ads_comments' : 'social_comments';
     const area = calendar_type === 'ads' ? 'ads' : 'social';
     const entityType = calendar_type === 'ads' ? 'ads_idea' : 'social_idea';
 
-    const { client, link, error: clientError } = await resolveClient(token);
-    if (clientError || !client) {
-      return NextResponse.json({ error: 'Calendario no encontrado' }, { status: 404 });
-    }
-
     const supabase = getAdmin();
-    const user = await getRequestUser(request, supabase);
+    const resolved = await resolveCalendarLink(supabase, token, calendar_type);
+    if ('error' in resolved) return NextResponse.json({ error: resolved.error }, { status: resolved.status });
+    const { client, link } = resolved;
+    const user = await resolveCalendarViewer(request, supabase, link);
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    const explicitlyAllowed = Array.isArray(link?.allowed_user_ids) && link.allowed_user_ids.includes(user.id);
-    if (!isStaff(user) && !canAccessClient(user, client.id) && !explicitlyAllowed) {
-      return NextResponse.json({ error: 'Sin acceso a este calendario' }, { status: 403 });
-    }
+    const { data: actor } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
+    const guest_name = actor?.full_name || 'Usuario';
     const userId = user.id;
     // El link de redes también muestra las piezas de ADS del mismo cliente (igual que el calendario interno).
     const typeAllowed = !link?.calendar_type || calendar_type === link.calendar_type || (link.calendar_type === 'social' && calendar_type === 'ads');
     if (!typeAllowed) {
       return NextResponse.json({ error: 'Tipo de calendario inválido' }, { status: 400 });
     }
+    if (calendar_type === 'ads' ? !client.ads_calendar_enabled : !client.social_calendar_enabled) {
+      return NextResponse.json({ error: 'Calendario no disponible' }, { status: 404 });
+    }
     if (link?.month && publish_date && !String(publish_date).startsWith(`${link.month}-`)) {
       return NextResponse.json({ error: 'La fecha está fuera del mes compartido' }, { status: 400 });
     }
 
-    let targetIdea: { id: string; status: string | null; title: string | null; publish_date: string | null } | null = null;
+    let targetIdea: { id: string; status: string | null; title: string | null; publish_date: string | null; author_id: string | null } | null = null;
     if (action_type !== 'create_idea') {
-      const { data } = await supabase.from(ideasTable).select('id, status, title, publish_date').eq('id', idea_id).eq('client_id', client.id).maybeSingle();
+      const { data } = await supabase.from(ideasTable).select('id, status, title, publish_date, author_id').eq('id', idea_id).eq('client_id', client.id).maybeSingle();
       if (!data) return NextResponse.json({ error: 'Idea no encontrada' }, { status: 404 });
       if (link?.month && !data.publish_date?.startsWith(`${link.month}-`)) {
         return NextResponse.json({ error: 'Idea fuera del mes compartido' }, { status: 403 });
@@ -81,20 +83,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       targetIdea = data;
     }
 
+    if (action_type === 'delete_idea') {
+      if (!user.isStaff && targetIdea?.author_id !== user.id) {
+        return NextResponse.json({ error: 'Solo podés eliminar tus propias ideas' }, { status: 403 });
+      }
+      let query = supabase.from(ideasTable).delete().eq('id', targetIdea!.id).eq('client_id', client.id);
+      if (!user.isStaff) query = query.eq('author_id', user.id);
+      const { data: deleted, error } = await query.select('id');
+      if (error) throw error;
+      if (!deleted?.length) return NextResponse.json({ error: 'No se pudo eliminar la idea' }, { status: 409 });
+      await logActivity(supabase, { clientId: client.id, area, entityType, entityId: targetIdea!.id, entityTitle: targetIdea?.title || '', action: 'deleted', actorId: user.id });
+      return NextResponse.json({ success: true });
+    }
+
     if (action_type === 'create_idea') {
       const cleanTitle = String(title || '').trim();
       if (!cleanTitle) return NextResponse.json({ error: 'Título requerido' }, { status: 400 });
+      if (typeof publish_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(publish_date) || !Number.isFinite(Date.parse(`${publish_date}T00:00:00Z`)) || new Date(`${publish_date}T00:00:00Z`).toISOString().slice(0, 10) !== publish_date) {
+        return NextResponse.json({ error: 'Fecha inválida' }, { status: 400 });
+      }
+      if (post_type && !Object.hasOwn(POST_TYPE_CONFIG, post_type)) return NextResponse.json({ error: 'Formato inválido' }, { status: 400 });
+      if (status && !IDEA_STATUS_ORDER.includes(status)) return NextResponse.json({ error: 'Estado inválido' }, { status: 400 });
       const { data: idea, error } = await supabase
         .from(ideasTable)
         .insert({
           client_id: client.id,
           title: cleanTitle,
           description: String(description || '').trim(),
-          brief: String(description || '').trim(),
+          brief: String(body.brief ?? description ?? '').trim(),
+          eje_contenido: String(body.eje_contenido || '').trim(),
           post_type: post_type || 'sugerencia',
           publish_date: publish_date || new Date().toISOString().slice(0, 10),
-          status: 'borrador',
-          copy_text: Array.isArray(links) ? links.filter(Boolean).join('\n') : '',
+          status: status || 'borrador',
+          copy_text: String(body.copy_text ?? (Array.isArray(links) ? links.filter(Boolean).join('\n') : '')),
           author_id: userId,
         })
         .select()

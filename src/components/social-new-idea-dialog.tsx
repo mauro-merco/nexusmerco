@@ -41,9 +41,10 @@ interface SocialNewIdeaDialogProps {
   }) => Promise<unknown>;
   users: User[];
   calendarType?: 'social' | 'ads';
+  shared?: boolean;
 }
 
-export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateIdea, users, calendarType = 'social' }: SocialNewIdeaDialogProps) {
+export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateIdea, users, calendarType = 'social', shared = false }: SocialNewIdeaDialogProps) {
   const { user } = useAuthStore();
   const [roles, setRoles] = useState<TaskRolesState>(emptyRoles);
   const [publishDate, setPublishDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
@@ -74,7 +75,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
   const handleSave = async () => {
     if (!ejeContenido.trim() && !brief.trim() && !description.trim()) { setError('Completá el eje de contenido, el brief o el guión'); return; }
     if (!publishDate) { setError('Seleccioná una fecha'); return; }
-    if (rolesMissing) { setError('Asigná al menos una persona como responsable, ejecutor y control'); setTeamOpen(true); return; }
+    if (!shared && rolesMissing) { setError('Asigná al menos una persona como responsable, ejecutor y control'); setTeamOpen(true); return; }
     setSaving(true); setError(null);
     try {
       await onCreateIdea({
@@ -122,7 +123,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
                   ))}
                 </div>
               } />
-            <section className="tm-rise rounded-2xl bg-muted/25">
+            {!shared && <section className="tm-rise rounded-2xl bg-muted/25">
               <button type="button" onClick={() => setTeamOpen(v => !v)} className="tm-press flex w-full items-center gap-2 p-4 text-left">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15"><Users2 className="h-3.5 w-3.5 text-violet-600" /></span>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Equipo asignado</h3>
@@ -134,7 +135,7 @@ export function SocialNewIdeaDialog({ open, onOpenChange, initialDate, onCreateI
               <div className={cn('grid transition-[grid-template-rows,opacity] duration-300 ease-out', teamOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
                 <div className={cn('min-h-0', !teamOpen && 'overflow-hidden')}><div className="px-4 pb-4"><TaskRolesPicker roles={roles} onChange={setRoles} users={users} /></div></div>
               </div>
-            </section>
+            </section>}
           </Scroller>
         </div>
 

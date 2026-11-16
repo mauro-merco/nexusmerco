@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
+import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { PublicIdeaComments } from '@/components/public-idea-comments';
 import { getSupabase } from '@/lib/supabase';
 import { CalendarComments } from '@/components/calendar-comments';
@@ -465,6 +466,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [search, setSearch] = useState('');
   const [activeTypes, setActiveTypes] = useState<Set<PostType>>(new Set(Object.keys(POST_TYPE_CONFIG) as PostType[]));
   const [selectedIdea, setSelectedIdea] = useState<SocialIdea | null>(null);
+  const [newIdeaDate, setNewIdeaDate] = useState<string | null>(null);
   const [initialIdeaId, setInitialIdeaId] = useState<string | null>(null);
   const [activeIdea, setActiveIdea] = useState<SocialIdea | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -480,6 +482,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         setViewer(null);
         setData(null);
         setSelectedIdea(null);
+        setNewIdeaDate(null);
         setAuthMode('gate');
       }
     });
@@ -523,6 +526,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         .then(r => r.json())
         .then(json => {
           if (!json.client) throw new Error(json.error || 'Calendario no encontrado');
+          setCalendarType(json.calendar_type);
           setViewMonth(json.month || format(new Date(), 'yyyy-MM'));
         })
         .catch(e => setError(e.message))
@@ -602,6 +606,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     setError(null);
     setViewMonth('');
     setSelectedIdea(null);
+    setNewIdeaDate(null);
     setInitialIdeaId(null);
     setAuthMode('gate');
   };
@@ -633,41 +638,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
     fetchCalendar();
   };
 
-  const handleAddNewIdea = useCallback(async (date: string) => {
-    if (!viewer || !token || !data) return;
-    // Create a minimal idea on the server first
-    try {
-      const res = await fetch(`/api/calendar-links/${token}/actions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(viewer.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {}) },
-        body: JSON.stringify({
-          action_type: 'create_idea',
-          calendar_type: calendarType,
-          title: 'Nueva idea',
-          post_type: 'sugerencia',
-          description: '',
-          links: [],
-          publish_date: date,
-          guest_name: viewer.name,
-          content: `Idea creada por ${viewer.name}`,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        alert(json.error || 'No se pudo crear la idea');
-        return;
-      }
-      // Refresh calendar to get the new idea
-      await fetchCalendar();
-      // Find and open the newly created idea
-      const newIdea = json.data?.idea;
-      if (newIdea) {
-        setSelectedIdea(newIdea);
-      }
-    } catch {
-      alert('No se pudo crear la idea');
-    }
-  }, [viewer, token, data, calendarType, fetchCalendar]);
+  const handleAddNewIdea = (date: string) => setNewIdeaDate(date);
 
   const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -871,6 +842,27 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         />} />
       </div>
 
+      {viewer && <SocialNewIdeaDialog
+        shared
+        open={newIdeaDate !== null}
+        onOpenChange={open => { if (!open) setNewIdeaDate(null); }}
+        initialDate={newIdeaDate}
+        users={[]}
+        calendarType={data.calendar_type}
+        onCreateIdea={async fields => {
+          const res = await fetch(`/api/calendar-links/${token}/actions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${viewer.authToken}` },
+            body: JSON.stringify({ ...fields, action_type: 'create_idea', calendar_type: data.calendar_type }),
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'No se pudo crear la idea');
+          const created = { ...json.data, calendar_type: data.calendar_type, assignees: [] };
+          setData(current => current ? { ...current, ideas: [...current.ideas, created] } : current);
+          setSelectedIdea(created);
+          fetchCalendar({ silent: true });
+        }}
+      />}
       {selectedIdea && data && (
         <SocialIdeaModal
           idea={selectedIdea}
@@ -884,8 +876,18 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
             fetchCalendar();
           }}
           onIdeaDeleted={() => {
+            setData(current => current ? { ...current, ideas: current.ideas.filter(i => i.id !== selectedIdea.id) } : current);
             closeSelectedIdea();
-            fetchCalendar();
+            fetchCalendar({ silent: true });
+          }}
+          publicDelete={async () => {
+            const res = await fetch(`/api/calendar-links/${token}/actions`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${viewer?.authToken}` },
+              body: JSON.stringify({ action_type: 'delete_idea', idea_id: selectedIdea.id, calendar_type: ideaCalendarType(selectedIdea, data.calendar_type) }),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'No se pudo eliminar la idea');
           }}
           users={data.users || []}
           calendarType={ideaCalendarType(selectedIdea, calendarType)}

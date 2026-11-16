@@ -72,17 +72,17 @@ export function ProfileMenu() {
     .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-full p-0.5 hover:bg-muted/50 transition-colors"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full p-0.5 hover:bg-muted/50 transition-colors"
       >
         {user.avatar_url ? (
           <img src={user.avatar_url} alt={user.full_name}
-            className="h-8 w-8 rounded-full object-cover border-2 border-border" />
+            className="h-8 w-8 shrink-0 rounded-full object-cover border-2 border-border" />
         ) : (
-          <div className="h-8 w-8 rounded-full bg-primary/10 border-2 border-border flex items-center justify-center">
+          <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 border-2 border-border flex items-center justify-center">
             <span className="text-xs font-bold text-primary">{initials}</span>
           </div>
         )}

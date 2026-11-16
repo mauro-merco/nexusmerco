@@ -54,11 +54,12 @@ interface SocialIdeaModalProps {
   publicComments?: ReactNode;
   publicMaterialLinks?: MaterialLink[];
   publicAttachments?: { url: string; name: string; type: string }[];
+  publicDelete?: () => Promise<void>;
 }
 
 const fieldCls = 'w-full rounded-xl bg-background/70 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30';
 
-export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social', publicComments, publicMaterialLinks, publicAttachments }: SocialIdeaModalProps) {
+export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIdeaDeleted, users, calendarType = 'social', publicComments, publicMaterialLinks, publicAttachments, publicDelete }: SocialIdeaModalProps) {
   const { user } = useAuthStore();
   const isSocial = calendarType === 'social';
   const endpoint = calendarType === 'ads' ? '/api/ads-ideas' : '/api/social-ideas';
@@ -139,8 +140,18 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
 
   const handleDelete = useCallback(async () => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
-    try { const res = await fetch(`${endpoint}/${idea.id}`, { method: 'DELETE' }); if (res.ok) { onIdeaDeleted(); onOpenChange(false); } } finally { setConfirmDelete(false); }
-  }, [idea.id, endpoint, confirmDelete, onIdeaDeleted, onOpenChange]);
+    try {
+      if (publicDelete) await publicDelete();
+      else {
+        // Shared visitors must never fall back to the dashboard endpoint.
+        if (publicAttachments !== undefined) return;
+        const res = await fetch(`${endpoint}/${idea.id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('No se pudo eliminar la idea');
+      }
+      onIdeaDeleted(); onOpenChange(false);
+    } catch (err) { alert(err instanceof Error ? err.message : 'No se pudo eliminar la idea'); }
+    finally { setConfirmDelete(false); }
+  }, [idea.id, endpoint, confirmDelete, onIdeaDeleted, onOpenChange, publicDelete, publicAttachments]);
 
   const dateStr = new Date(idea.publish_date + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
