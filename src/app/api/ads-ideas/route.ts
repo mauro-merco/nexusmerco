@@ -1,4 +1,5 @@
 import { calendarHref } from '@/lib/calendar-routes';
+import { duplicateCalendarIdea } from '@/lib/duplicate-calendar-idea';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { enrichIdeasWithAssignees, hasEveryWorkRole, normalizeWorkAssignees, syncIdeaAssignees } from '@/lib/idea-assignees-server';
@@ -51,6 +52,11 @@ export async function POST(request: Request) {
     const user = await getRequestUser(request, supabase);
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const body = await request.json();
+    if (body.duplicate_source_id) {
+      if (!body.client_id || !canAccessClient(user, body.client_id)) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+      const data = await duplicateCalendarIdea(supabase, 'ads', body.duplicate_source_id, body.client_id, user.id);
+      return NextResponse.json({ data }, { status: 201 });
+    }
     const { client_id, title, description, brief, eje_contenido, copy_text, responsable, post_type, status, publish_date, assignees } = body;
 
     if (!client_id || !title || !post_type || !publish_date) {

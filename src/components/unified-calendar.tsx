@@ -1,5 +1,6 @@
 'use client';
 import { ContentSkeleton } from '@/components/content-skeleton';
+import { CalendarIdeaActions, CalendarIdeaActionsContext } from '@/components/calendar-idea-actions';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
@@ -125,7 +126,7 @@ function MonthDayCell({ date, ideas, isToday, isCurrentMonth, ecommerceDates, on
         <span role="button" onClick={(e) => { e.stopPropagation(); onAddClick(date); }} className="h-5 w-5 rounded-md flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 hover:bg-primary/15 transition-opacity"><Plus className="h-3.5 w-3.5" /></span>
       </div>
       <div className="space-y-1 flex-1">
-        {ideas.map(idea => <DraggableDot key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} isExtended={!isCurrentMonth} />)}
+        {ideas.map(idea => <CalendarIdeaActions key={idea.id} idea={idea} onOpen={() => onIdeaClick(idea)}><DraggableDot idea={idea} onClick={() => onIdeaClick(idea)} isExtended={!isCurrentMonth} /></CalendarIdeaActions>)}
       </div>
     </div>
   );
@@ -317,7 +318,24 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
   if (loading && !refreshing) return <ContentSkeleton variant="calendar" />;
 
   return (
-    <>
+    <CalendarIdeaActionsContext.Provider value={async (idea, action) => {
+      const type = allIdeas.find(item => item.id === idea.id)?._cal || 'social';
+      if (action === 'duplicate') {
+        const res = await fetch(`/api/${type === 'ads' ? 'ads' : 'social'}-ideas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_id: clientId, duplicate_source_id: idea.id }) });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'No se pudo duplicar la idea');
+        setDismissedIdeaId(initialIdeaId || null);
+        setSelectedIdeaType(type);
+        setSelectedIdea(json.data);
+        await refreshCalendar();
+      } else if (action === 'delete') {
+        await (type === 'ads' ? deleteAdsIdea(idea.id) : deleteSocialIdea(idea.id));
+        if (selectedIdea?.id === idea.id) closeSelectedIdea();
+      } else {
+        const updated = await (type === 'ads' ? updateAdsIdea(idea.id, { status: action }) : updateSocialIdea(idea.id, { status: action }));
+        setSelectedIdea(current => current?.id === idea.id ? updated : current);
+      }
+    }}>
       <div className={CALENDAR_COLUMNS}>
         <div className="space-y-4 min-w-0">
           <div className={CALENDAR_TOOLBAR}>
@@ -436,6 +454,6 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
           calendarType={selectedIdeaType}
         />
       )}
-    </>
+    </CalendarIdeaActionsContext.Provider>
   );
 }

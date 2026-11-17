@@ -1,4 +1,5 @@
 import { calendarHref } from '@/lib/calendar-routes';
+import { duplicateCalendarIdea } from '@/lib/duplicate-calendar-idea';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessClient, getRequestUser, isStaff } from '@/lib/api-security';
@@ -81,6 +82,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         return NextResponse.json({ error: 'Idea fuera del mes compartido' }, { status: 403 });
       }
       targetIdea = data;
+    }
+
+    if (action_type === 'duplicate_idea') {
+      const data = await duplicateCalendarIdea(supabase, calendar_type, targetIdea!.id, client.id, user.id);
+      return NextResponse.json({ data }, { status: 201 });
     }
 
     if (action_type === 'delete_idea') {

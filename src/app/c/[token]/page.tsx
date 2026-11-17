@@ -17,6 +17,7 @@ import { CalendarIdeaComments } from '@/components/calendar-idea-comments';
 import { CalendarRecentComments } from '@/components/calendar-recent-comments';
 import { CalendarFolders, DayOverflow, CalendarTabs, CalendarTypeFilter, CalendarMonthSummary, CALENDAR_PANEL, CALENDAR_COLUMNS, CALENDAR_TOOLBAR, CALENDAR_DAY } from '@/components/calendar-parts';
 import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
+import { CalendarIdeaActions, CalendarIdeaActionsContext } from '@/components/calendar-idea-actions';
 import { CalendarSearch } from '@/components/calendar-search';
 import { CalendarMonthFolder } from '@/components/calendar-month-folder';
 import { CalendarGeneralFolders } from '@/components/calendar-general-folders';
@@ -311,7 +312,7 @@ function CalendarDay({ dateStr, day, ideas, isToday, isCurrentMonth, ecommerceDa
         </span>
       </div>
       <div className="space-y-1 flex-1">
-        {ideas.map(idea => <PublicIdeaDot key={idea.id} idea={idea} onClick={() => onIdeaClick(idea)} isExtended={!isCurrentMonth} />)}
+        {ideas.map(idea => <CalendarIdeaActions key={idea.id} idea={idea} onOpen={() => onIdeaClick(idea)}><PublicIdeaDot idea={idea} onClick={() => onIdeaClick(idea)} isExtended={!isCurrentMonth} /></CalendarIdeaActions>)}
       </div>
     </div>
   );
@@ -582,7 +583,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   useEffect(() => { if (authMode === 'authenticated' && viewer) fetchCalendar(); }, [authMode, viewer, fetchCalendar]);
 
   useEffect(() => {
-    if (!initialIdeaId || !data?.ideas.length || selectedIdea?.id === initialIdeaId) return;
+    if (!initialIdeaId || !data?.ideas.length || selectedIdea) return;
     const idea = data.ideas.find(item => item.id === initialIdeaId);
     if (idea) setSelectedIdea(idea);
   }, [initialIdeaId, data?.ideas, selectedIdea?.id]);
@@ -677,6 +678,29 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
   return (
     <div className="min-h-screen bg-background">
+      <CalendarIdeaActionsContext.Provider value={async (idea, action) => {
+        if (!viewer?.authToken || !data) throw new Error('Iniciá sesión para modificar el calendario');
+        const type = ideaCalendarType(idea, data.calendar_type);
+        const res = await fetch(`/api/calendar-links/${token}/actions`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${viewer.authToken}` },
+          body: JSON.stringify({ idea_id: idea.id, calendar_type: type, action_type: action === 'duplicate' ? 'duplicate_idea' : action === 'delete' ? 'delete_idea' : 'status_change', ...(action !== 'duplicate' && action !== 'delete' ? { status: action } : {}) }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'No se pudo guardar el cambio');
+        calendarRevision.current += 1;
+        if (action === 'duplicate') {
+          const created = { ...json.data, calendar_type: type };
+          setData(current => current ? { ...current, ideas: [...current.ideas, created] } : current);
+          setSelectedIdea(created);
+        } else if (action === 'delete') {
+          setData(current => current ? { ...current, ideas: current.ideas.filter(item => item.id !== idea.id) } : current);
+          if (selectedIdea?.id === idea.id) closeSelectedIdea();
+        } else {
+          setData(current => current ? { ...current, ideas: current.ideas.map(item => item.id === idea.id ? { ...item, status: action } : item) } : current);
+          setSelectedIdea(current => current?.id === idea.id ? { ...current, status: action } : current);
+        }
+        fetchCalendar({ silent: true });
+      }}>
       <header className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-8">
         <div className="flex shrink-0 items-center gap-3">
           <img src="/merco-light-mode.svg" alt="Merco" className="h-6 w-auto dark:hidden" />
@@ -909,9 +933,10 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           calendarType={ideaCalendarType(selectedIdea, calendarType)}
           publicMaterialLinks={data.material_links_by_idea?.[selectedIdea.id] || []}
           publicAttachments={data.attachments_by_idea?.[selectedIdea.id] || []}
-          publicComments={<PublicIdeaComments key={selectedIdea.id} idea={selectedIdea} shareToken={token} viewerAuthToken={viewer?.authToken} calendarType={ideaCalendarType(selectedIdea, calendarType)} onChanged={() => fetchCalendar()} />}
+           publicComments={<PublicIdeaComments key={selectedIdea.id} idea={selectedIdea} shareToken={token} viewerAuthToken={viewer?.authToken} calendarType={ideaCalendarType(selectedIdea, calendarType)} onChanged={() => fetchCalendar()} />}
         />
       )}
+      </CalendarIdeaActionsContext.Provider>
     </div>
   );
 }

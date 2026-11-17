@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { CalendarIdeaActions } from '@/components/calendar-idea-actions';
 import { Popover } from '@/components/task-ui';
 import type { SocialIdea, IdeaStatus } from '@/lib/types';
 import { POST_TYPE_CONFIG, STATUS_CONFIG, IDEA_STATUS_ORDER, ideaName } from '@/lib/social-config';
@@ -101,6 +102,7 @@ export function CalendarAgenda({ ideas, onIdeaClick, onStatusChange, onAdd, empt
                 const people = idea.assignees?.length || 0;
                 return (
                   <li key={idea.id}>
+                    <CalendarIdeaActions idea={idea} onOpen={() => onIdeaClick(idea)}>
                     <div role="button" tabIndex={0} onClick={() => onIdeaClick(idea)} onKeyDown={e => { if (e.key === 'Enter') onIdeaClick(idea); }}
                       className={cn('tm-lift tm-press group flex cursor-pointer items-start gap-3 rounded-2xl bg-card p-3.5 shadow-[0_1px_2px_rgba(20,20,43,.06)]',
                         idea.status === 'espera_cliente' && 'bg-red-500/10', idea.status === 'posteado' && 'opacity-75')}>
@@ -119,6 +121,7 @@ export function CalendarAgenda({ ideas, onIdeaClick, onStatusChange, onAdd, empt
                       </div>
                       <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
                     </div>
+                    </CalendarIdeaActions>
                   </li>
                 );
               })}
