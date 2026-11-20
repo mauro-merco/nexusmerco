@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { SocialComment } from '@/components/social-comment';
 import type { SocialIdea, SocialComment as Comment } from '@/lib/types';
 import type { CommentReader } from '@/lib/hooks/use-comment-reads';
+import type { MentionUser } from '@/components/mention';
 
 export function PublicIdeaComments({ idea, shareToken, viewerAuthToken, calendarType, onChanged }: {
   idea: SocialIdea;
@@ -13,7 +14,7 @@ export function PublicIdeaComments({ idea, shareToken, viewerAuthToken, calendar
   calendarType: 'social' | 'ads';
   onChanged: () => void;
 }) {
-  const [data, setData] = useState<{ data: Comment[]; readers: Record<string, CommentReader[]>; user_id?: string }>({ data: [], readers: {} });
+  const [data, setData] = useState<{ data: Comment[]; readers: Record<string, CommentReader[]>; user_id?: string; mention_users?: MentionUser[] }>({ data: [], readers: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -40,6 +41,12 @@ export function PublicIdeaComments({ idea, shareToken, viewerAuthToken, calendar
   async function mutate(method: string, body: object) {
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${viewerAuthToken || ''}` }, body: JSON.stringify(body) });
     const json = await res.json();
+    if (!res.ok && json.mutation_saved) {
+      setError(json.error);
+      window.dispatchEvent(new Event('calendar-comments-changed'));
+      onChanged();
+      return undefined;
+    }
     if (!res.ok) throw new Error(json.error || 'No se pudo guardar');
     setData(json);
     setError(null);
@@ -52,6 +59,7 @@ export function PublicIdeaComments({ idea, shareToken, viewerAuthToken, calendar
     {loading && <ContentSkeleton variant="comments" label="Cargando comentarios" />}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <SocialComment ideaId={idea.id} comments={data.data} currentUserId={data.user_id}
+      mentionUsers={data.mention_users || []}
       onAddComment={(_userId, content, parentId) => mutate('POST', { content, parent_id: parentId })}
       onUpdateComment={(id, content) => mutate('PUT', { id, content })}
       onDeleteComment={async id => { await mutate('DELETE', { id }); }}

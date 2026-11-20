@@ -13,6 +13,7 @@ import { MarkdownBody } from '@/lib/markdown';
 import { HighlightedText } from '@/components/highlighted-text';
 import { useCalendarComments, type CalendarComment } from '@/lib/hooks/use-calendar-comments';
 import { cn } from '@/lib/utils';
+import { useCalendarMentions } from '@/lib/hooks/use-calendar-mentions';
 
 interface CalendarCommentsProps {
   clientId: string | null;
@@ -59,10 +60,12 @@ export function CalendarComments({
   shareToken,
   guestEmail,
   viewerAuthToken,
-  mentionUsers = [],
+  mentionUsers: providedMentionUsers = [],
   title,
   className,
 }: CalendarCommentsProps) {
+  const clientMentions = useCalendarMentions(!shareToken && clientId ? new URLSearchParams({ client_id: clientId, ...(month ? { month } : {}) }).toString() : null);
+  const mentionUsers = [...new Map([...providedMentionUsers, ...clientMentions.users].map(u => [u.id, u])).values()];
   const { comments, loading, error, readError, viewerId, readers, updateComment, toggleSeen, addComment, removeComment } = useCalendarComments({
     clientId,
     calendarType,
@@ -179,6 +182,7 @@ export function CalendarComments({
         <p role="alert" className="mb-2 text-xs text-destructive">{error}</p>
       )}
       {readError && <p role="alert" className="mb-2 text-xs text-destructive">No se pudieron cargar los vistos: {readError}</p>}
+      {clientMentions.error && <p role="alert" className="mb-2 text-xs text-destructive">{clientMentions.error}</p>}
 
       {loading ? (
         <ContentSkeleton variant="comments" label="Cargando comentarios" />

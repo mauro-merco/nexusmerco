@@ -25,6 +25,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { SocialNewIdeaDialog } from '@/components/social-new-idea-dialog';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
+import { CalendarPortalShare } from '@/components/calendar-portal-share';
 import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
 import { EcommerceDateDialog } from '@/components/ecommerce-date-dialog';
 import { CalendarFolders, CalendarTypeFilter, CalendarTabs, CalendarMonthSummary, CALENDAR_PANEL, CALENDAR_COLUMNS, CALENDAR_TOOLBAR, CALENDAR_DAY } from '@/components/calendar-parts';
@@ -371,7 +372,8 @@ export function UnifiedCalendar({ clientId, clientName, initialMonth, initialIde
                     <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
                     <div className="tm-pop absolute right-0 top-full z-50 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] space-y-3 rounded-[1.4rem] border border-border bg-popover p-4 shadow-xl">
                       <div>
-                        <p className="text-sm font-semibold">Landing para el cliente</p>
+                        <CalendarPortalShare clientId={clientId} />
+                        <p className="mt-3 text-sm font-semibold">Enlace mensual</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">Link único de <span className="font-semibold capitalize text-foreground">{monthNames[viewMonth]} {viewYear}</span>. Muestra este mismo calendario y se actualiza solo con cada cambio.</p>
                       </div>
                       {shareConfig?.token ? (

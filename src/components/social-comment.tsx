@@ -8,6 +8,7 @@ import type { SocialComment as SocialCommentType } from '@/lib/types';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { MentionedText, MentionTextarea, type MentionUser } from '@/components/mention';
 import { useInternalUsers } from '@/lib/hooks/use-internal-users';
+import { useCalendarMentions } from '@/lib/hooks/use-calendar-mentions';
 import { CommentReadEye } from '@/components/comment-read';
 import { useCommentReads, collectCommentIds, type CommentReader } from '@/lib/hooks/use-comment-reads';
 import { Send, Trash2, Loader2, Pencil, Check, X, Reply } from 'lucide-react';
@@ -21,6 +22,7 @@ interface SocialCommentProps {
   onUpdateComment: (id: string, content: string) => Promise<SocialCommentType | undefined>;
   currentUserId?: string;
   publicReads?: { readers: Record<string, CommentReader[]>; toggle: (id: string) => void; pending: string | null };
+  mentionUsers?: MentionUser[];
 }
 
 function CommentItem({
@@ -162,7 +164,7 @@ function CommentItem({
   );
 }
 
-export function SocialComment({ comments, loading = false, onAddComment, onDeleteComment, onUpdateComment, currentUserId, publicReads }: SocialCommentProps) {
+export function SocialComment({ ideaId, comments, loading = false, onAddComment, onDeleteComment, onUpdateComment, currentUserId, publicReads, mentionUsers: providedUsers }: SocialCommentProps) {
   const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
@@ -170,7 +172,9 @@ export function SocialComment({ comments, loading = false, onAddComment, onDelet
   const [editContent, setEditContent] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const mentionUsers = useInternalUsers(!publicReads);
+  const internalUsers = useInternalUsers(!publicReads);
+  const clientMentions = useCalendarMentions(!publicReads ? new URLSearchParams({ idea_id: ideaId }).toString() : null);
+  const mentionUsers = providedUsers || [...new Map([...internalUsers, ...clientMentions.users].map(u => [u.id, u])).values()];
 
   const commentIds = useMemo(() => collectCommentIds(comments), [comments]);
   const internalReads = useCommentReads('social_comment', commentIds, currentUserId ? { id: currentUserId, name: '' } : null, !publicReads);
@@ -248,6 +252,7 @@ export function SocialComment({ comments, loading = false, onAddComment, onDelet
       </div>
 
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {clientMentions.error && <p role="alert" className="text-xs text-destructive">{clientMentions.error}</p>}
       {currentUserId && (
         <div className="shrink-0 space-y-2 border-t border-border/30 pt-3">
           {replyComment && (

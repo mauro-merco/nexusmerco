@@ -268,9 +268,9 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
       {/* Full-window task view */}
       <DialogContent showCloseButton={false} className="tm-work-modal flex! top-0! right-0! bottom-0! left-0! m-auto! translate-x-0! translate-y-0! h-dvh w-full max-w-none! flex-col gap-0 overflow-hidden rounded-none p-0 sm:max-w-none">
         {/* ===== Header ===== */}
-        <div className="tm-work-header flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3">
-          <div className="min-w-0 basis-[220px] flex-1">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="tm-work-header flex shrink-0 items-start gap-3 bg-muted/20 px-5 py-3">
+          <div className="tm-work-heading">
+          <div className="tm-work-title">
             {editing ? (
               <Input value={title} onChange={e => setTitle(e.target.value)} className="h-10 rounded-xl border-0 bg-background/70 text-lg font-bold" />
             ) : (
@@ -281,7 +281,6 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               <Button type="button" variant="ghost" size="sm" disabled={loadingAttachments || savingFolder} aria-label={readyFolder ? `Editar ${readyFolderLabel}` : `Adjuntar ${readyFolderLabel}`} onClick={() => { setFolderDraft(readyFolder?.url || ''); setFolderError(null); setEditingFolder(true); }} className="h-8 gap-1 rounded-lg text-xs">
                 {readyFolder ? <Edit3 className="h-3.5 w-3.5" /> : <><FolderOpen className="h-3.5 w-3.5" />{readyFolderLabel}</>}
               </Button>
-            </div>
             </div>
             {editingFolder && <form className="mt-2 space-y-1" onSubmit={e => { e.preventDefault(); saveFolder(); }}>
               <Label htmlFor="task-ready-folder" className="text-xs">{readyFolderLabel}</Label>
@@ -297,31 +296,25 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
               {task.due_date && dueChip(task.due_date)}
             </DialogDescription>
           </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="tm-press gap-1.5 rounded-lg"
-              onClick={() => {
-                minimize({
-                  id: task.id,
-                  type: 'task',
-                  title: task.title,
-                  subtitle: task.client?.name || undefined,
-                  clientId: task.client_id,
-                  task,
-                } as any);
-                onOpenChange(false);
-              }}
-            >
-              <Minus className="h-3.5 w-3.5" /> Minimizar
-            </Button>
-              <div className="w-[230px]">
-                <Menu value={status} options={STATUS_OPTIONS} onChange={k => handleQuickStatus(k as TaskStatus)} loading={changingStatus} disabled={changingStatus} />
+            <div className="tm-work-toolbar">
+              <div className="tm-work-primary">
+                <div className="tm-work-status">
+                  <Menu value={status} options={STATUS_OPTIONS} onChange={k => handleQuickStatus(k as TaskStatus)} loading={changingStatus} disabled={changingStatus} />
+                </div>
+                {!editing ? (
+                  <Button size="sm" variant="secondary" className="tm-press gap-1.5 rounded-full" disabled={editingDescription} onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
+                ) : (
+                  <>
+                    <Button variant="ghost" size="sm" className="tm-press rounded-full" disabled={saving} onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
+                    <Button size="sm" className="tm-press rounded-full" onClick={handleSave} disabled={saving}>
+                      {saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios
+                    </Button>
+                  </>
+                )}
               </div>
+              <div className="tm-work-secondary">
               <div className="relative">
-                <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => setShareOpen(v => !v)}><Share2 className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" className="tm-press rounded-full" aria-label="Compartir tarea" title="Compartir tarea" onClick={() => setShareOpen(v => !v)}><Share2 className="h-4 w-4" /></Button>
               {shareOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
@@ -348,18 +341,32 @@ export function TaskDetailModal({ task, open, onOpenChange, onTaskUpdated, onTas
                   </div>
                 </>
               )}
+              </div>
+              </div>
             </div>
-            {!editing ? (
-              <Button size="sm" variant="secondary" className="tm-press gap-1.5 rounded-lg" disabled={editingDescription} onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
-            ) : (
-              <>
-                <Button variant="ghost" size="sm" className="tm-press rounded-lg" disabled={saving} onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
-                <Button size="sm" className="tm-press rounded-lg" onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios
-                </Button>
-              </>
-            )}
-            <DialogClose render={<Button variant="ghost" size="sm" className="tm-press h-9 w-9 rounded-lg p-0" title="Cerrar" />}>
+          </div>
+            <div className="tm-work-window-controls">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="tm-press h-10 w-10 rounded-full p-0"
+              aria-label="Minimizar tarea"
+              title="Minimizar tarea"
+              onClick={() => {
+                minimize({
+                  id: task.id,
+                  type: 'task',
+                  title: task.title,
+                  subtitle: task.client?.name || undefined,
+                  clientId: task.client_id,
+                  task,
+                } as any);
+                onOpenChange(false);
+              }}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <DialogClose render={<Button variant="ghost" size="sm" className="tm-press h-10 w-10 rounded-full p-0" title="Cerrar" />}>
               <X className="h-4 w-4" /><span className="sr-only">Cerrar</span>
             </DialogClose>
           </div>

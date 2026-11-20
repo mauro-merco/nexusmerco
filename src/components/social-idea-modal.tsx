@@ -189,8 +189,9 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
         <div className={cn('shrink-0 px-5 py-1.5 text-[11px] font-black uppercase tracking-widest transition-colors duration-300', banner.banner)}>{banner.label}</div>
 
         {/* Header */}
-          <div className="tm-work-header flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 bg-muted/20 px-5 py-3">
-            <div className="min-w-0 basis-[220px] flex-1">
+          <div className="tm-work-header flex shrink-0 items-start gap-3 bg-muted/20 px-5 py-3">
+            <div className="tm-work-heading">
+            <div className="tm-work-title">
               {editing
                 ? <Input value={title} onChange={e => setTitle(e.target.value)} className="h-10 rounded-xl border-0 bg-background/70 text-lg font-bold" />
                 : <DialogTitle className="truncate text-lg font-bold">{ideaName(idea)}</DialogTitle>}
@@ -199,11 +200,35 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                 <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', pt.bgColorClass, pt.colorClass)}><PtIcon className="h-3 w-3" /> {pt.label}</span>
               </DialogDescription>
             </div>
-            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+            <div className="tm-work-toolbar">
+              <div className="tm-work-primary">
+                <div className="tm-work-status"><Menu value={status} options={IDEA_STATUS_OPTIONS} onChange={k => handleQuickStatusChange(k as IdeaStatus)} loading={changingStatus} disabled={changingStatus || saving} /></div>
+                {!editing ? (
+                  <Button size="sm" variant="secondary" className="tm-press gap-1.5 rounded-full" onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
+                ) : (
+                  <>
+                    <Button variant="ghost" size="sm" className="tm-press rounded-full" onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
+                    <Button size="sm" className="tm-press rounded-full" onClick={handleSave} disabled={saving || changingStatus}>{saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios</Button>
+                  </>
+                )}
+              </div>
+              <div className="tm-work-secondary">
+                {isSocial && !editing && (
+                  <Button variant="ghost" size="sm" className="tm-press gap-1 rounded-full" onClick={() => setShowMoveDialog(true)} aria-label="Mover a calendario ADS" title="Mover a calendario ADS"><Zap className="h-3.5 w-3.5" /> Mover a ADS</Button>
+                )}
+                <Button variant="ghost" size="sm" className="tm-press gap-1 rounded-full" onClick={copyIdeaLink} aria-label={copiedLink ? 'Link copiado' : 'Copiar link de la idea'} title="Copiar link de la idea">
+                  {copiedLink ? <Check className="tm-fade h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}{copiedLink ? 'Copiado' : 'Copiar link'}
+                </Button>
+              </div>
+            </div>
+            </div>
+            <div className="tm-work-window-controls">
             <Button
               variant="ghost"
               size="sm"
-              className="tm-press gap-1.5 rounded-lg"
+              className="tm-press h-10 w-10 rounded-full p-0"
+              aria-label="Minimizar idea"
+              title="Minimizar idea"
               onClick={() => {
                 minimize({
                   id: idea.id,
@@ -218,24 +243,9 @@ export function SocialIdeaModal({ idea, open, onOpenChange, onIdeaUpdated, onIde
                 onOpenChange(false);
               }}
             >
-              <Minus className="h-3.5 w-3.5" /> Minimizar
+              <Minus className="h-4 w-4" />
             </Button>
-              <div className="w-[230px]"><Menu value={status} options={IDEA_STATUS_OPTIONS} onChange={k => handleQuickStatusChange(k as IdeaStatus)} loading={changingStatus} disabled={changingStatus || saving} /></div>
-            {isSocial && !editing && (
-              <Button variant="ghost" size="sm" className="tm-press gap-1 rounded-lg text-cyan-600 dark:text-cyan-400" onClick={() => setShowMoveDialog(true)} title="Mover a calendario ADS"><Zap className="h-3.5 w-3.5" /> Mover a ADS</Button>
-            )}
-            <Button variant="ghost" size="sm" className="tm-press gap-1 rounded-lg" onClick={copyIdeaLink} title="Copiar link de la idea">
-              {copiedLink ? <Check className="tm-fade h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}{copiedLink ? 'Copiado' : null}
-            </Button>
-            {!editing ? (
-              <Button size="sm" variant="secondary" className="tm-press gap-1.5 rounded-lg" onClick={() => setEditing(true)}><Edit3 className="h-3.5 w-3.5" /> Editar</Button>
-            ) : (
-              <>
-                <Button variant="ghost" size="sm" className="tm-press rounded-lg" onClick={() => { setEditing(false); setSaveError(null); resetFields(); }}>Cancelar</Button>
-                <Button size="sm" className="tm-press rounded-lg" onClick={handleSave} disabled={saving || changingStatus}>{saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />} Guardar cambios</Button>
-              </>
-            )}
-            <DialogClose render={<Button variant="ghost" size="sm" className="tm-press h-9 w-9 rounded-lg p-0" title="Cerrar" />}>
+            <DialogClose render={<Button variant="ghost" size="sm" className="tm-press h-10 w-10 rounded-full p-0" title="Cerrar" />}>
               <X className="h-4 w-4" /><span className="sr-only">Cerrar</span>
             </DialogClose>
           </div>

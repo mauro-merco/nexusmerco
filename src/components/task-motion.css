@@ -35,12 +35,17 @@
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-.tm-work-header { position: relative; padding-right: 4rem; }
-.tm-work-header [data-slot='dialog-close'] {
-  position: absolute;
-  top: .75rem;
-  right: 1rem;
-}
+.tm-work-heading { display: flex; flex: 1; flex-wrap: wrap; align-items: center; gap: .75rem 1.5rem; }
+.tm-work-title { flex: 1 1 18rem; min-width: 0; overflow-wrap: anywhere; }
+.tm-work-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; max-width: 100%; }
+.tm-work-primary { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; min-width: 0; max-width: 100%; }
+.tm-work-status { width: 18rem; max-width: 100%; }
+.tm-work-status > div > button { min-height: 2.5rem; border: 1px solid var(--border); border-radius: 9999px; }
+.tm-work-status > div > button > span.flex-1 { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.tm-work-primary > [data-slot='button'],
+.tm-work-secondary [data-slot='button'] { min-height: 2.5rem; }
+.tm-work-secondary { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; color: var(--muted-foreground); }
+.tm-work-window-controls { display: flex; flex: 0 0 auto; align-items: center; gap: .25rem; margin-left: auto; padding-left: .75rem; border-left: 1px solid var(--border); }
 .tm-work-header > div,
 .tm-work-header > div > div,
 .tm-work-body > * { min-width: 0; max-width: 100%; }
@@ -49,6 +54,16 @@
 .tm-work-body video { max-width: 100%; }
 .tm-work-body pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
 .tm-work-footer { padding-bottom: .75rem; }
+
+@media (width >= 64rem) {
+  .tm-work-modal .tm-work-header { align-items: center; }
+  .tm-work-heading { flex-wrap: nowrap; }
+  .tm-work-toolbar { flex-wrap: nowrap; flex-shrink: 0; gap: .5rem; }
+  .tm-work-primary,
+  .tm-work-secondary { flex-wrap: nowrap; }
+  .tm-work-status { width: clamp(12rem, 17vw, 16rem); }
+  .tm-work-window-controls { align-self: center; margin-left: 0; }
+}
 
 /* Mobile has one document scroll; desktop keeps independent panel scrolls. */
 @media (width < 64rem) {
@@ -85,14 +100,17 @@
   }
   .tm-work-modal [data-work-scroller='y'] > div { padding-bottom: 0; }
   .tm-work-modal [data-work-scroller='y'] > button { display: none; }
-  .tm-work-modal .tm-work-header { padding-left: 1rem; }
-  .tm-work-modal .tm-work-header > div { flex-basis: 100%; }
+  .tm-work-modal .tm-work-header { padding-inline: 1rem; }
+  .tm-work-heading { gap: .75rem; }
+  .tm-work-title, .tm-work-toolbar { flex-basis: 100%; }
+  .tm-work-primary { width: 100%; }
+  .tm-work-status { width: 100%; }
+  .tm-work-window-controls { padding-left: .5rem; }
   .tm-work-modal [data-slot='dialog-title'] {
     white-space: normal;
     overflow-wrap: anywhere;
     overflow: visible;
   }
-  .tm-work-modal .tm-work-header .w-\[230px\] { width: 100%; }
   .tm-work-modal .tm-work-header .w-80 {
     position: fixed;
     left: max(1rem, env(safe-area-inset-left, 0px));

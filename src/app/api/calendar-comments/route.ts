@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getRequestUser, safeError } from '@/lib/api-security';
 import { createMentionNotifications } from '@/lib/mentions';
 import { logActivity } from '@/lib/activity-events';
+import { calendarMentionUsers } from '@/lib/calendar-mention-users';
 import {
   getSupabaseAdmin,
   isCalendarType,
@@ -10,6 +11,7 @@ import {
   resolveCalendarLink,
   resolveCalendarViewer,
   type CalendarType,
+  type CalendarLink,
 } from '@/lib/calendar-access-server';
 
 type ResolvedAccess = {
@@ -18,6 +20,7 @@ type ResolvedAccess = {
   month: string;
   userId: string;
   isStaff: boolean;
+  link?: CalendarLink;
 };
 
 type Access = { error: string; status: number } | ResolvedAccess;
@@ -60,6 +63,7 @@ async function resolveAccess(request: Request, clientId?: string | null, calenda
       (resolved.month && month && resolved.month !== month)) {
       return { error: 'Calendario fuera del alcance del enlace', status: 403 };
     }
+    if (requestedType === 'ads' ? !resolved.client.ads_calendar_enabled : !resolved.client.social_calendar_enabled) return { error: 'Calendario no disponible', status: 404 };
     const viewer = await resolveCalendarViewer(request, supabase, resolved.link);
     if (!viewer) return { error: 'Email no autorizado para este calendario', status: 401 };
     const targetMonth = resolved.month || month || '';
@@ -70,6 +74,7 @@ async function resolveAccess(request: Request, clientId?: string | null, calenda
       month: targetMonth,
       userId: viewer.id,
       isStaff: viewer.isStaff,
+      link: resolved.link,
     };
   }
 
@@ -333,6 +338,7 @@ export async function POST(request: Request) {
     });
 
     await createMentionNotifications(supabase, content, access.userId, {
+      users: await calendarMentionUsers(supabase, access.clientId, access.link, access.month),
       link: calendarHref(access.clientId, { month: access.month }),
       entityLabel: 'un comentario del calendario',
     });

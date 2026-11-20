@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin, isCalendarType, resolveCalendarLink, resolveCalendarViewer } from '@/lib/calendar-access-server';
 import { logActivity } from '@/lib/activity-events';
+import { calendarMentionUsers } from '@/lib/calendar-mention-users';
 
 async function handle(request: Request, context: { params: Promise<{ token: string }> }) {
+  let mutationSaved = false;
   try {
     const { token } = await context.params;
     const query = new URL(request.url).searchParams;
@@ -11,10 +13,12 @@ async function handle(request: Request, context: { params: Promise<{ token: stri
     const db = getSupabaseAdmin();
     const resolved = await resolveCalendarLink(db, token, type);
     if ('error' in resolved) return NextResponse.json({ error: resolved.error }, { status: resolved.status });
-    if (resolved.type !== type) return NextResponse.json({ error: 'Tipo inválido' }, { status: 403 });
+    if ((resolved.type !== type && !(resolved.type === 'social' && type === 'ads')) ||
+      (type === 'ads' ? !resolved.client.ads_calendar_enabled : !resolved.client.social_calendar_enabled)) return NextResponse.json({ error: 'Tipo inválido' }, { status: 403 });
     const viewer = await resolveCalendarViewer(request, db, resolved.link);
     if (!viewer) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     const ideaId = query.get('idea_id');
+    if (!ideaId) return NextResponse.json({ error: 'Idea requerida' }, { status: 400 });
     const { data: idea, error: ideaError } = await db.from(type === 'ads' ? 'ads_ideas' : 'social_ideas')
       .select('id, title, publish_date').eq('id', ideaId).eq('client_id', resolved.client.id).maybeSingle();
     if (ideaError) throw ideaError;
@@ -54,6 +58,7 @@ async function handle(request: Request, context: { params: Promise<{ token: stri
         if (result.error) throw result.error;
         if (!id) await logActivity(db, { clientId: resolved.client.id, area: type, entityType: type === 'ads' ? 'ads_idea' : 'social_idea', entityId: idea.id, entityTitle: idea.title, action: 'commented', detail: content, actorId: viewer.id });
       }
+      mutationSaved = true;
     }
     const { data: rows, error } = await db.from(table).select('*').eq('idea_id', idea.id).order('created_at');
     if (error) throw error;
@@ -71,10 +76,26 @@ async function handle(request: Request, context: { params: Promise<{ token: stri
     const nodes = (rows || []).map(c => ({ ...c, user: userMap[c.user_id] || null, replies: [] as unknown[] }));
     const map = new Map(nodes.map(c => [c.id, c]));
     for (const node of nodes) if (node.parent_id) map.get(node.parent_id)?.replies.push(node);
-    return NextResponse.json({ data: nodes.filter(c => !c.parent_id), readers, user_id: viewer.id }, { headers: { 'Cache-Control': 'no-store' } });
+    // Autocomplete is optional; it must not fail loading or an already saved mutation.
+    const mentionUsers = await calendarMentionUsers(db, resolved.client.id, resolved.link).catch(error => {
+      console.error('Public idea comment mentions:', error);
+      return [];
+    });
+    return NextResponse.json({ data: nodes.filter(c => !c.parent_id), readers, user_id: viewer.id, mention_users: mentionUsers }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Public idea comments:', error);
-    return NextResponse.json({ error: 'No se pudieron cargar o guardar los comentarios' }, { status: 500 });
+    const code = typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string' ? error.code : '';
+    const action = request.method === 'GET' ? 'cargar los comentarios' : request.method === 'DELETE' ? 'eliminar el comentario' : 'guardar el cambio';
+    const message = mutationSaved
+      ? 'El cambio se guardo, pero no se pudo actualizar la lista. Recarga los comentarios antes de volver a enviarlo.'
+      : ['42P01', '42703', '42883', 'PGRST204', 'PGRST205', '23514'].includes(code)
+        ? `No se pudo ${action}: el esquema de comentarios no esta actualizado. Pedi al administrador que revise las migraciones de comentarios y del portal.`
+        : code === '23503'
+          ? 'La idea, la cuenta o el comentario al que respondes ya no esta disponible. Recarga el calendario.'
+          : code === '42501'
+            ? 'La base de datos rechazo el acceso a los comentarios. Pedi al administrador que revise los permisos.'
+            : `No se pudo ${action}. Intenta nuevamente; si persiste, contacta al administrador.`;
+    return NextResponse.json({ error: message, ...(mutationSaved ? { mutation_saved: true } : {}) }, { status: 500 });
   }
 }
 

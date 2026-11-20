@@ -26,6 +26,7 @@ import { CalendarRecentComments } from '@/components/calendar-recent-comments';
 import { CalendarSearch } from '@/components/calendar-search';
 import { SocialIdeaModal } from '@/components/social-idea-modal';
 import { CalendarGuestAccessDialog } from '@/components/calendar-guest-access-dialog';
+import { CalendarPortalShare } from '@/components/calendar-portal-share';
 import { CalendarAgenda, useIsMobile } from '@/components/calendar-agenda';
 import { EcommerceDateDialog } from '@/components/ecommerce-date-dialog';
 import { CalendarFolders, CalendarTypeFilter, DayOverflow, CalendarTabs } from '@/components/calendar-parts';
@@ -392,6 +393,8 @@ export function AdsCalendar({ clientId, clientName: _clientName, initialMonth, i
                     <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />
                     <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-popover p-4 shadow-xl z-50 space-y-3">
                       <p className="text-xs font-semibold text-muted-foreground">Link para el cliente</p>
+                      <CalendarPortalShare clientId={clientId} />
+                      <p className="text-xs font-semibold">Enlace mensual</p>
                       {shareConfig?.token ? (
                         <>
                           <div className="flex gap-1.5">

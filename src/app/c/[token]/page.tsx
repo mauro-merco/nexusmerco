@@ -33,6 +33,8 @@ import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type Dra
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { MinimizedDock } from '@/components/minimized-dock';
+import { CalendarClientPortal } from '@/components/calendar-client-portal';
+import type { MentionUser } from '@/components/mention';
 
 interface CalendarData {
   client: { id: string; name: string; logo_url: string | null };
@@ -44,6 +46,7 @@ interface CalendarData {
   calendar_type: 'social' | 'ads';
   month?: string | null;
   users: NexusUser[];
+  mention_users?: MentionUser[];
 }
 
 type AuthMode = 'loading' | 'authenticated' | 'gate';
@@ -461,6 +464,8 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState('');
+  const [isPortal, setIsPortal] = useState(false);
+  const [portalOverview, setPortalOverview] = useState(false);
   const [viewMode, setViewMode] = useState<'month' | 'list'>('month');
   const isMobile = useIsMobile();
   const effectiveView: 'month' | 'list' = isMobile ? 'list' : viewMode;
@@ -530,40 +535,27 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
         .then(json => {
           if (!json.client) throw new Error(json.error || 'Calendario no encontrado');
           setCalendarType(json.calendar_type);
-          setViewMonth(json.month || format(new Date(), 'yyyy-MM'));
+          const requested = new URLSearchParams(window.location.search).get('month') || '';
+          setIsPortal(!!json.portal);
+          setPortalOverview(!!json.portal && !/^\d{4}-(0[1-9]|1[0-2])$/.test(requested));
+          setViewMonth(json.month || (/^\d{4}-(0[1-9]|1[0-2])$/.test(requested) ? requested : format(new Date(), 'yyyy-MM')));
         })
         .catch(e => setError(e.message))
         .finally(() => setFetchLoading(false));
       return;
     }
-    const [y, m] = viewMonth.split('-').map(Number);
-    const prev = `${y}-${String(m - 1 <= 0 ? 12 : m - 1).padStart(2,'0')}`.replace(/-(\d{2})$/, (s,p)=> m-1===0 ? `${y-1}-${p}` : `${y}-${p}`);
-    const curMonth = viewMonth;
-    const next = `${y}-${String(m + 1 >= 13 ? 1 : m + 1).padStart(2,'0')}`.replace(/-(\d{2})$/, (s,p)=> m+1===13 ? `${y+1}-${p}` : `${y}-${p}`);
-    const months = [prev.replace(/(\d{4})-(\d{2})$/, (_,yy,mm)=> m===1?`${y-1}-${mm}`: m===12?`${y+1}-${mm}`:`${y}-${mm}`), curMonth, (m===12?`${y+1}-01`:`${y}-${String(m+1).padStart(2,'0')}`)];
-    if (m===1) months[0]=`${y-1}-12`;
-    if (m===12) months[0]=`${y}-11`; else if(m>1) months[0]=`${y}-${String(m-1).padStart(2,'0')}`;
-    if (m===12) months[2]=`${y+1}-01`; else months[2]=`${y}-${String(m+1).padStart(2,'0')}`;
-    Promise.all(months.map(mm => {
-      const params = new URLSearchParams({ type: calendarType, month: mm });
-      if (viewer?.type === 'guest' && viewer.email) params.set('guest_email', viewer.email);
-      return fetch(`/api/calendar-links/${token}?${params.toString()}`, {
-        headers: viewer?.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {},
-      }).then(r=>r.json());
-    }))
-      .then(results => {
+    const query = new URLSearchParams({ type: calendarType, month: viewMonth });
+    fetch(`/api/calendar-links/${token}?${query}`, {
+      headers: viewer?.authToken ? { Authorization: `Bearer ${viewer.authToken}` } : {},
+    }).then(async response => {
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'No se pudo cargar el calendario');
+      return json;
+    })
+      .then(result => {
         if (revision !== calendarRevision.current) return;
-        const first = results.find(r=>r.client) || results[0];
-        if (!first?.client) throw new Error(first?.error || 'Calendario no encontrado');
-        const allIdeas: SocialIdea[] = [];
-        const allDates: EcommerceDate[] = [];
-        const seenI = new Set<string>();
-        const seenD = new Set<string>();
-        for (const r of results) {
-          for (const idea of r.ideas||[]) { if(!seenI.has(idea.id)){ seenI.add(idea.id); allIdeas.push(idea);} }
-          for (const ed of r.ecommerce_dates||[]) { if(!seenD.has(ed.id)){ seenD.add(ed.id); allDates.push(ed);} }
-        }
-        setData({ ...first, ideas: allIdeas, ecommerce_dates: allDates });
+        if (!result.client) throw new Error('Calendario no encontrado');
+        setData(result);
       })
       .catch(e => { if (!silent) setError(e.message); })
       .finally(() => { if (!silent) setFetchLoading(false); });
@@ -603,12 +595,14 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   };
 
   const handleLogout = async () => {
+    calendarRevision.current += 1;
     try { const { getSupabase } = await import('@/lib/supabase'); await getSupabase().auth.signOut({ scope: 'local' }); } catch { /* ignore */ }
     localStorage.removeItem(getStorageKey(token!, calendarType));
     setViewer(null);
     setData(null);
     setError(null);
     setViewMonth('');
+    setIsPortal(false); setPortalOverview(false);
     setSelectedIdea(null);
     setNewIdeaDate(null);
     setInitialIdeaId(null);
@@ -643,6 +637,17 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
   };
 
   const handleAddNewIdea = (date: string) => setNewIdeaDate(date);
+
+  const openPortalMonth = (month: string, type: 'social' | 'ads', idea?: string) => {
+    if (!isPortal) type = data?.calendar_type || calendarType;
+    calendarRevision.current += 1;
+    setSelectedIdea(null); setInitialIdeaId(idea || null);
+    setViewMonth(month); setCalendarType(type); setPortalOverview(false); setSearch('');
+    const url = new URL(window.location.href);
+    url.searchParams.set('month', month); url.searchParams.set('type', type);
+    if (idea) url.searchParams.set('idea', idea); else url.searchParams.delete('idea');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+  };
 
   const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -754,6 +759,11 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
 
         </div>
 
+        {viewer?.authToken && <>
+          {isPortal && !portalOverview && <Button variant="outline" className="rounded-full" onClick={() => { setPortalOverview(true); closeSelectedIdea(); const url = new URL(window.location.href); url.searchParams.delete('month'); url.searchParams.delete('type'); window.history.replaceState(null, '', `${url.pathname}${url.search}`); }}>Todos los meses</Button>}
+          <CalendarClientPortal token={token} authToken={viewer.authToken} overview={portalOverview} onOpen={openPortalMonth} />
+        </>}
+        {!portalOverview && <>
         <div className={CALENDAR_COLUMNS}>
         <div className="min-w-0 space-y-4">
           <div className={CALENDAR_TOOLBAR}>
@@ -848,7 +858,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           shareToken={token}
           guestEmail={viewer?.type === 'guest' ? viewer.email : undefined}
           viewerAuthToken={viewer?.authToken}
-          mentionUsers={data.users || []}
+          mentionUsers={data.mention_users || []}
           currentUserEmail={viewer?.email}
           title="Comentarios del mes"
         />} second={<CalendarIdeaComments
@@ -867,6 +877,7 @@ export default function CalendarLanding({ params }: { params: Promise<{ token: s
           }}
           title="Comentarios de las ideas"
         />} />
+        </>}
       </div>
 
       {viewer && <SocialNewIdeaDialog

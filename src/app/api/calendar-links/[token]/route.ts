@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { enrichIdeasWithAssignees } from '@/lib/idea-assignees-server';
+import { calendarMentionUsers } from '@/lib/calendar-mention-users';
 import {
   getSupabaseAdmin,
   hasCalendarAccess,
   isCalendarType,
+  isValidMonth,
   resolveCalendarLink,
   type CalendarType,
 } from '@/lib/calendar-access-server';
@@ -15,6 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     const { token } = await params;
     const url = new URL(request.url);
     const requestedMonth = url.searchParams.get('month');
+    if (requestedMonth && !isValidMonth(requestedMonth)) return NextResponse.json({ error: 'Mes invalido' }, { status: 400 });
     const requestedType = url.searchParams.get('type') || 'social';
     const metaOnly = url.searchParams.get('meta') === '1';
 
@@ -44,6 +47,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
         client: { id: client.id, name: client.name, logo_url: client.logo_url },
         calendar_type: type,
         month,
+        portal: !!link.portal,
         requires_guest_email: true,
       });
     }
@@ -54,13 +58,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     // El link de redes muestra exactamente lo mismo que el calendario interno de
     // redes (/calendarios/<cliente>): ideas de redes + piezas de ADS + fechas
     // ecommerce. El link de ADS sigue mostrando solo ADS.
-    const sources: ('social' | 'ads')[] = type === 'ads' ? ['ads'] : ['social', 'ads'];
+    const sources: ('social' | 'ads')[] = type === 'ads' ? ['ads'] : ['social', ...(client.ads_calendar_enabled ? ['ads' as const] : [])];
     let range: { start: string; end: string } | null = null;
     if (month) {
       const [y, m] = month.split('-').map(Number);
       range = {
-        start: new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 10),
-        end: new Date(Date.UTC(y, m + 1, 1)).toISOString().slice(0, 10),
+        start: new Date(Date.UTC(y, m - (resolved.month ? 1 : 2), 1)).toISOString().slice(0, 10),
+        end: new Date(Date.UTC(y, m + (resolved.month ? 0 : 1), 1)).toISOString().slice(0, 10),
       };
     }
 
@@ -182,7 +186,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       calendar_type: type,
       month,
       users: allUsers || [],
-    });
+      mention_users: await calendarMentionUsers(supabase, client.id, link),
+    }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (e) {
     console.error('GET /api/calendar-links/[token] error:', e);
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });

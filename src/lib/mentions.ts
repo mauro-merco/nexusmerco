@@ -40,6 +40,7 @@ export function findMentionedUsers(
 }
 
 export interface MentionOptions {
+  users?: { id: string; full_name: string | null; email: string | null }[];
   link?: string;
   entityLabel?: string;
 }
@@ -55,7 +56,7 @@ export async function createMentionNotifications(
   opts: MentionOptions = {}
 ): Promise<void> {
   try {
-    const { data: users } = await supabase
+    const { data: users } = opts.users ? { data: opts.users } : await supabase
       .from('users')
       .select('id, full_name, email')
       .eq('app_id', 'nexus');
